@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Codex 底栏布局演示 · 示例数据</title>
+<style>
+:root{font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:#ddd;--color-text:#e5e5e5;--color-surface-primary:#202020;--color-border:#3a3a3a;background:#202020}
+*{box-sizing:border-box}body{margin:0}button{font:inherit;color:inherit;background:transparent;border:0;border-radius:8px;cursor:pointer}button:hover{background:#373737}button:focus-visible{outline:2px solid #9cbcf7}
+[data-app-shell-frame]{height:100vh;display:flex;flex-direction:column;position:relative;--app-shell-navigation-rail-width:56px;overflow:hidden}
+.titlebar{height:36px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid #333;flex-shrink:0;font-size:12px;color:#a0a0a0}.titlebar strong{font-weight:500;margin-right:12px;color:#ddd}.demo-label{margin-left:auto;color:#cbbd91}
+.shell-main{display:flex;flex:1;min-height:0;position:relative}.flex-col{display:flex;flex-direction:column}nav[data-app-navigation-rail]{width:56px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:12px 8px;gap:8px;background:#242424}nav button{width:36px;height:36px;flex-shrink:0;font-size:18px}nav .vertical-scroll-fade-mask{flex:1;display:flex;flex-direction:column;gap:4px}nav .footer{display:flex;flex-direction:column;gap:4px}
+aside{width:244px;flex-shrink:0;padding:20px 14px;background:#252525;color:#bdbdbd;font-size:13px;overflow:auto}aside h3{font-size:12px;color:#888;font-weight:400;margin:24px 0 10px}aside p{padding:8px;border-radius:7px;margin:2px 0}aside .selected{background:#343434;color:#eee}
+main{flex:1;min-width:0;display:flex;flex-direction:column;padding:24px 32px 16px}.thread-title{font-size:13px;color:#aaa}.conversation{flex:1;display:flex;align-items:center;justify-content:center;padding:20px}.intro{max-width:560px}.intro h1{font-size:25px;font-weight:500;letter-spacing:-.5px}.intro p{line-height:1.8;color:#9b9b9b;font-size:14px}.composer{min-height:94px;border:1px solid #444;border-radius:18px;padding:16px;color:#8e8e8e;background:#292929;font-size:13px;flex-shrink:0}.composer-footer{display:flex;align-items:center;justify-content:space-between;margin-top:20px;font-size:11px;color:#888}.send{width:24px;height:24px;background:#ddd;border-radius:50%;color:#222;display:flex;align-items:center;justify-content:center}
+.demo-avatar{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;vertical-align:middle;border-radius:50%;background:#4a4a4a;color:#eee}.demo-avatar svg{width:20px;height:20px}
+.navigation-host{width:var(--app-shell-navigation-rail-width);flex:0 0 auto;contain:layout paint;overflow:hidden}
+@media(max-width:850px){aside{width:190px}main{padding:18px 18px 12px}.intro h1{font-size:21px}}
+@media(max-width:580px){aside{width:130px;padding:14px 8px}main{padding:14px 12px}.intro h1{font-size:18px}.intro p{font-size:12px}.titlebar{padding:0 8px}.demo-label{font-size:10px}.composer{padding:12px}}
+</style>
+<div data-app-shell-frame data-app-shell-sidebar-open="true">
+  <header class="titlebar"><strong>Codex</strong><span>底部导航与额度栏</span><span class="demo-label">布局演示 · 示例数据</span></header>
+  <div class="shell-main">
+    <div class="navigation-host"><nav data-app-navigation-rail="true" aria-label="主导航" class="flex-col">
+      <div aria-hidden="true" style="height:12px"></div>
+      <button title="首页" aria-label="首页">⌂</button>
+      <div class="vertical-scroll-fade-mask"><div class="flex-col" role="list">
+        <button title="聊天" aria-label="聊天">▤</button><button title="项目" aria-label="项目">▣</button>
+        <button title="自动化" aria-label="自动化">◷</button><button title="插件" aria-label="插件">⊞</button>
+      </div></div>
+      <div class="footer flex-col"><button title="设置" aria-label="设置">⚙</button></div><div class="profile-slot"><button id="demo-profile-trigger" title="账户与个人菜单（示例头像）" aria-label="账户"><span class="demo-avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="8" r="3.3"/><path d="M5.4 20v-1.5a6.6 6.6 0 0 1 13.2 0V20"/></svg></span></button></div>
+    </nav></div>
+    <aside class="app-shell-left-panel"><button>＋ 新建聊天</button><h3>项目</h3><p>我的项目</p><h3>最近聊天</h3><p class="selected">Codex 底部横栏</p><p>布局方案</p><p>开发记录</p></aside>
+    <main><div class="thread-title">Codex 底部横栏</div><div class="conversation"><div class="intro"><h1>导航移到底部，额度一眼可见。</h1><p>五小时与每周额度独立显示，每项直接标出重置日期与时刻。“可用重置”展示剩余次数。</p><p>项目和聊天列表保留在左侧。底栏为输入框留出空间。</p></div></div><div class="composer">发送消息…<div class="composer-footer"><span>Codex · 默认</span><span class="send">↑</span></div></div></main>
+  </div>
+</div>
+<script>
+const demoUsage={account_id:'preview-account',credits:{balance:'1234.5',has_credits:true,unlimited:false},rate_limit:{primary_window:{used_percent:32,limit_window_seconds:18000,reset_at:Date.parse('2026-10-29T18:30:00+08:00')/1000},secondary_window:{used_percent:58,limit_window_seconds:604800,reset_at:Date.parse('2026-11-03T09:00:00+08:00')/1000}},rate_limit_reset_credits:{available_count:3}};
+window.__demoUsage=demoUsage;
+window.__codexRoot={_internalRoot:{current:{memoizedProps:{usage:demoUsage,currentAccount:{id:'preview-account'}},child:null,sibling:null}}};
+window.__demoUsageOpens=0;
+document.querySelectorAll('nav button').forEach(button=>button.addEventListener('click',()=>{
+ document.querySelector('.thread-title').textContent=button.getAttribute('aria-label');
+ if(button.getAttribute('aria-label')!=='账户')return;
+ const previous=document.getElementById('demo-profile-menu');if(previous){previous.remove();button.removeAttribute('aria-controls');return}
+ const menu=document.createElement('div');menu.id='demo-profile-menu';menu.setAttribute('role','menu');menu.setAttribute('aria-labelledby',button.id);menu.style.cssText='position:fixed;bottom:46px;left:10px;padding:8px;background:#303030;border:1px solid #555;border-radius:8px;z-index:100';
+ const entry=document.createElement('button');entry.setAttribute('role','menuitem');entry.textContent='可用重置 3 次';entry.addEventListener('click',()=>{window.__demoUsageOpens++;menu.remove();button.removeAttribute('aria-controls');document.querySelector('.thread-title').textContent='额度页面（示例）'});
+ const summary=document.createElement('button');summary.setAttribute('role','menuitem');summary.textContent='剩余用量';summary.addEventListener('click',()=>{if(!menu.contains(entry))menu.append(entry)});
+ menu.append(summary);document.body.append(menu);button.setAttribute('aria-controls',menu.id);
+}));
+</script>
+<link rel="stylesheet" id="codex-bottom-bar-style" href="bottom-bar.css">
+<script>window.__cqbPreferences={language:new URLSearchParams(location.search).get("lang") || "zh-CN",timeZone:new URLSearchParams(location.search).get("tz") || "auto"};</script>
+<script src="i18n.js"></script>
+<script src="bottom-bar.js"></script>
+<script>
+// Preview controls use an in-page mock. They never create a real reminder or send a message.
+window.__previewState={send:{phase:'off'},completion:{enabled:false,phase:'off'},refresh:{enabled:false,phase:'off'},ringing:null};
+window.__cqbNativeFeatures={connect:async callback=>{window.__previewComplete=callback;return{completion:true,send:true}},dispose(){}};
+window.__previewCalls=[];
+window.__previewVolume={percent:50,muted:false};
+window.__cqbPreviewHost=(method,payload={})=>{
+ window.__previewCalls.push({method,payload});const s=window.__previewState;
+ if(method==='volume-status')return structuredClone(window.__previewVolume);
+ if(method==='toggle'){
+  if(payload.feature==='send')s.send={phase:payload.enabled?'armed':'off',target:Date.now()+3600000};
+  else s[payload.feature]={enabled:payload.enabled,phase:payload.enabled?(payload.feature==='refresh'?'scheduled':'listening'):'off',...(payload.feature==='refresh'&&payload.enabled?{alarm:{reset:Date.now()+3600000,due:Date.now()+3660000}}:{})};
+ }
+ if(method==='interaction'||method==='stop'){s.ringing=null;if(s.completion.enabled)s.completion.phase='listening';if(s.refresh.enabled)s.refresh.phase='scheduled'}
+ return structuredClone(s);
+};
+</script>
+<script src="feature-ui.js"></script>
+</html>

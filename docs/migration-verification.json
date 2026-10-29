@@ -1,0 +1,25 @@
+{
+  "project": "CodexTiBoBottomBar",
+  "version": "0.8.0-rc.2",
+  "privacyAuditPassed": true,
+  "originalApplicationBytesPreserved": true,
+  "buyerPayloadIdenticalToVerifiedCandidate": true,
+  "buyerArchiveFileCount": 65,
+  "powershellBomAndCrlfPreserved": true,
+  "cmdCrlfPreserved": true,
+  "privateConfigIgnored": true,
+  "nodeBinaryIgnored": true,
+  "generatedArchivesIgnored": true,
+  "localUnitTests": {
+    "passed": true,
+    "count": 26
+  },
+  "localUiChecks": {
+    "passed": true,
+    "count": 79
+  },
+  "applicationFunctionalityChanged": false,
+  "originalCodexRestarted": false,
+  "realClientAcceptanceStillPending": true,
+  "commercialPermissionStillPending": true
+}

@@ -1,0 +1,9 @@
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.png -text
+*.wav -text
+*.exe -text
+*.zip -text
+# Preserve the upstream notice byte-for-byte, including its original indentation.
+runtime/LICENSE-Node.txt -whitespace

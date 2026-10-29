@@ -1,0 +1,26 @@
+name: Windows checks
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --ignore-scripts
+      - run: npx playwright install msedge
+      - run: npm test
+      - run: npm run test:ui
+      - run: npm run test:display
+      - run: npm run test:volume
+      - run: npm run test:adapter
+      - run: npm run test:controller
+      - run: npm run test:worker
+      - run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File download-runtime.ps1
+      - run: python pack-buyer.py --manifest-only
+      - run: npm run test:install
+      - run: npm run test:settings

@@ -1,0 +1,24 @@
+{
+  "name": "codex-bottom-bar",
+  "version": "0.8.0-rc.2",
+  "description": "Windows Codex single-row navigation, quota display and independent music reminders",
+  "private": true,
+  "license": "SEE LICENSE IN LICENSE",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "test:ui": "node tests/ui.cjs",
+    "test:display": "node tests/display.cjs",
+    "test:volume": "node tests/volume.cjs",
+    "test:adapter": "node tests/native-adapter.cjs",
+    "test:controller": "node tests/controller.cjs",
+    "test:worker": "node tests/worker-integration.mjs",
+    "test:install": "node tests/install.mjs",
+    "test:settings": "node tests/settings-worker.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}

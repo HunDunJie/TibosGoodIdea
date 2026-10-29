@@ -1,0 +1,36 @@
+# CodexTiBoBottomBar 项目约定
+
+这是开发用私有仓库，产品显示名仍为 BottomBar Companion，稳定 productId 不改
+当前基线 0.8.0-rc.2，Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0
+
+## 目录和构建
+
+- 根目录：底栏源码、独立提醒服务、Windows 启动/安装/设置脚本、双语许可和说明
+- tests/：现有自动检查，.github/workflows/test.yml：Windows CI
+- sales/：中英文商品文案、封面、交付文字和验收记录
+- dist/：生成的安装包、私有源码备份、卖家资料包及 SHA-256，不加入 Git
+- runtime/node.exe：官网下载的固定版本，仅本地使用；Node 许可和下载脚本进入 Git
+- config.local.json：仅本地的语言、时区与私人音效路径，不加入 Git
+
+在 Windows PowerShell 中按顺序运行：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File download-runtime.ps1
+python pack-buyer.py
+python pack-source.py
+python pack-seller.py
+```
+
+买家只收 dist 中的 Windows-x64 ZIP，seller-kit 用于卖家上架准备，private-source 仅作私有备份
+源码测试说明见 README；这次搬迁没有改变功能，不替代真实客户端验收
+
+## 运行与发布边界
+
+本次整理复制了已验证的候选源码，核对了原始字节散列，未关闭当前 Codex 或替换正在运行的提醒进程
+先前工作目录暂时保留，避免破坏当前进程引用，新的正式开发在此仓库进行
+个人配置可在本地继续使用，私人游戏音乐文件不复制到本项目，不上传 GitHub
+原项目的历史包继续保留，不覆盖旧文件，不追溯撤销任何已有有效许可
+
+GitHub 仓库必须保持私有，不启用 Pages，不创建公开 Release，不开始销售
+OpenAI 支持答复仍待确认；获准后还需完成 sales/manual-acceptance.md 和平台收款交付验收
+自己的商业许可不代替 OpenAI 或第三方权利，原贡献者版权与第三方许可证保留

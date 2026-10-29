@@ -1,0 +1,31 @@
+# Local configuration, user state and credentials
+config.local.json*
+controller.json
+features.json
+reminder-worker.json
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+
+# Installed/downloaded runtime and generated packages
+/runtime/node.exe
+node_modules/
+/dist/
+*.zip
+*.zip.sha256
+*.log
+*.bak
+*.pending
+work/
+.runtime/
+test-results/
+__pycache__/
+*.pyc
+
+# Private recordings and account screenshots
+client-bottom-*.png
+*.wav
+!sounds/completion.wav
+!sounds/refresh.wav

@@ -1,0 +1,54 @@
+{
+  "status": "private-candidate-awaiting-permission",
+  "published": false,
+  "seller": "由龙见象",
+  "product": "BottomBar Companion",
+  "version": "0.8.0-rc.2",
+  "prices": {
+    "domestic": {
+      "currency": "CNY",
+      "amount": "3.90"
+    },
+    "overseas": {
+      "currency": "USD",
+      "amount": "0.90"
+    }
+  },
+  "buyerFile": "../dist/BottomBar-Companion-0.8.0-rc.2-Windows-x64.zip",
+  "domestic": {
+    "platform": "面包多",
+    "accountVerified": false,
+    "storeUrl": "https://mbd.pub/o/bestwishes/moment",
+    "copy": "listing.zh-CN.md",
+    "cover": "assets/cover.zh-CN.png",
+    "delivery": "after-purchase.zh-CN.txt",
+    "loginObserved": true,
+    "remoteDraftCreated": false,
+    "browserStatus": "Disconnected while opening the single-product form; no confirmed save"
+  },
+  "overseas": {
+    "platformCandidate": "Payhip",
+    "accountConnected": false,
+    "priceAcceptedByPlatform": null,
+    "checkoutUrl": null,
+    "copy": "listing.en.md",
+    "cover": "assets/cover.en.png",
+    "delivery": "after-purchase.en.txt"
+  },
+  "acceptancePending": [
+    "cold-start",
+    "notification-activation",
+    "real-multi-chat-send",
+    "real-completion-events",
+    "commercial-distribution-terms",
+    "seller-and-payment-onboarding"
+  ],
+  "sourceDistribution": "private-seller-backup-only",
+  "commercialPermission": {
+    "status": "awaiting-support-response",
+    "reportedEscalatedByUser": true,
+    "replyEvidence": null,
+    "decision": null,
+    "publishIfPermittedOnly": true
+  }
+}

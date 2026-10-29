@@ -101,7 +101,7 @@ namespace CodexBottomBar {
       items[2].Text = T("关闭完成提醒", "Disable completion sound", "完了通知をオフにする");
       items[4].Text = T("声音设置", "Sound settings", "サウンド設定");
       items[5].Text = T("退出提醒服务（取消所有提醒）", "Exit service (cancel all reminders)", "通知サービスを終了（すべて解除）");
-      tray.Text = T("Codex 提醒：左键停止响铃，右键管理", "BottomBar Companion: click to stop, right-click to manage", "Codex 通知：クリックで停止、右クリックで管理");
+      tray.Text = T("Tibo’s Good Idea：左键停止响铃，右键管理", "Tibo’s Good Idea: click to stop, right-click to manage", "Tibo’s Good Idea：クリックで停止、右クリックで管理");
     }
     public static string[] ReadTrayLabels() {
       if (uiDispatcher == null) return new string[0];

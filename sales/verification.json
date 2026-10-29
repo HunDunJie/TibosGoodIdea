@@ -1,6 +1,8 @@
 {
-  "version": "0.8.0-rc.3",
-  "at": "2026-10-29T15:11:45.421677+00:00",
+  "version": "0.8.0-rc.4",
+  "product": "Tibo’s Good Idea",
+  "project": "TibosGoodIdea",
+  "at": "2026-10-29T16:02:27.575249+00:00",
   "prices": {
     "CNY": "3.90",
     "USD": "0.90"
@@ -8,10 +10,10 @@
   "packages": [
     {
       "kind": "buyer",
-      "file": "BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip",
+      "file": "TibosGoodIdea-0.8.0-rc.4-Windows-x64.zip",
       "files": 66,
-      "bytes": 35325482,
-      "sha256": "8de3aa9f05d89d5edfd073bf561207c870b38321d31a77819fdb4a04f71a4f63"
+      "bytes": 35324767,
+      "sha256": "8f49e0631eb9f920755be60707fbd0c21a29b31327f22cd75ad62d0d212b948c"
     }
   ],
   "currentCandidateChecks": [
@@ -19,93 +21,117 @@
       "name": "unit",
       "passed": true,
       "code": 0,
-      "summary": "ℹ todo 0\nℹ duration_ms 118.3788",
-      "version": "0.8.0-rc.3"
-    },
-    {
-      "name": "ui",
-      "passed": true,
-      "code": 0,
-      "summary": "{\"checks\":79,\"passed\":true,\"realDraftsSent\":false}",
-      "version": "0.8.0-rc.3"
+      "summary": "ℹ todo 0\nℹ duration_ms 130.8008",
+      "version": "0.8.0-rc.4"
     },
     {
       "name": "language",
       "passed": true,
       "code": 0,
       "summary": "{\"passed\":true,\"checks\":33,\"liveLanguageChanges\":true,\"retainsTooltip\":true,\"preservesFeatureState\":true,\"realDraftsSent\":false}",
-      "version": "0.8.0-rc.3"
-    },
-    {
-      "name": "display",
-      "passed": true,
-      "code": 0,
-      "summary": "{\"passed\":true,\"checks\":25,\"coldStartPersistence\":true,\"minuteUpdates\":true,\"realDraftsSent\":false}",
-      "version": "0.8.0-rc.3"
-    },
-    {
-      "name": "volume",
-      "passed": true,
-      "code": 0,
-      "summary": "{\"passed\":true,\"checks\":20,\"realVolumeRead\":true,\"volumeChanged\":false,\"audioPlayed\":false}",
-      "version": "0.8.0-rc.3"
-    },
-    {
-      "name": "adapter",
-      "passed": true,
-      "code": 0,
-      "summary": "{\"passed\":true,\"nativeSubmissionDelegation\":true,\"draftAliasDeduplication\":true,\"emptyDraftSkipped\":true,\"changedDraftPreserved\":true,\"failedDraftPreserved\":true,\"accountSwitchStopsRound\":true,\"roundCancellation\":true,\"allHostCompletionSubscription\":true,\"realDraftsSent\":false}",
-      "version": "0.8.0-rc.3"
+      "version": "0.8.0-rc.4"
     },
     {
       "name": "controller",
       "passed": true,
       "code": 0,
       "summary": "{\"passed\":true,\"realRendererHostBridge\":true,\"reload\":true,\"toggleReachesWorker\":true,\"noAudibleSound\":true,\"restore\":true,\"reminderSurvivesControllerExit\":true,\"noReinjection\":true}",
-      "version": "0.8.0-rc.3"
-    },
-    {
-      "name": "worker",
-      "passed": true,
-      "code": 0,
-      "summary": "{\"passed\":true,\"independentProcess\":true,\"parentExitedBeforeAlarm\":true,\"realWindowsPlayer\":true,\"audibleSound\":false,\"stopWithoutCodex\":true,\"cancelWithoutCodex\":true,\"completion\":true,\"thirtyMinuteExpiry\":true,\"restartPreservesDeadline\":true,\"refreshNotification\":true,\"completionNotification\":false,\"cleanShutdown\":true}",
-      "version": "0.8.0-rc.3"
+      "version": "0.8.0-rc.4"
     },
     {
       "name": "settings-worker",
       "passed": true,
       "code": 0,
       "summary": "{\"passed\":true,\"threeTrayLanguages\":true,\"liveLanguageWithoutRestart\":true,\"cachedLanguageSurvivesRestart\":true,\"ignoresLegacyOverrides\":true,\"unchangedConfigNoRestart\":true,\"preservesSwitches\":true,\"preservesSchedule\":true,\"preservesArmedSend\":true,\"audioPlayed\":false}",
-      "version": "0.8.0-rc.3"
+      "version": "0.8.0-rc.4"
     },
     {
       "name": "install",
       "passed": true,
       "code": 0,
       "summary": "{\"passed\":true,\"checks\":81,\"isolatedDirectory\":true,\"realShortcutsChanged\":false,\"liveServicesChanged\":false}",
-      "version": "0.8.0-rc.3"
+      "version": "0.8.0-rc.4"
     }
   ],
-  "postReviewChecks": {
-    "unit": {
-      "passed": true,
-      "checks": 29
-    },
-    "language": {
-      "passed": true,
-      "checks": 33
-    },
-    "worker": {
-      "passed": true,
-      "languageChangePreservesPlaybackDeadline": true
-    },
-    "ui": {
-      "passed": true,
-      "checks": 79
-    }
+  "previousFullRegression": {
+    "version": "0.8.0-rc.3",
+    "gitCommit": "1d57c5f90d32667389b224be2d68a6e967ecb9f5",
+    "results": [
+      {
+        "name": "unit",
+        "passed": true,
+        "code": 0,
+        "summary": "ℹ todo 0\nℹ duration_ms 118.3788",
+        "version": "0.8.0-rc.3"
+      },
+      {
+        "name": "ui",
+        "passed": true,
+        "code": 0,
+        "summary": "{\"checks\":79,\"passed\":true,\"realDraftsSent\":false}",
+        "version": "0.8.0-rc.3"
+      },
+      {
+        "name": "language",
+        "passed": true,
+        "code": 0,
+        "summary": "{\"passed\":true,\"checks\":33,\"liveLanguageChanges\":true,\"retainsTooltip\":true,\"preservesFeatureState\":true,\"realDraftsSent\":false}",
+        "version": "0.8.0-rc.3"
+      },
+      {
+        "name": "display",
+        "passed": true,
+        "code": 0,
+        "summary": "{\"passed\":true,\"checks\":25,\"coldStartPersistence\":true,\"minuteUpdates\":true,\"realDraftsSent\":false}",
+        "version": "0.8.0-rc.3"
+      },
+      {
+        "name": "volume",
+        "passed": true,
+        "code": 0,
+        "summary": "{\"passed\":true,\"checks\":20,\"realVolumeRead\":true,\"volumeChanged\":false,\"audioPlayed\":false}",
+        "version": "0.8.0-rc.3"
+      },
+      {
+        "name": "adapter",
+        "passed": true,
+        "code": 0,
+        "summary": "{\"passed\":true,\"nativeSubmissionDelegation\":true,\"draftAliasDeduplication\":true,\"emptyDraftSkipped\":true,\"changedDraftPreserved\":true,\"failedDraftPreserved\":true,\"accountSwitchStopsRound\":true,\"roundCancellation\":true,\"allHostCompletionSubscription\":true,\"realDraftsSent\":false}",
+        "version": "0.8.0-rc.3"
+      },
+      {
+        "name": "controller",
+        "passed": true,
+        "code": 0,
+        "summary": "{\"passed\":true,\"realRendererHostBridge\":true,\"reload\":true,\"toggleReachesWorker\":true,\"noAudibleSound\":true,\"restore\":true,\"reminderSurvivesControllerExit\":true,\"noReinjection\":true}",
+        "version": "0.8.0-rc.3"
+      },
+      {
+        "name": "worker",
+        "passed": true,
+        "code": 0,
+        "summary": "{\"passed\":true,\"independentProcess\":true,\"parentExitedBeforeAlarm\":true,\"realWindowsPlayer\":true,\"audibleSound\":false,\"stopWithoutCodex\":true,\"cancelWithoutCodex\":true,\"completion\":true,\"thirtyMinuteExpiry\":true,\"restartPreservesDeadline\":true,\"refreshNotification\":true,\"completionNotification\":false,\"cleanShutdown\":true}",
+        "version": "0.8.0-rc.3"
+      },
+      {
+        "name": "settings-worker",
+        "passed": true,
+        "code": 0,
+        "summary": "{\"passed\":true,\"threeTrayLanguages\":true,\"liveLanguageWithoutRestart\":true,\"cachedLanguageSurvivesRestart\":true,\"ignoresLegacyOverrides\":true,\"unchangedConfigNoRestart\":true,\"preservesSwitches\":true,\"preservesSchedule\":true,\"preservesArmedSend\":true,\"audioPlayed\":false}",
+        "version": "0.8.0-rc.3"
+      },
+      {
+        "name": "install",
+        "passed": true,
+        "code": 0,
+        "summary": "{\"passed\":true,\"checks\":81,\"isolatedDirectory\":true,\"realShortcutsChanged\":false,\"liveServicesChanged\":false}",
+        "version": "0.8.0-rc.3"
+      }
+    ],
+    "scope": "Existing behavior is unchanged; this candidate changes branding, installation and package paths"
   },
   "actualBuyerZipSmoke": {
-    "version": "0.8.0-rc.3",
+    "version": "0.8.0-rc.4",
     "passed": true,
     "checks": {
       "archiveManifest": true,
@@ -122,8 +148,8 @@
     "shortcutsCreated": false,
     "actualAudioPlayed": false,
     "diagnostic": {
-      "product": "BottomBar Companion",
-      "version": "0.8.0-rc.3",
+      "product": "Tibo’s Good Idea",
+      "version": "0.8.0-rc.4",
       "node": "24.22.1",
       "platform": "win32",
       "architecture": "x64",
@@ -133,6 +159,22 @@
       "rendererSupported": true
     }
   },
+  "projectRenameHandoff": {
+    "passed": true,
+    "rootMoved": true,
+    "currentWorkerFromNewRoot": true,
+    "switchesPreserved": true,
+    "armedSendIdentityAndTimePreserved": true,
+    "refreshSchedulePreserved": true,
+    "codexRestarted": false,
+    "realDraftsSent": false
+  },
+  "githubRename": {
+    "repository": "HunDunJie/TibosGoodIdea",
+    "private": true,
+    "repositoryIdentityPreserved": true,
+    "historyPreserved": true
+  },
   "powershell51SyntaxFiles": 11,
   "powershell51SyntaxPassed": true,
   "powershellEncodingPassed": true,
@@ -141,10 +183,9 @@
   "privacyAllowlistPassed": true,
   "privateConfigUnchanged": true,
   "liveLanguageCheck": {
-    "codexLanguage": "en-US",
-    "systemLanguage": "zh-CN",
-    "bottomBarLanguage": "en",
-    "addOnVersion": "0.8.0-rc.3",
+    "codexLanguage": "zh-CN",
+    "bottomBarLanguage": "zh-CN",
+    "addOnVersion": "0.8.0-rc.4",
     "manualLanguageOverride": false,
     "liveCodexRestarted": false,
     "timeModesPreserved": true
@@ -160,10 +201,5 @@
     "commercial-distribution-terms",
     "seller-and-payment-onboarding"
   ],
-  "historicalEvidence": {
-    "version": "0.8.0-rc.2",
-    "gitCommit": "d84f499ed7193bd0f1575a8578f46ca34c704b2a",
-    "migration": "../docs/migration-verification.json"
-  },
-  "scope": "Local automated checks and English hot reload. No real chat drafts submitted. ZIP installation used an isolated directory without real shortcuts or service changes. Source and seller hashes are in ../dist/*.sha256; they are excluded here to avoid self-referential checksums."
+  "scope": "Rename and delivery checks; live background handoff retained schedules and switches without restarting Codex. No real drafts were submitted for testing. Archive installation checks used an isolated directory. Source and seller archive hashes are in ../dist/*.sha256 to avoid self-referential checksums."
 }

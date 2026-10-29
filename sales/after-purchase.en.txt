@@ -1,6 +1,6 @@
-Thank you for choosing BottomBar Companion
-Download and fully extract BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip
-Run Install.cmd, then use the BottomBar Companion desktop shortcut
+Thank you for choosing Tibo’s Good Idea
+Download and fully extract TibosGoodIdea-0.8.0-rc.4-Windows-x64.zip
+Run Install.cmd, then use the Tibo’s Good Idea desktop shortcut
 Finish tasks and exit Codex yourself before first use
 Language follows Codex (Chinese/English/Japanese); Settings.cmd selects the time zone and WAVs; empty sound fields use the included tones
 StopSound.cmd stops sound and Uninstall.cmd removes the add-on

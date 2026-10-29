@@ -1,7 +1,7 @@
-# CodexTiBoBottomBar 项目约定
+# TibosGoodIdea 项目约定
 
-这是开发用私有仓库，产品显示名仍为 BottomBar Companion，稳定 productId 不改
-当前基线 0.8.0-rc.3，Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0
+这是开发用私有仓库，产品显示名为 Tibo’s Good Idea，稳定 productId 不改
+当前基线 0.8.0-rc.4，Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0
 
 ## 目录和构建
 
@@ -10,7 +10,7 @@
 - sales/：中英文商品文案、封面、交付文字和验收记录
 - dist/：生成的安装包、私有源码备份、卖家资料包及 SHA-256，不加入 Git
 - runtime/node.exe：官网下载的固定版本，仅本地使用；Node 许可和下载脚本进入 Git
-- config.local.json：仅本地的语言、时区与私人音效路径，不加入 Git
+- config.local.json：仅本地的时区与私人音效路径，不加入 Git
 
 在 Windows PowerShell 中按顺序运行：
 
@@ -26,8 +26,9 @@ python pack-seller.py
 
 ## 运行与发布边界
 
-本次整理复制了已验证的候选源码，核对了原始字节散列，未关闭当前 Codex 或替换正在运行的提醒进程
-先前工作目录暂时保留，避免破坏当前进程引用，新的正式开发在此仓库进行
+最初的候选包导入证据保存在 docs/migration.json 与 docs/migration-verification.json，不改写历史名称和散列
+本次改名已将目录移至 D:/MyOtherProjects/TibosGoodIdea，旧 D 盘目录不保留别名或副本
+已在不重启 Codex 的情况下切换本工具后台，保留开关、提醒计划和待发送轮次，见 docs/rename.md
 个人配置可在本地继续使用，私人游戏音乐文件不复制到本项目，不上传 GitHub
 原项目的历史包继续保留，不覆盖旧文件，不追溯撤销任何已有有效许可
 

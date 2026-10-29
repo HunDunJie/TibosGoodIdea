@@ -21,11 +21,11 @@ if '--manifest-only' in sys.argv:print(f'Buyer manifest ready: {len(names)} file
 version=json.loads((root/'product.json').read_text(encoding='utf-8'))['version']
 output_dir=root/'dist'
 output_dir.mkdir(exist_ok=True)
-output=output_dir/f'BottomBar-Companion-{version}-Windows-x64.zip'
+output=output_dir/f'TibosGoodIdea-{version}-Windows-x64.zip'
 manifest={n:hashlib.sha256((root/n).read_bytes()).hexdigest() for n in names}
 with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
-    for n in names:z.write(root/n,'BottomBar-Companion/'+n)
-    z.writestr('BottomBar-Companion/SHA256-MANIFEST.json',json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
+    for n in names:z.write(root/n,'TibosGoodIdea/'+n)
+    z.writestr('TibosGoodIdea/SHA256-MANIFEST.json',json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
 with zipfile.ZipFile(output) as z:assert z.testzip() is None
 digest=hashlib.sha256(output.read_bytes()).hexdigest()
 output.with_suffix('.zip.sha256').write_text(f'{digest}  {output.name}\n',encoding='utf-8')

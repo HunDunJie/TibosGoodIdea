@@ -19,14 +19,14 @@ if(-not $NoServiceChanges){
   if(Test-Path -LiteralPath $statePath){$controller=[IO.File]::ReadAllText($statePath)|ConvertFrom-Json;if($controller.packageRoot -and [IO.Path]::GetFullPath($controller.packageRoot).TrimEnd('\') -eq $target){$child=Start-Process powershell.exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"'+(Join-Path $target 'restore.ps1')+'"')) -WindowStyle Hidden -Wait -PassThru;if($child.ExitCode -ne 0){throw 'Could not restore the managed interface; uninstall stopped'}}}
 }
 $configPath=Join-Path $target 'config.local.json'
-if(Test-Path -LiteralPath $configPath){$backup=if($BackupDir){$BackupDir}else{Join-Path $env:LOCALAPPDATA ('BottomBarCompanionBackup\'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))};New-Item -ItemType Directory -Path $backup -Force|Out-Null;Copy-Item -LiteralPath $configPath -Destination (Join-Path $backup 'config.local.json')}
+if(Test-Path -LiteralPath $configPath){$backup=if($BackupDir){$BackupDir}else{Join-Path $env:LOCALAPPDATA ('TibosGoodIdeaBackup\'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))};New-Item -ItemType Directory -Path $backup -Force|Out-Null;Copy-Item -LiteralPath $configPath -Destination (Join-Path $backup 'config.local.json')}
 foreach($name in $owned){$file=Join-Path $target $name;if(Test-Path -LiteralPath $file -PathType Leaf){Remove-Item -LiteralPath $file -Force}}
 $directories=@($owned|ForEach-Object{Split-Path -Parent (Join-Path $target $_)}|Sort-Object Length -Descending -Unique)
 foreach($directory in $directories){if($directory -ne $target -and (Test-Path -LiteralPath $directory) -and -not(Get-ChildItem -LiteralPath $directory -Force|Select-Object -First 1)){Remove-Item -LiteralPath $directory -Force}}
 if((Test-Path -LiteralPath $target) -and -not(Get-ChildItem -LiteralPath $target -Force|Select-Object -First 1)){Remove-Item -LiteralPath $target -Force}
 if(-not $NoShortcut){
-  $programs=Join-Path ([Environment]::GetFolderPath('Programs')) 'BottomBar Companion'
-  foreach($item in @((Join-Path ([Environment]::GetFolderPath('Desktop')) 'BottomBar Companion.lnk'),(Join-Path $programs 'BottomBar Companion.lnk'),(Join-Path $programs 'Settings.lnk'),(Join-Path $programs 'Stop sound.lnk'),(Join-Path $programs 'Uninstall.lnk'))){if(Test-Path -LiteralPath $item -PathType Leaf){Remove-Item -LiteralPath $item}}
+  $programs=Join-Path ([Environment]::GetFolderPath('Programs')) "Tibo’s Good Idea"
+  foreach($item in @((Join-Path ([Environment]::GetFolderPath('Desktop')) "Tibo’s Good Idea.lnk"),(Join-Path $programs "Tibo’s Good Idea.lnk"),(Join-Path $programs 'Settings.lnk'),(Join-Path $programs 'Stop sound.lnk'),(Join-Path $programs 'Uninstall.lnk'))){if(Test-Path -LiteralPath $item -PathType Leaf){Remove-Item -LiteralPath $item}}
   if((Test-Path -LiteralPath $programs) -and -not(Get-ChildItem -LiteralPath $programs -Force|Select-Object -First 1)){Remove-Item -LiteralPath $programs}
 }
-Write-Host (L '本工具文件已卸载，未知或自行添加的文件会保留，设置备份在 LocalAppData\BottomBarCompanionBackup' 'Managed files removed. Your own files are preserved. Settings backup: LocalAppData\BottomBarCompanionBackup.' '管理対象のファイルを削除しました 追加されたファイルは保持します 設定は LocalAppData\BottomBarCompanionBackup にバックアップしました')
+Write-Host (L '本工具文件已卸载，未知或自行添加的文件会保留，设置备份在 LocalAppData\TibosGoodIdeaBackup' 'Managed files removed. Your own files are preserved. Settings backup: LocalAppData\TibosGoodIdeaBackup.' '管理対象のファイルを削除しました 追加されたファイルは保持します 設定は LocalAppData\TibosGoodIdeaBackup にバックアップしました')

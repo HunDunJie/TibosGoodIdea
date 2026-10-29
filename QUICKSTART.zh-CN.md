@@ -5,8 +5,8 @@
 当前候选版仅适配 **Windows 11 x64、Microsoft Store Codex 26.1023.6621.0**，其他版本会停止加载。完整 Codex 冷启动及系统通知点击返回仍待人工验收
 
 1. 将整个 ZIP 解压到普通文件夹，不要在压缩包内运行
-2. 双击 `Install.cmd` 或 `安装.cmd`，无需管理员权限，默认安装到 `%LOCALAPPDATA%\Programs\BottomBarCompanion` 并创建桌面快捷方式
-3. 首次加载前，先完成正在运行的任务，自行退出 Codex，再使用桌面的 **BottomBar Companion** 启动，安装程序不会关闭 Codex
+2. 双击 `Install.cmd` 或 `安装.cmd`，无需管理员权限，默认安装到 `%LOCALAPPDATA%\Programs\TibosGoodIdea` 并创建桌面快捷方式
+3. 首次加载前，先完成正在运行的任务，自行退出 Codex，再使用桌面的 **Tibo’s Good Idea** 启动，安装程序不会关闭 Codex
 4. 原来的 Codex 入口保持原样，以后使用本工具的快捷方式加载底栏
 
 也可以直接运行解压目录的 `Start.cmd`，但不要删除或移动正在使用的文件夹。买家包包含经过校验的 Node.js，不需要另行安装
@@ -19,7 +19,7 @@
 - `StopSound.cmd` / `停止响铃.cmd`：即使 Codex 没有启动，也能停止本次响铃
 - `ExitReminders.cmd`：关闭全部提醒并退出后台，`Restore.cmd` 只恢复界面，提醒仍继续
 - 通知区域图标：左键停铃，右键管理提醒，图标可能收在系统托盘的展开区域
-- `Uninstall.cmd`：移除本工具管理的文件和快捷方式，保留未知文件，设置备份到 `%LOCALAPPDATA%\BottomBarCompanionBackup`，不删除你选择的外部音乐
+- `Uninstall.cmd`：移除本工具管理的文件和快捷方式，保留未知文件，设置备份到 `%LOCALAPPDATA%\TibosGoodIdeaBackup`，不删除你选择的外部音乐
 
 ## 三个图标
 

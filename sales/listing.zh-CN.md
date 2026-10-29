@@ -1,9 +1,9 @@
 # 面包多商品草稿
 
 商家：由龙见象\
-标题：Codex 底栏助手｜额度常显・定时发送・音乐提醒\
+标题：Tibo’s Good Idea｜Codex 底栏助手・额度常显・定时发送・音乐提醒\
 售价：¥3.90，一次购买，不收订阅费\
-交付：BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip\
+交付：TibosGoodIdea-0.8.0-rc.4-Windows-x64.zip\
 封面：assets/cover.zh-CN.png\
 状态：本地草稿，未上架、未收款
 

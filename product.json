@@ -1,8 +1,8 @@
 {
   "productId": "bottom-bar-companion",
-  "name": "BottomBar Companion",
+  "name": "Tibo’s Good Idea",
   "seller": "由龙见象",
-  "version": "0.8.0-rc.3",
+  "version": "0.8.0-rc.4",
   "stage": "release-candidate",
   "price": {
     "CNY": 3.9,
@@ -18,7 +18,7 @@
     "en",
     "ja"
   ],
-  "license": "LicenseRef-BottomBar-Companion-Commercial",
+  "license": "LicenseRef-TibosGoodIdea-Commercial",
   "officialAffiliation": false,
   "published": false,
   "distribution": "private-candidate",

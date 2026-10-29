@@ -5,8 +5,8 @@ An independent Codex add-on prepared by 由龙见象 (Youlong Jianxiang), with n
 This release candidate supports **Windows 11 x64 and Microsoft Store Codex 26.1023.6621.0 only**. Other versions are rejected. Full Codex cold-start and operating-system notification activation still need manual acceptance.
 
 1. Extract the whole ZIP to a normal folder. Do not run it inside the archive.
-2. Run `Install.cmd`, without administrator access. It installs to `%LOCALAPPDATA%\Programs\BottomBarCompanion` and creates a desktop shortcut.
-3. Before first use, finish tasks and exit Codex yourself. Use the **BottomBar Companion** shortcut to start. The installer does not close Codex.
+2. Run `Install.cmd`, without administrator access. It installs to `%LOCALAPPDATA%\Programs\TibosGoodIdea` and creates a desktop shortcut.
+3. Before first use, finish tasks and exit Codex yourself. Use the **Tibo’s Good Idea** shortcut to start. The installer does not close Codex.
 4. Your official Codex entry point is unchanged. Use the add-on shortcut to load the bottom bar.
 
 Portable use is available through `Start.cmd`. Keep the extracted folder while using it. The buyer package includes a verified Node.js runtime; no separate installation is needed.
@@ -19,7 +19,7 @@ Portable use is available through `Start.cmd`. Keep the extracted folder while u
 - `StopSound.cmd`: stop the current sound even if Codex is closed.
 - `ExitReminders.cmd`: disable all reminders and exit the service. `Restore.cmd` only restores the interface, leaving reminders running.
 - Tray icon: left-click to stop sound; right-click to manage reminders. Windows may hide it in the overflow area.
-- `Uninstall.cmd`: remove managed files and shortcuts, preserve unknown files and back up settings to `%LOCALAPPDATA%\BottomBarCompanionBackup`. External sounds are never deleted.
+- `Uninstall.cmd`: remove managed files and shortcuts, preserve unknown files and back up settings to `%LOCALAPPDATA%\TibosGoodIdeaBackup`. External sounds are never deleted.
 
 ## Three icons
 

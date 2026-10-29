@@ -1,13 +1,13 @@
 # クイックスタート
 
-CodexTiBoBottomBar / BottomBar Companion 0.8.0-rc.3
+TibosGoodIdea / Tibo’s Good Idea 0.8.0-rc.4
 由龙见象による独立したツールです OpenAI との提携や公式の推奨はありません
 現在は非公開の候補版であり、販売を開始していません
 
 対応環境：Windows 11 x64、Microsoft Store 版 Codex 26.1023.6621.0
 
 1. ZIP 全体を通常のフォルダーに展開し、Install.cmd を実行します 管理者権限は不要です
-2. 初回は実行中のタスクを完了して Codex を終了し、BottomBar Companion のショートカットから起動します
+2. 初回は実行中のタスクを完了して Codex を終了し、Tibo’s Good Idea のショートカットから起動します
 3. 公式の起動方法は変更しません 通常の入口から起動すると元のレイアウトになります
 
 表示言語は Codex の中国語、英語、日本語の設定に自動的に合わせます

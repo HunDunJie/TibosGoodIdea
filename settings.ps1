@@ -38,7 +38,7 @@ function Set-CqbText($Control,[string]$Chinese,[string]$English,[string]$Japanes
   $Control.Tag=@($Chinese,$English,$Japanese);$Control.Text=L $Chinese $English $Japanese
   if(-not $localizedControls.Contains($Control)){[void]$localizedControls.Add($Control)}
 }
-Set-CqbText $form 'BottomBar Companion - 设置' 'BottomBar Companion - Settings' 'BottomBar Companion - 設定'
+Set-CqbText $form "Tibo’s Good Idea - 设置" "Tibo’s Good Idea - Settings" "Tibo’s Good Idea - 設定"
 function Add-Label([string]$Chinese,[string]$English,[string]$Japanese,[int]$Y) {
   $label=New-Object Windows.Forms.Label
   Set-CqbText $label $Chinese $English $Japanese

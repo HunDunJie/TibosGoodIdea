@@ -1,6 +1,6 @@
 # 由龙见象 · 条件发布记录
 
-当前为 0.8.0-rc.3 私有候选包，国内 ¥3.90、海外 US$0.90，一次性基础标价，未公开上架或收款
+当前为 0.8.0-rc.4 私有候选包，国内 ¥3.90、海外 US$0.90，一次性基础标价，未公开上架或收款
 
 ## 已备好
 
@@ -29,9 +29,9 @@
 
 ## 文件用途
 
-- 买家交付：../dist/BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip
-- 卖家资料：../dist/BottomBar-Companion-0.8.0-rc.3-seller-kit.zip
-- 私有源码：../dist/BottomBar-Companion-0.8.0-rc.3-private-source.zip，仅自己保存
+- 买家交付：../dist/TibosGoodIdea-0.8.0-rc.4-Windows-x64.zip
+- 卖家资料：../dist/TibosGoodIdea-0.8.0-rc.4-seller-kit.zip
+- 私有源码：../dist/TibosGoodIdea-0.8.0-rc.4-private-source.zip，仅自己保存
 - 上架字段：listing-draft.json，商品页：index.html，交付文字：after-purchase.zh-CN.txt / after-purchase.en.txt
 
 旧 rc.1 MIT 包只作本地历史保留，不用于新商品上传，新说明不追溯撤销已有有效许可

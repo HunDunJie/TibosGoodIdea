@@ -2,7 +2,7 @@
 
 - Tested client: Microsoft Store Codex **26.1023.6621.0**
 - Build machine: Windows 11 x64
-- Version: **0.8.0-rc.3**, release candidate
+- Version: **0.8.0-rc.4**, release candidate
 - Included runtime: official Node.js **24.22.1 Windows x64**, source builds require Node.js 22+
 - Languages: Chinese, English and Japanese; changes follow Codex immediately, with no separate selector, explicit IANA time zones supported
 - Uses the add-on launcher and loopback debugging port 9347

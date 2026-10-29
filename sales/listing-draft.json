@@ -2,8 +2,8 @@
   "status": "private-candidate-awaiting-permission",
   "published": false,
   "seller": "由龙见象",
-  "product": "BottomBar Companion",
-  "version": "0.8.0-rc.3",
+  "product": "Tibo’s Good Idea",
+  "version": "0.8.0-rc.4",
   "prices": {
     "domestic": {
       "currency": "CNY",
@@ -14,7 +14,7 @@
       "amount": "0.90"
     }
   },
-  "buyerFile": "../dist/BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip",
+  "buyerFile": "../dist/TibosGoodIdea-0.8.0-rc.4-Windows-x64.zip",
   "domestic": {
     "platform": "面包多",
     "accountVerified": false,

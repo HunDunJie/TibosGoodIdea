@@ -1,15 +1,15 @@
-# CodexTiBoBottomBar
+# TibosGoodIdea
 
-A Windows Codex bottom bar add-on, displayed in the app as BottomBar Companion
+A Windows Codex bottom bar add-on, displayed in the app as Tibo’s Good Idea
 
-The source project and private GitHub repository are named CodexTiBoBottomBar
+The source project and private GitHub repository are named TibosGoodIdea
 Sales materials are in sales/; generated archives and checksums go in dist/
 Personal configuration, runtime state, downloaded Node.exe and dist/ are excluded from Git
 The existing productId is retained for settings compatibility; see [docs/PROJECT.md](docs/PROJECT.md)
 
 [中文](README.md) · [Quick start](QUICKSTART.en.md) · [Compatibility](COMPATIBILITY.md)
 
-**0.8.0-rc.3**, local release candidate, not publicly listed. An independent Windows add-on prepared by 由龙见象, with no OpenAI affiliation or endorsement
+**0.8.0-rc.4**, local release candidate, not publicly listed. An independent Windows add-on prepared by 由龙见象, with no OpenAI affiliation or endorsement
 
 Move Codex's icon navigation to the bottom and see purchased credits, separate five-hour and weekly quota, reset times and available resets in one row. The profile stays at the far left; chats and projects remain in the left panel
 
@@ -25,7 +25,7 @@ Moving the mouse inside Codex, clicking or typing stops sound. The tray and Stop
 
 Supported: **Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0**. Other client versions are rejected
 
-The buyer ZIP includes official Node.js 24.22.1, original tones and Chinese/English/Japanese guides. Extract all files, run Install.cmd, then use the BottomBar Companion shortcut. Language follows Codex automatically in Chinese, English or Japanese. Settings.cmd only selects the time zone and optional custom WAVs. See the quick start
+The buyer ZIP includes official Node.js 24.22.1, original tones and Chinese/English/Japanese guides. Extract all files, run Install.cmd, then use the Tibo’s Good Idea shortcut. Language follows Codex automatically in Chinese, English or Japanese. Settings.cmd only selects the time zone and optional custom WAVs. See the quick start
 
 This uses a local debugging endpoint rather than an official theme API. It leaves Codex installation files and official launch entries unchanged. Finish tasks and exit Codex yourself before first use. Opening Codex normally after a full exit uses the original layout
 
@@ -37,7 +37,7 @@ Run `npm install --ignore-scripts`, `npx playwright install msedge`, `npm test` 
 
 Current regression evidence is preserved in sales/verification.json. Live language switching, Japanese translations, tray synchronization and removal of the language selector are documented in docs/language-follow.md. Audio fixtures are silent and no real chat drafts are submitted
 
-Full Codex cold start, notification activation, real multi-chat submission and real task completion still need independent acceptance. Mock tests do not establish these. Codex hosting this work has not been restarted; the add-on was reloaded and confirmed to follow its current English language
+Full Codex cold start, notification activation, real multi-chat submission and real task completion still need independent acceptance. Mock tests do not establish these. Codex hosting this work has not been restarted; the add-on was reloaded and confirmed to follow its current language
 
 ## License and distribution
 

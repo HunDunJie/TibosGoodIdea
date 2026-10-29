@@ -1,6 +1,6 @@
-感谢购买 BottomBar Companion
-下载 BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip 并完整解压
-运行 Install.cmd，随后使用桌面的 BottomBar Companion 启动
+感谢购买 Tibo’s Good Idea
+下载 TibosGoodIdea-0.8.0-rc.4-Windows-x64.zip 并完整解压
+运行 Install.cmd，随后使用桌面的 Tibo’s Good Idea 启动
 首次加载前请自行结束任务并退出 Codex
 界面语言直接跟随 Codex（中文、英文、日语），Settings.cmd 可设置时区和 WAV；提示音留空使用内置音效
 StopSound.cmd 停止本次音乐，Uninstall.cmd 卸载本工具

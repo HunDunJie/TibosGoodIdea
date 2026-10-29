@@ -1,9 +1,9 @@
 # Overseas listing draft
 
-Title: BottomBar Companion for Codex — quotas, draft scheduling and sound reminders\
+Title: Tibo’s Good Idea for Codex — quotas, draft scheduling and sound reminders\
 Price: **US$0.90**, one-time base price; taxes or payment charges depend on the checkout\
 Creator: 由龙见象\
-Download: BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip\
+Download: TibosGoodIdea-0.8.0-rc.4-Windows-x64.zip\
 Cover: assets/cover.en.png\
 Status: local draft, no checkout or sales account connected
 

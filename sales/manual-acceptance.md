@@ -1,6 +1,6 @@
 # 上架前实际验收记录
 
-候选版：0.8.0-rc.3 / Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0
+候选版：0.8.0-rc.4 / Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0
 以下项目仍未完成，自动化模拟通过不能代替它们，不在当前聊天中重启 Codex 或发送私人草稿
 
 | 项目 | 操作与通过标准 | 当前结果 |

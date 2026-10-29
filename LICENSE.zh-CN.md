@@ -1,4 +1,4 @@
-# BottomBar Companion 商业自用许可草案
+# Tibo’s Good Idea 商业自用许可草案
 
 Copyright (c) 2026 Codex Bottom Bar contributors
 Copyright (c) 2026 由龙见象

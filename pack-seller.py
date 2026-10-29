@@ -8,18 +8,18 @@ root=Path(__file__).resolve().parent
 sales=root/'sales'
 version=json.loads((root/'product.json').read_text(encoding='utf-8'))['version']
 output_dir=root/'dist'
-buyer=output_dir/f'BottomBar-Companion-{version}-Windows-x64.zip'
+buyer=output_dir/f'TibosGoodIdea-{version}-Windows-x64.zip'
 if not buyer.is_file():raise SystemExit('Run python pack-buyer.py first')
 buyer_digest=hashlib.sha256(buyer.read_bytes()).hexdigest()
 sidecar=buyer.with_suffix('.zip.sha256')
 if sidecar.read_text(encoding='utf-8').split()[0]!=buyer_digest:raise SystemExit('Buyer checksum mismatch')
 with zipfile.ZipFile(buyer) as z:
     assert z.testzip() is None
-    manifest=json.loads(z.read('BottomBar-Companion/SHA256-MANIFEST.json'))
+    manifest=json.loads(z.read('TibosGoodIdea/SHA256-MANIFEST.json'))
     assert len(manifest)+1==len(z.namelist())
     for name,digest in manifest.items():
-        assert hashlib.sha256(z.read('BottomBar-Companion/'+name)).hexdigest()==digest
-        assert (root/name).read_bytes()==z.read('BottomBar-Companion/'+name), 'Buyer archive is stale: '+name
+        assert hashlib.sha256(z.read('TibosGoodIdea/'+name)).hexdigest()==digest
+        assert (root/name).read_bytes()==z.read('TibosGoodIdea/'+name), 'Buyer archive is stale: '+name
 
 names=json.loads((sales/'source-files.json').read_text(encoding='utf-8'))+['source-files.json']
 items=[]
@@ -29,8 +29,8 @@ for name in names:
     items.append(('sales/'+name,path))
 items += [('dist/'+buyer.name,buyer),('dist/'+sidecar.name,sidecar),('START-HERE.md',sales/'START-HERE.md')]
 manifest={name:hashlib.sha256(path.read_bytes()).hexdigest() for name,path in items}
-output=output_dir/f'BottomBar-Companion-{version}-seller-kit.zip'
-prefix='CodexTiBoBottomBar-seller-kit/'
+output=output_dir/f'TibosGoodIdea-{version}-seller-kit.zip'
+prefix='TibosGoodIdea-seller-kit/'
 with zipfile.ZipFile(output,'w',zipfile.ZIP_DEFLATED,compresslevel=6) as z:
     for name,path in items:z.write(path,prefix+name)
     z.writestr(prefix+'SHA256-MANIFEST.json',json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')

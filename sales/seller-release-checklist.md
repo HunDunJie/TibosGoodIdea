@@ -1,10 +1,10 @@
 # 由龙见象 · 条件发布记录
 
-当前为 0.8.0-rc.2 私有候选包，国内 ¥3.90、海外 US$0.90，一次性基础标价，未公开上架或收款
+当前为 0.8.0-rc.3 私有候选包，国内 ¥3.90、海外 US$0.90，一次性基础标价，未公开上架或收款
 
 ## 已备好
 
-- Windows 完整买家包、商业自用许可草案、中英文说明、原创内置提示音、安装与卸载入口
+- Windows 完整买家包、商业自用许可草案、中英日说明、原创内置提示音、安装与卸载入口
 - 中英文商品文案、封面、交付文字、可离线查看的商品页，以及单独保存的私有源码备份
 - 自有代码不再标作 MIT 开源，既有贡献者版权保留，Node.js 和第三方许可证原样保留
 - 只打包明确允许的文件，不含个人配置、私人音乐、账户截图、认证数据和运行日志
@@ -29,9 +29,9 @@
 
 ## 文件用途
 
-- 买家交付：../dist/BottomBar-Companion-0.8.0-rc.2-Windows-x64.zip
-- 卖家资料：../dist/BottomBar-Companion-0.8.0-rc.2-seller-kit.zip
-- 私有源码：../dist/BottomBar-Companion-0.8.0-rc.2-private-source.zip，仅自己保存
+- 买家交付：../dist/BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip
+- 卖家资料：../dist/BottomBar-Companion-0.8.0-rc.3-seller-kit.zip
+- 私有源码：../dist/BottomBar-Companion-0.8.0-rc.3-private-source.zip，仅自己保存
 - 上架字段：listing-draft.json，商品页：index.html，交付文字：after-purchase.zh-CN.txt / after-purchase.en.txt
 
 旧 rc.1 MIT 包只作本地历史保留，不用于新商品上传，新说明不追溯撤销已有有效许可

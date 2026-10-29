@@ -29,4 +29,4 @@ if(-not $NoShortcut){
   foreach($item in @((Join-Path ([Environment]::GetFolderPath('Desktop')) 'BottomBar Companion.lnk'),(Join-Path $programs 'BottomBar Companion.lnk'),(Join-Path $programs 'Settings.lnk'),(Join-Path $programs 'Stop sound.lnk'),(Join-Path $programs 'Uninstall.lnk'))){if(Test-Path -LiteralPath $item -PathType Leaf){Remove-Item -LiteralPath $item}}
   if((Test-Path -LiteralPath $programs) -and -not(Get-ChildItem -LiteralPath $programs -Force|Select-Object -First 1)){Remove-Item -LiteralPath $programs}
 }
-Write-Host (L '本工具文件已卸载，未知或自行添加的文件会保留，设置备份在 LocalAppData\BottomBarCompanionBackup' 'Managed files removed. Your own files are preserved. Settings backup: LocalAppData\BottomBarCompanionBackup.')
+Write-Host (L '本工具文件已卸载，未知或自行添加的文件会保留，设置备份在 LocalAppData\BottomBarCompanionBackup' 'Managed files removed. Your own files are preserved. Settings backup: LocalAppData\BottomBarCompanionBackup.' '管理対象のファイルを削除しました 追加されたファイルは保持します 設定は LocalAppData\BottomBarCompanionBackup にバックアップしました')

@@ -2,7 +2,7 @@
   "productId": "bottom-bar-companion",
   "name": "BottomBar Companion",
   "seller": "由龙见象",
-  "version": "0.8.0-rc.2",
+  "version": "0.8.0-rc.3",
   "stage": "release-candidate",
   "price": {
     "CNY": 3.9,
@@ -15,11 +15,13 @@
   "testedOS": "Windows 11 x64",
   "languages": [
     "zh-CN",
-    "en"
+    "en",
+    "ja"
   ],
   "license": "LicenseRef-BottomBar-Companion-Commercial",
   "officialAffiliation": false,
   "published": false,
   "distribution": "private-candidate",
-  "commercialPermission": "awaiting-support-response"
+  "commercialPermission": "awaiting-support-response",
+  "languagePolicy": "follow-codex"
 }

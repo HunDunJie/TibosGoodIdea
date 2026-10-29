@@ -1,6 +1,6 @@
 {
-  "version": "0.8.0-rc.2",
-  "at": "2026-10-29T14:20:41.567557+00:00",
+  "version": "0.8.0-rc.3",
+  "at": "2026-10-29T15:11:45.421677+00:00",
   "prices": {
     "CNY": "3.90",
     "USD": "0.90"
@@ -8,126 +8,104 @@
   "packages": [
     {
       "kind": "buyer",
-      "file": "BottomBar-Companion-0.8.0-rc.2-Windows-x64.zip",
-      "files": 65,
-      "bytes": 35317277,
-      "sha256": "d545c1126e2d3a49359ac7548357f6528e78971ce4040921b681f00ff3f734ed"
-    },
-    {
-      "kind": "private-source",
-      "file": "BottomBar-Companion-0.8.0-rc.2-private-source.zip",
-      "files": 89,
-      "bytes": 450960,
-      "sha256": "94538da822c9986db3c39ca3de8ffa0a324552aa97c5c2ec778a912ae85b641f"
+      "file": "BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip",
+      "files": 66,
+      "bytes": 35325482,
+      "sha256": "8de3aa9f05d89d5edfd073bf561207c870b38321d31a77819fdb4a04f71a4f63"
     }
   ],
   "currentCandidateChecks": [
     {
       "name": "unit",
-      "version": "0.8.0-rc.2",
       "passed": true,
       "code": 0,
-      "summary": "ℹ todo 0\nℹ duration_ms 155.7747"
+      "summary": "ℹ todo 0\nℹ duration_ms 118.3788",
+      "version": "0.8.0-rc.3"
     },
     {
       "name": "ui",
-      "version": "0.8.0-rc.2",
       "passed": true,
       "code": 0,
-      "summary": "{\"checks\":79,\"passed\":true,\"realDraftsSent\":false}"
+      "summary": "{\"checks\":79,\"passed\":true,\"realDraftsSent\":false}",
+      "version": "0.8.0-rc.3"
+    },
+    {
+      "name": "language",
+      "passed": true,
+      "code": 0,
+      "summary": "{\"passed\":true,\"checks\":33,\"liveLanguageChanges\":true,\"retainsTooltip\":true,\"preservesFeatureState\":true,\"realDraftsSent\":false}",
+      "version": "0.8.0-rc.3"
+    },
+    {
+      "name": "display",
+      "passed": true,
+      "code": 0,
+      "summary": "{\"passed\":true,\"checks\":25,\"coldStartPersistence\":true,\"minuteUpdates\":true,\"realDraftsSent\":false}",
+      "version": "0.8.0-rc.3"
+    },
+    {
+      "name": "volume",
+      "passed": true,
+      "code": 0,
+      "summary": "{\"passed\":true,\"checks\":20,\"realVolumeRead\":true,\"volumeChanged\":false,\"audioPlayed\":false}",
+      "version": "0.8.0-rc.3"
+    },
+    {
+      "name": "adapter",
+      "passed": true,
+      "code": 0,
+      "summary": "{\"passed\":true,\"nativeSubmissionDelegation\":true,\"draftAliasDeduplication\":true,\"emptyDraftSkipped\":true,\"changedDraftPreserved\":true,\"failedDraftPreserved\":true,\"accountSwitchStopsRound\":true,\"roundCancellation\":true,\"allHostCompletionSubscription\":true,\"realDraftsSent\":false}",
+      "version": "0.8.0-rc.3"
+    },
+    {
+      "name": "controller",
+      "passed": true,
+      "code": 0,
+      "summary": "{\"passed\":true,\"realRendererHostBridge\":true,\"reload\":true,\"toggleReachesWorker\":true,\"noAudibleSound\":true,\"restore\":true,\"reminderSurvivesControllerExit\":true,\"noReinjection\":true}",
+      "version": "0.8.0-rc.3"
+    },
+    {
+      "name": "worker",
+      "passed": true,
+      "code": 0,
+      "summary": "{\"passed\":true,\"independentProcess\":true,\"parentExitedBeforeAlarm\":true,\"realWindowsPlayer\":true,\"audibleSound\":false,\"stopWithoutCodex\":true,\"cancelWithoutCodex\":true,\"completion\":true,\"thirtyMinuteExpiry\":true,\"restartPreservesDeadline\":true,\"refreshNotification\":true,\"completionNotification\":false,\"cleanShutdown\":true}",
+      "version": "0.8.0-rc.3"
+    },
+    {
+      "name": "settings-worker",
+      "passed": true,
+      "code": 0,
+      "summary": "{\"passed\":true,\"threeTrayLanguages\":true,\"liveLanguageWithoutRestart\":true,\"cachedLanguageSurvivesRestart\":true,\"ignoresLegacyOverrides\":true,\"unchangedConfigNoRestart\":true,\"preservesSwitches\":true,\"preservesSchedule\":true,\"preservesArmedSend\":true,\"audioPlayed\":false}",
+      "version": "0.8.0-rc.3"
     },
     {
       "name": "install",
-      "version": "0.8.0-rc.2",
       "passed": true,
       "code": 0,
-      "summary": "{\"passed\":true,\"checks\":80,\"isolatedDirectory\":true,\"realShortcutsChanged\":false,\"liveServicesChanged\":false}"
+      "summary": "{\"passed\":true,\"checks\":81,\"isolatedDirectory\":true,\"realShortcutsChanged\":false,\"liveServicesChanged\":false}",
+      "version": "0.8.0-rc.3"
     }
   ],
-  "previousRegression": {
-    "version": "0.8.0-rc.1",
-    "results": [
-      {
-        "name": "unit",
-        "passed": true,
-        "code": 0
-      },
-      {
-        "name": "ui",
-        "passed": true,
-        "code": 0
-      },
-      {
-        "name": "display",
-        "passed": true,
-        "code": 0
-      },
-      {
-        "name": "volume",
-        "passed": true,
-        "code": 0
-      },
-      {
-        "name": "adapter",
-        "passed": true,
-        "code": 0
-      },
-      {
-        "name": "controller",
-        "passed": true,
-        "code": 0
-      },
-      {
-        "name": "worker",
-        "passed": true,
-        "code": 0
-      },
-      {
-        "name": "settings-worker",
-        "passed": true,
-        "code": 0
-      },
-      {
-        "name": "install",
-        "passed": true,
-        "code": 0
-      }
-    ],
-    "unchangedRuntimeFiles": [
-      "feature-ui.js",
-      "native-features.js",
-      "native-bindings.mjs",
-      "feature-bindings.mjs",
-      "feature-engine.mjs",
-      "controller.mjs",
-      "alarm-worker.mjs",
-      "worker-client.mjs",
-      "locale-config.mjs",
-      "runtime-paths.mjs",
-      "i18n.js",
-      "WindowsAudio.cs",
-      "WindowsActivation.cs",
-      "audio-client.mjs",
-      "audio-host.ps1",
-      "launcher-common.ps1",
-      "start.ps1",
-      "restore.ps1",
-      "control-reminders.ps1",
-      "settings.ps1",
-      "settings-check.mjs",
-      "install.ps1",
-      "uninstall.ps1",
-      "reload.ps1",
-      "check.ps1",
-      "diagnostics.mjs",
-      "bottom-bar.css",
-      "runtime/LICENSE-Node.txt",
-      "runtime/NOTICE.md"
-    ],
-    "bottomBarChange": "version string only"
+  "postReviewChecks": {
+    "unit": {
+      "passed": true,
+      "checks": 29
+    },
+    "language": {
+      "passed": true,
+      "checks": 33
+    },
+    "worker": {
+      "passed": true,
+      "languageChangePreservesPlaybackDeadline": true
+    },
+    "ui": {
+      "passed": true,
+      "checks": 79
+    }
   },
   "actualBuyerZipSmoke": {
-    "version": "0.8.0-rc.2",
+    "version": "0.8.0-rc.3",
     "passed": true,
     "checks": {
       "archiveManifest": true,
@@ -145,7 +123,7 @@
     "actualAudioPlayed": false,
     "diagnostic": {
       "product": "BottomBar Companion",
-      "version": "0.8.0-rc.2",
+      "version": "0.8.0-rc.3",
       "node": "24.22.1",
       "platform": "win32",
       "architecture": "x64",
@@ -156,14 +134,23 @@
     }
   },
   "powershell51SyntaxFiles": 11,
+  "powershell51SyntaxPassed": true,
   "powershellEncodingPassed": true,
   "cmdEncodingPassed": true,
-  "nodeAuthenticode": "Valid; independently checked locally",
+  "nodeSha256": "d702daa815eabbff763c7d3808e235cf031cf2ca70211b56847bc72f51e240e5",
   "privacyAllowlistPassed": true,
   "privateConfigUnchanged": true,
+  "liveLanguageCheck": {
+    "codexLanguage": "en-US",
+    "systemLanguage": "zh-CN",
+    "bottomBarLanguage": "en",
+    "addOnVersion": "0.8.0-rc.3",
+    "manualLanguageOverride": false,
+    "liveCodexRestarted": false,
+    "timeModesPreserved": true
+  },
   "commercialPermission": "awaiting-support-response",
   "published": false,
-  "liveCodexRestarted": false,
   "remoteDraftConfirmed": false,
   "acceptancePending": [
     "cold-start",
@@ -173,5 +160,10 @@
     "commercial-distribution-terms",
     "seller-and-payment-onboarding"
   ],
-  "scope": "Pre-migration 0.8.0-rc.2 evidence; original archive hashes are historical. Migration checks: ../docs/migration-verification.json; generated package hashes: ../dist/*.sha256"
+  "historicalEvidence": {
+    "version": "0.8.0-rc.2",
+    "gitCommit": "d84f499ed7193bd0f1575a8578f46ca34c704b2a",
+    "migration": "../docs/migration-verification.json"
+  },
+  "scope": "Local automated checks and English hot reload. No real chat drafts submitted. ZIP installation used an isolated directory without real shortcuts or service changes. Source and seller hashes are in ../dist/*.sha256; they are excluded here to avoid self-referential checksums."
 }

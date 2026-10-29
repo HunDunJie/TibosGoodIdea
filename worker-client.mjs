@@ -44,7 +44,7 @@ export async function reloadWorker(stateDir,configPath) {
   return ensureWorker(stateDir,configPath);
 }
 export async function ensureConfiguredWorker(stateDir,configPath) {
-  const current=await ensureWorker(stateDir,configPath),config=await readConfig(configPath);
+  const current=await ensureWorker(stateDir,configPath),config=await readConfig(configPath,stateDir);
   return current.workerRoot===here&&current.configStamp===configFingerprint(config)?current:reloadWorker(stateDir,configPath);
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

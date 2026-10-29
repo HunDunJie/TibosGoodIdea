@@ -47,7 +47,7 @@ document.querySelectorAll('nav button').forEach(button=>button.addEventListener(
 }));
 </script>
 <link rel="stylesheet" id="codex-bottom-bar-style" href="bottom-bar.css">
-<script>window.__cqbPreferences={language:new URLSearchParams(location.search).get("lang") || "zh-CN",timeZone:new URLSearchParams(location.search).get("tz") || "auto"};</script>
+<script>document.documentElement.lang=new URLSearchParams(location.search).get("lang") || "zh-CN";window.__cqbPreferences={timeZone:new URLSearchParams(location.search).get("tz") || "auto"};</script>
 <script src="i18n.js"></script>
 <script src="bottom-bar.js"></script>
 <script>

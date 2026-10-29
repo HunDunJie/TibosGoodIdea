@@ -1,7 +1,7 @@
 # CodexTiBoBottomBar 项目约定
 
 这是开发用私有仓库，产品显示名仍为 BottomBar Companion，稳定 productId 不改
-当前基线 0.8.0-rc.2，Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0
+当前基线 0.8.0-rc.3，Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0
 
 ## 目录和构建
 

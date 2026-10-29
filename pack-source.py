@@ -10,8 +10,8 @@ names += """
 .gitignore README.md README.en.md download-runtime.ps1 重启并开启底栏.cmd
 preview.html preview-wide.png preview-narrow.png preview-countdown.png preview-tooltips.png preview-volume-warning.png
 pack-source.py pack-buyer.py pack-seller.py make-tones.py .gitattributes
-docs/PROJECT.md docs/migration.json docs/migration-verification.json
-tests/engine.test.mjs tests/display.test.mjs tests/locale.test.mjs tests/ui.cjs tests/display.cjs tests/volume.cjs tests/native-adapter.cjs
+docs/PROJECT.md docs/migration.json docs/migration-verification.json docs/language-follow.md
+tests/engine.test.mjs tests/display.test.mjs tests/locale.test.mjs tests/ui.cjs tests/language.cjs tests/display.cjs tests/volume.cjs tests/native-adapter.cjs
 tests/controller.cjs tests/worker-integration.mjs tests/install.mjs tests/settings-worker.mjs .github/workflows/test.yml
 """.split()
 sales_names = json.loads((root/'sales/source-files.json').read_text(encoding='utf-8'))

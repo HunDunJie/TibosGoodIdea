@@ -36,6 +36,14 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     await page.waitForFunction(() => ['checked','unavailable'].includes(window.__cqbFeatures.status().volume.phase),null,{timeout:16000});
     assert.equal(await page.locator('#cqb-volume-dialog').count(),0);
     const worker = await requestWorker(runtime,'status'); assert.equal(worker.refresh.enabled,true); assert.equal(worker.refresh.alarm,null);
+    for(const [language,button] of [['en-US','Reset reminder'],['ja-JP','更新通知']]){
+      await page.evaluate(value=>document.documentElement.lang=value,language);
+      await page.getByRole('button',{name:button,exact:true}).waitFor();
+      const expected=language.startsWith('ja')?'ja':'en';let player;
+      for(let i=0;i<30;i++){player=await requestWorker(runtime,'player-status');if(player.language===expected)break;await sleep(100)}
+      assert.equal(player.language,expected,'Codex locale reaches the real tray through CDP');
+      assert.equal((await requestWorker(runtime,'status')).workerPid,worker.workerPid,'Language changes do not restart reminders');
+    }
     await fs.writeFile(path.join(runtime,'stop.flag'),'restore');
     for (let i=0;i<40&&!exited;i++) await sleep(150);
     assert.ok(exited); assert.equal(controller.exitCode,0); assert.equal(await page.locator('#codex-bottom-bar-metrics').count(),0);

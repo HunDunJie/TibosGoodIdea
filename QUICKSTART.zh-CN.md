@@ -13,8 +13,8 @@
 
 ## 设置和停止
 
-- `Settings.cmd` / `设置.cmd`：选择中文或英文、时区和自定义 WAV，提示音留空使用内置音效
-- 时区填 `auto` 时中文使用北京时间、英文使用本机时区，也可填 `UTC` 或 `America/New_York` 等 IANA 名称
+- `Settings.cmd` / `设置.cmd`：设置时区和自定义 WAV，语言直接跟随 Codex（中文、英文、日语），不再提供单独的语言选择，提示音留空使用内置音效
+- 时区填 `auto` 时中文使用北京时间、英文和日语使用本机时区，也可填 `UTC` 或 `America/New_York` 等 IANA 名称
 - 保存后通过本工具启动时生效，运行中可用 `Reload.cmd` / `重新加载.cmd` 更新界面与提醒服务，不强制关闭 Codex，发送一轮草稿期间会拒绝重载
 - `StopSound.cmd` / `停止响铃.cmd`：即使 Codex 没有启动，也能停止本次响铃
 - `ExitReminders.cmd`：关闭全部提醒并退出后台，`Restore.cmd` 只恢复界面，提醒仍继续

@@ -72,6 +72,7 @@ namespace CodexBottomBar {
     private static string codexExecutable;
     private static Point lastMouse;
     private static Thread uiThread;
+    private static Control uiDispatcher;
     private static readonly ManualResetEvent Ready = new ManualResetEvent(false);
     private static string startupError;
     [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X; public int Y; }
@@ -84,38 +85,62 @@ namespace CodexBottomBar {
       Console.Out.WriteLine("{\"event\":\"" + action + "\",\"reason\":\"" + reason + "\"}");
       Console.Out.Flush();
     }
-    private static bool english;
-    public static string Language { get { return english ? "en" : "zh-CN"; } }
-    public static void SetLanguage(string language) { english = language != null && language.StartsWith("en", StringComparison.OrdinalIgnoreCase); }
-    private static string T(string zh, string en) { return english ? en : zh; }
+    private static volatile string language = "zh-CN";
+    public static string Language { get { return language; } }
+    public static void SetLanguage(string value) {
+      language = value != null && value.StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? "zh-CN" : value != null && value.StartsWith("ja", StringComparison.OrdinalIgnoreCase) ? "ja" : "en";
+      if (uiDispatcher != null && uiDispatcher.IsHandleCreated && !uiDispatcher.IsDisposed)
+        uiDispatcher.Invoke(new Action(UpdateTrayLanguage));
+    }
+    private static string T(string zh, string en, string ja) { return language == "zh-CN" ? zh : language == "ja" ? ja : en; }
+    private static void UpdateTrayLanguage() {
+      if (tray == null) return;
+      var items = tray.ContextMenuStrip.Items;
+      items[0].Text = T("停止本次响铃", "Stop sound", "今回の通知音を停止");
+      items[1].Text = T("关闭刷新提醒", "Disable reset reminder", "更新通知をオフにする");
+      items[2].Text = T("关闭完成提醒", "Disable completion sound", "完了通知をオフにする");
+      items[4].Text = T("声音设置", "Sound settings", "サウンド設定");
+      items[5].Text = T("退出提醒服务（取消所有提醒）", "Exit service (cancel all reminders)", "通知サービスを終了（すべて解除）");
+      tray.Text = T("Codex 提醒：左键停止响铃，右键管理", "BottomBar Companion: click to stop, right-click to manage", "Codex 通知：クリックで停止、右クリックで管理");
+    }
+    public static string[] ReadTrayLabels() {
+      if (uiDispatcher == null) return new string[0];
+      return (string[])uiDispatcher.Invoke(new Func<string[]>(delegate {
+        var result = new string[5]; var items = tray.ContextMenuStrip.Items;
+        for (int i=0;i<3;i++) result[i]=items[i].Text;
+        result[3]=items[4].Text;result[4]=items[5].Text;return result;
+      }));
+    }
     public static void Start() {
       if (uiThread != null) return;
       uiThread = new Thread(delegate() {
         try {
           Application.EnableVisualStyles();
+          uiDispatcher = new Control(); var dispatcherHandle = uiDispatcher.Handle;
           var menu = new ContextMenuStrip();
-          menu.Items.Add(T("停止本次响铃", "Stop sound"), null, delegate { Stop(); Emit("stop", "tray"); });
-          menu.Items.Add(T("关闭刷新提醒", "Disable reset reminder"), null, delegate { Emit("disable-refresh", "tray"); });
-          menu.Items.Add(T("关闭完成提醒", "Disable completion sound"), null, delegate { Emit("disable-completion", "tray"); });
+          menu.Items.Add("", null, delegate { Stop(); Emit("stop", "tray"); });
+          menu.Items.Add("", null, delegate { Emit("disable-refresh", "tray"); });
+          menu.Items.Add("", null, delegate { Emit("disable-completion", "tray"); });
           menu.Items.Add(new ToolStripSeparator());
-          menu.Items.Add(T("声音设置", "Sound settings"), null, delegate { SoundSettings(); });
-          menu.Items.Add(T("退出提醒服务（取消所有提醒）", "Exit service (cancel all reminders)"), null, delegate { Stop(); Emit("shutdown", "tray"); });
-          tray = new NotifyIcon { Icon = SystemIcons.Information, Text = T("Codex 提醒：左键停止响铃，右键管理", "BottomBar Companion: click to stop, right-click to manage"), ContextMenuStrip = menu, Visible = true };
+          menu.Items.Add("", null, delegate { SoundSettings(); });
+          menu.Items.Add("", null, delegate { Stop(); Emit("shutdown", "tray"); });
+          tray = new NotifyIcon { Icon = SystemIcons.Information, ContextMenuStrip = menu, Visible = true };
+          UpdateTrayLanguage();
           tray.MouseClick += delegate(object sender, MouseEventArgs e) { if (e.Button == MouseButtons.Left) { Stop(); Emit("stop", "tray"); } };
           POINT initial; if (GetCursorPos(out initial)) lastMouse = new Point(initial.X, initial.Y);
           mouseTimer = new System.Threading.Timer(CheckMouse, null, 50, 50);
           Ready.Set(); Application.Run();
         } catch (Exception e) { startupError = e.Message; Ready.Set(); }
-        finally { if (tray != null) { tray.Visible = false; tray.Dispose(); } }
+        finally { if (tray != null) { tray.Visible = false; tray.Dispose(); } if (uiDispatcher != null) uiDispatcher.Dispose(); }
       });
       uiThread.IsBackground = true; uiThread.SetApartmentState(ApartmentState.STA); uiThread.Start();
-      if (!Ready.WaitOne(8000)) throw new Exception(T("托盘图标启动超时", "Tray icon startup timed out"));
+      if (!Ready.WaitOne(8000)) throw new Exception(T("托盘图标启动超时", "Tray icon startup timed out", "トレイアイコンの起動がタイムアウトしました"));
       if (startupError != null) throw new Exception(startupError);
     }
     public static void SetCodex(string executable) { lock (Gate) codexExecutable = executable; }
     public static void CheckFile(string file) {
       if (!Path.IsPathRooted(file) || !String.Equals(Path.GetExtension(file), ".wav", StringComparison.OrdinalIgnoreCase) || !File.Exists(file))
-        throw new Exception(T("请先配置可读取的 WAV 音乐文件", "Choose a readable WAV file in Settings"));
+        throw new Exception(T("请先配置可读取的 WAV 音乐文件", "Choose a readable WAV file in Settings", "設定で読み取り可能な WAV ファイルを選択してください"));
       using (var sound = new SoundPlayer(file)) sound.Load();
     }
     public static void Play(string file, string category, bool notify) {
@@ -125,8 +150,8 @@ namespace CodexBottomBar {
         player = new SoundPlayer(file); player.Load(); kind = category; player.PlayLooping();
       }
       if (category == "refresh" && notify && tray != null) {
-        tray.BalloonTipTitle = T("Codex 五小时额度已到刷新时间", "Codex 5h reset time reached");
-        tray.BalloonTipText = T("音乐最多循环播放 30 分钟。点击托盘图标停止；右键可关闭提醒。", "Sound loops for up to 30 minutes. Click the tray icon to stop; right-click to disable.");
+        tray.BalloonTipTitle = T("Codex 五小时额度已到刷新时间", "Codex 5h reset time reached", "Codex の5時間の使用量の更新時刻です");
+        tray.BalloonTipText = T("音乐最多循环播放 30 分钟。点击托盘图标停止；右键可关闭提醒。", "Sound loops for up to 30 minutes. Click the tray icon to stop; right-click to disable.", "最大30分間音楽を再生します トレイアイコンをクリックすると停止し、右クリックで通知をオフにできます");
         tray.ShowBalloonTip(4000);
         Interlocked.Increment(ref notificationsShown);
       }
@@ -159,8 +184,8 @@ namespace CodexBottomBar {
     }
     public static void Dispose() {
       Stop(); if (mouseTimer != null) mouseTimer.Dispose();
-      if (tray != null && tray.ContextMenuStrip.IsHandleCreated)
-        tray.ContextMenuStrip.BeginInvoke(new Action(delegate { tray.Visible = false; Application.ExitThread(); }));
+      if (uiDispatcher != null && uiDispatcher.IsHandleCreated && !uiDispatcher.IsDisposed)
+        uiDispatcher.BeginInvoke(new Action(delegate { if (tray != null) tray.Visible = false; Application.ExitThread(); }));
     }
   }
 }

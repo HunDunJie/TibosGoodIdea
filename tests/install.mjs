@@ -25,9 +25,9 @@ try{
   check(JSON.parse(initial).language==='auto','System language is the installation default');
   const external=path.join(temp,'my-sound.wav');await fs.copyFile(path.join(root,'sounds/completion.wav'),external);
   const initialConfig=JSON.parse(initial);initialConfig.ownProperty='preserve me';await fs.writeFile(config,JSON.stringify(initialConfig));
-  await ps('settings.ps1',['-NoUi','-ConfigPath',config,'-Language','en','-TimeZone','UTC','-CompletionAudio',external]);
+  await ps('settings.ps1',['-NoUi','-ConfigPath',config,'-TimeZone','UTC','-CompletionAudio',external]);
   const saved=await fs.readFile(config,'utf8'),settings=JSON.parse(saved);
-  check(settings.language==='en'&&settings.timeZone==='UTC'&&settings.completionAudio===external,'English, time zone and WAV settings save');
+  check(settings.language==='auto'&&settings.timeZone==='UTC'&&settings.completionAudio===external,'Automatic language, time zone and WAV settings save');
   check(settings.ownProperty==='preserve me','Unknown settings survive save');
   check(JSON.parse(await fs.readFile(config+'.bak','utf8')).language==='auto','Prior settings are backed up');
   await ps('settings.ps1',['-NoUi','-ConfigPath',config,'-TimeZone','Invalid/Somewhere'],1);
@@ -45,7 +45,7 @@ try{
   await ps('uninstall.ps1',['-TargetDir',target,'-NoShortcut','-NoServiceChanges','-BackupDir',path.join(temp,'backup')],1);
   check((await fs.stat(external)).isFile()&&(await fs.stat(path.join(target,'Start.cmd'))).isFile(),'Unsafe uninstall paths abort before deleting files');
   await fs.writeFile(marker,markerText);
-  if(process.env.CQB_SETTINGS_RENDER){await ps('settings.ps1',['-ConfigPath',config,'-RenderTo',path.resolve(process.env.CQB_SETTINGS_RENDER)]);check(true,'English settings render without a window');}
+  if(process.env.CQB_SETTINGS_RENDER){const languageState=path.join(temp,'language-state');await fs.mkdir(languageState);await fs.writeFile(path.join(languageState,'codex-language.json'),JSON.stringify({language:'ja'}));await ps('settings.ps1',['-ConfigPath',config,'-StateDir',languageState,'-RenderTo',path.resolve(process.env.CQB_SETTINGS_RENDER)]);check(true,'Japanese settings render without a window or language selector');}
   await ps('uninstall.ps1',['-TargetDir',target,'-NoShortcut','-NoServiceChanges','-BackupDir',path.join(temp,'backup')]);
   check(!await fs.stat(path.join(target,'Start.cmd')).catch(()=>null),'Managed files removed');
   check(await fs.readFile(sentinel,'utf8')==='mine','Uninstall preserves custom files');

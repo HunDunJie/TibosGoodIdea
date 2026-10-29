@@ -5,7 +5,7 @@
   else api.install(window);
 })(function () {
   'use strict';
-  const VERSION = '0.8.0-rc.2';
+  const VERSION = '0.8.0-rc.3';
   const localeAPI = typeof module === 'object' && module.exports ? require('./i18n.js') : null;
   const TIME_MODES_KEY = 'codex-bottom-bar.time-modes.v1';
   const NUMBER = value => typeof value === 'number' && Number.isFinite(value);
@@ -18,7 +18,7 @@
     return NUMBER(value) && value >= 0 ? value : null;
   }
   function creditText(value,unlimited = false,locale = 'zh-CN') {
-    return value == null ? unlimited ? locale === 'en' ? 'Unlimited' : '不限' : '--' : new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2,useGrouping:false}).format(value);
+    return value == null ? unlimited ? locale === 'en' ? 'Unlimited' : locale === 'ja' ? '無制限' : '不限' : '--' : new Intl.NumberFormat('zh-CN',{maximumFractionDigits:2,useGrouping:false}).format(value);
   }
   function timestamp(value) {
     if (value == null || value === '') return null;
@@ -55,7 +55,7 @@
     return result.fiveHour || result.weekly || result.resets !== null || result.creditBalance !== null || result.creditsUnlimited ? result : null;
   }
   function resetDate(value,locale = 'zh-CN',timeZone = 'Asia/Shanghai') {
-    if (value == null) return locale === 'en' ? 'Time unavailable' : '时间暂不可用';
+    if (value == null) return locale === 'en' ? 'Time unavailable' : locale === 'ja' ? '時刻を取得できません' : '时间暂不可用';
     const parts = new Intl.DateTimeFormat('zh-CN', {
       timeZone, month: '2-digit', day: '2-digit',
       hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
@@ -64,11 +64,12 @@
     return `${get('month')}-${get('day')} ${get('hour')}:${get('minute')}`;
   }
   function countdown(value,kind,now = Date.now(),locale = 'zh-CN') {
-    if (!NUMBER(value)) return locale === 'en' ? 'Time unavailable' : '时间暂不可用';
-    if (value <= now) return locale === 'en' ? 'Awaiting reset' : '等待刷新';
+    if (!NUMBER(value)) return locale === 'en' ? 'Time unavailable' : locale === 'ja' ? '時刻を取得できません' : '时间暂不可用';
+    if (value <= now) return locale === 'en' ? 'Awaiting reset' : locale === 'ja' ? '更新待ち' : '等待刷新';
     const minutes = Math.ceil((value-now)/60000), rest = minutes%60;
     const hours = Math.floor(minutes/60);
     if (locale === 'en') return kind === 'weekly' ? `${Math.floor(hours/24)}d ${hours%24}h ${rest}m` : `${hours}h ${rest}m`;
+    if (locale === 'ja') return kind === 'weekly' ? `${Math.floor(hours/24)}日${hours%24}時間${rest}分` : `${hours}時間${rest}分`;
     return kind === 'weekly' ? `${Math.floor(hours/24)}天${hours%24}小时${rest}分` : `${hours}小时${rest}分`;
   }
   function remaining(value) {
@@ -78,7 +79,7 @@
   function install(win) {
     const doc = win.document;
     const language = win.__cqbI18n ?? localeAPI?.create(win.__cqbPreferences ?? {},win.navigator?.language) ?? {locale:'zh-CN',timeZone:'Asia/Shanghai',zone:'北京时间',t:(key,values={})=>key.replace(/\{(\w+)\}/g,(m,k)=>values[k] ?? m)};
-    const {t,locale,timeZone,zone} = language;
+    let {t,locale,timeZone,zone} = language;
     if (win.__codexBottomBar?.version === VERSION) return;
     win.__codexBottomBar?.dispose?.();
     const originalAttribute = doc.documentElement.getAttribute('data-cqb');
@@ -194,6 +195,9 @@
     function render(snapshot) {
       lastSnapshot = snapshot;
       if (!metrics) return;
+      metrics.setAttribute('aria-label',t('Codex 剩余额度与可用重置'));
+      for (const [key,label] of [['credits',t('额度 ')],['fiveHour',t('5小时')],['weekly',t('每周')],['resets',t('可用重置')]]) metrics.querySelector(`[data-cqb-slot="${key}"] .cqb-label`).textContent = label;
+      setTooltip(metrics.querySelector('[data-cqb-slot="resets"]'),t('点击打开使用量页面'));
       for (const [key, label] of [['fiveHour', t('5小时')], ['weekly', t('每周')]]) {
         const item = snapshot?.[key];
         const slot = metrics.querySelector(`[data-cqb-slot="${key}"]`);
@@ -212,6 +216,10 @@
       metrics.querySelector('[data-cqb-slot="resets"]').setAttribute('aria-label', t('可用重置 {count}，打开额度页面',{count:snapshot?.resets == null ? t('次数未知') : t('{count} 次',{count:snapshot.resets})}));
       metrics.dataset.state = snapshot ? 'available' : 'unavailable';
       scheduleLayout();
+    }
+    function languageChanged() {
+      ({t,locale,timeZone,zone} = win.__cqbI18n);
+      render(lastSnapshot);
     }
     function createMetrics() {
       const node = doc.createElement('section');
@@ -522,6 +530,7 @@
       dispose() {
         win.__cqbFeatures?.dispose?.();
         hideTooltip();
+        win.removeEventListener('cqb-languagechange',languageChanged);
         active = false; scanToken++; mutationObserver?.disconnect(); resizeObserver?.disconnect();
         win.clearInterval(scanTimer); win.clearInterval(refreshTimer);
         win.clearTimeout(minuteTimer); doc.removeEventListener('visibilitychange',refreshTimeDisplay); win.removeEventListener('focus',refreshTimeDisplay); win.removeEventListener('storage',storageChanged);
@@ -542,6 +551,7 @@
     doc.addEventListener('visibilitychange',refreshTimeDisplay); win.addEventListener('focus',refreshTimeDisplay); win.addEventListener('storage',storageChanged);
     doc.addEventListener('pointerover',tooltipOver); doc.addEventListener('pointerout',tooltipOut); doc.addEventListener('focusin',tooltipFocus); doc.addEventListener('focusout',tooltipFocusOut);
     doc.addEventListener('pointerdown',tooltipPointerDown,true); doc.addEventListener('keydown',tooltipKey,true); doc.addEventListener('scroll',tooltipScroll,true); doc.addEventListener('visibilitychange',tooltipVisibility); win.addEventListener('blur',tooltipBlur); win.addEventListener('resize',hideTooltip);
+    win.addEventListener('cqb-languagechange',languageChanged);
     scanTimer = win.setInterval(scan, 5000); refreshTimer = win.setInterval(attach, 2000);
     attach(); scheduleMinute();
   }

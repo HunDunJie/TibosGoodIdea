@@ -1,6 +1,6 @@
 {
   "name": "codex-bottom-bar",
-  "version": "0.8.0-rc.2",
+  "version": "0.8.0-rc.3",
   "description": "Windows Codex single-row navigation, quota display and independent music reminders",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
@@ -16,7 +16,8 @@
     "test:controller": "node tests/controller.cjs",
     "test:worker": "node tests/worker-integration.mjs",
     "test:install": "node tests/install.mjs",
-    "test:settings": "node tests/settings-worker.mjs"
+    "test:settings": "node tests/settings-worker.mjs",
+    "test:language": "node tests/language.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"

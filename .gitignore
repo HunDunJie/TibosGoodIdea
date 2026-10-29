@@ -3,6 +3,7 @@ config.local.json*
 controller.json
 features.json
 reminder-worker.json
+codex-language.json*
 .env
 .env.*
 *.pem

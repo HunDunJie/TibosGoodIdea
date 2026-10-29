@@ -9,11 +9,11 @@ start.ps1 restore.ps1 control-reminders.ps1 launcher-common.ps1 settings.ps1 ins
 WindowsActivation.cs WindowsAudio.cs audio-host.ps1 audio-client.mjs alarm-worker.mjs worker-client.mjs runtime-paths.mjs
 bottom-bar.css bottom-bar.js feature-ui.js native-features.js feature-engine.mjs native-bindings.mjs feature-bindings.mjs controller.mjs
 i18n.js locale-config.mjs settings-check.mjs diagnostics.mjs product.json package.json config.example.json
-LICENSE LICENSE.zh-CN.md LICENSE.en.md THIRD-PARTY-NOTICES.md QUICKSTART.zh-CN.md QUICKSTART.en.md COMPATIBILITY.md
+LICENSE LICENSE.zh-CN.md LICENSE.en.md THIRD-PARTY-NOTICES.md QUICKSTART.zh-CN.md QUICKSTART.en.md QUICKSTART.ja.md COMPATIBILITY.md
 sounds/completion.wav sounds/refresh.wav sounds/README.md runtime/node.exe runtime/LICENSE-Node.txt runtime/NOTICE.md
 release-files.json
 '''.split()
-(root/'release-files.json').write_text(json.dumps(names,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+(root/'release-files.json').write_text(json.dumps(names,ensure_ascii=False,indent=2)+'\n',encoding='utf-8',newline='\n')
 missing=[n for n in names if not(root/n).is_file()]
 if missing:raise SystemExit('Missing: '+', '.join(missing))
 if hashlib.sha256((root/'runtime/node.exe').read_bytes()).hexdigest()!='d702daa815eabbff763c7d3808e235cf031cf2ca70211b56847bc72f51e240e5':raise SystemExit('Runtime checksum mismatch')

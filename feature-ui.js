@@ -1,7 +1,7 @@
 (function () {
   'use strict';
   const win = window, doc = document;
-  const {t,locale,timeZone,zone} = win.__cqbI18n ?? {t:(key,values={})=>key.replace(/\{(\w+)\}/g,(m,k)=>values[k] ?? m),locale:'zh-CN',timeZone:'Asia/Shanghai',zone:'北京时间'};
+  let {t,locale,timeZone,zone} = win.__cqbI18n ?? {t:(key,values={})=>key.replace(/\{(\w+)\}/g,(m,k)=>values[k] ?? m),locale:'zh-CN',timeZone:'Asia/Shanghai',zone:'北京时间'};
   win.__cqbFeatures?.dispose?.();
   const nativeAdapter = win.__cqbNativeFeatures;
   const session = win.crypto.randomUUID();
@@ -13,10 +13,10 @@
   function setTooltip(element,text) { win.__codexBottomBar?.setTooltip(element,text); }
   function call(method,payload = {}) {
     if (win.__cqbPreviewHost) return Promise.resolve(win.__cqbPreviewHost(method,payload));
-    if (typeof win.__cqbHost !== 'function') return Promise.reject(new Error(t('请通过底栏启动器连接后台')));
+    if (typeof win.__cqbHost !== 'function') return Promise.reject(new Error('请通过底栏启动器连接后台'));
     const id = ++nextId;
     return new Promise((resolve,reject) => {
-      const timer = setTimeout(() => { pending.delete(id); reject(new Error(t('提醒后台响应超时'))); },15000);
+      const timer = setTimeout(() => { pending.delete(id); reject(new Error('提醒后台响应超时')); },15000);
       pending.set(id,{resolve,reject,timer}); win.__cqbHost(JSON.stringify({id,session,method,payload}));
     });
   }
@@ -25,7 +25,21 @@
     const item = pending.get(reply.id); if (!item) return;
     pending.delete(reply.id); clearTimeout(item.timer); reply.ok ? item.resolve(reply.result) : item.reject(new Error(reply.error));
   };
-  const names = {send:t('定时发送'),completion:t('完成提醒'),refresh:t('刷新提醒')};
+  const nameKeys = {send:'定时发送',completion:'完成提醒',refresh:'刷新提醒'};
+  let reportedLocale = null, reportingLocale = false;
+  async function reportLanguage() {
+    if (reportedLocale === locale || reportingLocale || !active) return;
+    reportingLocale = true; const selected = locale;
+    try { await call('ui-language',{language:selected}); reportedLocale = selected; } catch {}
+    finally { reportingLocale = false; if(active && selected !== locale)void reportLanguage(); }
+  }
+  function languageChanged() {
+    ({t,locale,timeZone,zone} = win.__cqbI18n);
+    render();
+    const note = doc.getElementById('cqb-volume-notice');
+    if(note && volumeNoticeKey)note.textContent=t(volumeNoticeKey);
+    void reportLanguage();
+  }
   const iconShapes = {
     send:[['path',{d:'M10 18.5 7.8 13.4 2.5 11.2 20 3l-3.1 7.2M7.8 13.4 20 3'}],['circle',{cx:17,cy:17,r:4.5}],['path',{d:'M17 14.5v2.7l1.8 1.1'}]],
     completion:[['path',{d:'M18 10V9A6 6 0 0 0 6 9c0 6-3 7-3 9h8m-1 3h3m1-4 2.5 2.5L22 14'}]],
@@ -52,9 +66,11 @@
   }
   function render() {
     if (!controls) return;
-    for (const feature of Object.keys(names)) {
+    controls.setAttribute('aria-label',t('聊天与额度提醒'));
+    for (const feature of Object.keys(nameKeys)) {
       const group = controls.querySelector(`[data-cqb-feature="${feature}"]`), item = description(feature);
       const button = group.querySelector('.cqb-feature-button');
+      button.setAttribute('aria-label',t(nameKeys[feature]));
       button.setAttribute('aria-pressed',String(item.enabled));
       button.disabled = !connected || feature === 'send' && state?.send?.phase === 'running';
       button.setAttribute('aria-busy',String(busy));
@@ -77,17 +93,19 @@
       const special = !connected || item.error || ['running','done','interrupted','cancelled','expired','ringing'].includes(phase) || item.enabled && (feature === 'completion' && !capabilities.completion || feature === 'refresh' && !state?.refresh?.alarm);
       const status = special ? ` · ${item.text}${item.error ? `：${item.error}` : ''}` : '';
       const stateLine = connected ? t(item.enabled ? '已开启' : '已关闭') : t('未连接');
-      const tooltip = `${names[feature]}\n${stateLine}${status}\n${detail}`.replace(/。|\.(?=\s|$)/g,'');
+      const tooltip = `${t(nameKeys[feature])}\n${stateLine}${status}\n${detail}`.replace(/。|\.(?=\s|$)/g,'');
       setTooltip(group,tooltip); setTooltip(button,tooltip);
       button.setAttribute('aria-description',tooltip.split('\n').slice(1).join('\n'));
       group.dataset.enabled = String(item.enabled);
     }
   }
   function announce(error,feature) {
-    localErrors[feature] = t(error.message);
+    localErrors[feature] = error.message;
     render();
   }
+  let volumeNoticeKey = null;
   function clearVolumeNotice() {
+    volumeNoticeKey = null;
     clearTimeout(volumeNoticeTimer); volumeNoticeTimer = null; doc.getElementById('cqb-volume-notice')?.remove();
   }
   async function checkRefreshVolume(generation) {
@@ -97,12 +115,12 @@
       if (!active || generation !== volumeGeneration || !state?.refresh?.enabled) return;
       if (!Number.isFinite(value?.percent) || value.percent < 0 || value.percent > 100 || typeof value.muted !== 'boolean') throw new Error();
       volumeCheck = {phase:'checked',...value};
-      const message = value.muted ? t('当前系统已静音，可能听不到刷新提醒')
-        : value.percent < 1 ? t('当前音量低于 1%，可能听不到刷新提醒') : null;
+      const message = value.muted ? '当前系统已静音，可能听不到刷新提醒'
+        : value.percent < 1 ? '当前音量低于 1%，可能听不到刷新提醒' : null;
       if (!message) return;
       clearVolumeNotice();
       const note = doc.createElement('div'); note.id = 'cqb-volume-notice'; note.setAttribute('role','status'); note.setAttribute('aria-live','polite');
-      note.textContent = message; doc.body.append(note); volumeNoticeTimer = setTimeout(clearVolumeNotice,6000);
+      volumeNoticeKey = message; note.textContent = t(message); doc.body.append(note); volumeNoticeTimer = setTimeout(clearVolumeNotice,6000);
     } catch {
       // An unavailable endpoint/query must not turn off an already-enabled reminder or invent a 0% volume.
       if (active && generation === volumeGeneration) volumeCheck = {phase:'unavailable'};
@@ -112,7 +130,7 @@
     if (busy) return; busy = true; render();
     try {
       const enabled = !description(feature).enabled;
-      if (enabled && feature !== 'refresh' && !capabilities[feature]) throw new Error(nativeError || t('尚未连接到当前客户端的任务与草稿接口，请稍后重试'));
+      if (enabled && feature !== 'refresh' && !capabilities[feature]) throw new Error(nativeError || '尚未连接到当前客户端的任务与草稿接口，请稍后重试');
       state = await call('toggle',{feature,enabled}); connected = true;
       delete localErrors[feature];
       if (feature === 'refresh') {
@@ -129,7 +147,7 @@
     controls.setAttribute('aria-label',t('聊天与额度提醒'));
     for (const feature of ['send','completion','refresh']) {
       const group = doc.createElement('div'); group.className = 'cqb-feature'; group.dataset.cqbFeature = feature;
-      const button = doc.createElement('button'); button.className = 'cqb-feature-button'; button.type = 'button'; button.setAttribute('aria-label',names[feature]); button.append(createIcon(feature));
+      const button = doc.createElement('button'); button.className = 'cqb-feature-button'; button.type = 'button'; button.setAttribute('aria-label',t(nameKeys[feature])); button.append(createIcon(feature));
       button.addEventListener('click',() => void toggle(feature)); group.append(button); controls.append(group);
     }
     metrics.prepend(controls); render();
@@ -159,7 +177,7 @@
           })().catch(() => {});
         }
       }
-      attach(); render();
+      attach(); render(); void reportLanguage();
     } catch { connected = false; render(); }
     finally { syncing = false; }
   }
@@ -172,9 +190,10 @@
   const observer = new MutationObserver(attach); observer.observe(doc.documentElement,{childList:true,subtree:true});
   const timer = setInterval(() => void sync(),2000);
   win.__cqbFeatures = {status:() => ({connected,capabilities,state,volume:volumeCheck}),dispose() {
-    active = false; volumeGeneration++; clearVolumeNotice(); clearInterval(timer); observer.disconnect(); controls?.remove(); doc.getElementById('cqb-feature-message')?.remove();
+    active = false; win.removeEventListener('cqb-languagechange',languageChanged); volumeGeneration++; clearVolumeNotice(); clearInterval(timer); observer.disconnect(); controls?.remove(); doc.getElementById('cqb-feature-message')?.remove();
     nativeAdapter?.dispose?.(); for (const name of events) doc.removeEventListener(name,interaction,true);
     for (const item of pending.values()) { clearTimeout(item.timer); item.reject(new Error(t('底栏已恢复'))); } pending.clear(); delete win.__cqbBridgeReply;
   }};
+  win.addEventListener('cqb-languagechange',languageChanged);
   attach(); void sync();
 })();

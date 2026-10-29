@@ -2,7 +2,6 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 try {
   const file=path.resolve(process.argv[2]),value=JSON.parse(await fs.readFile(file,'utf8'));
-  if (!['auto','zh-CN','en'].includes(value.language)) throw Error('Unsupported language');
   if (value.timeZone && value.timeZone!=='auto') new Intl.DateTimeFormat('en',{timeZone:value.timeZone}).format();
   for(const name of ['completionAudio','refreshAudio']) if(value[name]) {
     const audio=path.resolve(path.dirname(file),value[name]),stat=await fs.stat(audio);

@@ -1,8 +1,8 @@
 感谢购买 BottomBar Companion
-下载 BottomBar-Companion-0.8.0-rc.2-Windows-x64.zip 并完整解压
+下载 BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip 并完整解压
 运行 Install.cmd，随后使用桌面的 BottomBar Companion 启动
 首次加载前请自行结束任务并退出 Codex
-Settings.cmd 可设置中文、English、时区和 WAV；提示音留空使用内置音效
+界面语言直接跟随 Codex（中文、英文、日语），Settings.cmd 可设置时区和 WAV；提示音留空使用内置音效
 StopSound.cmd 停止本次音乐，Uninstall.cmd 卸载本工具
 请先阅读 QUICKSTART.zh-CN.md 与 COMPATIBILITY.md
 定时发送只发你已经输入的草稿，请在开启前确认全部草稿内容

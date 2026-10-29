@@ -8,7 +8,7 @@ Windows Codex 底栏助手，产品显示名为 BottomBar Companion
 
 [English](README.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · [兼容性](COMPATIBILITY.md)
 
-版本 **0.8.0-rc.2**，本地发布候选包，尚未公开上架。由龙见象整理的第三方 Windows 工具，与 OpenAI 无隶属或背书关系
+版本 **0.8.0-rc.3**，本地发布候选包，尚未公开上架。由龙见象整理的第三方 Windows 工具，与 OpenAI 无隶属或背书关系
 
 把 Codex 最左侧的图标导航移到底部，在一行中显示购买点数、五小时额度、每周额度、刷新时间与可用重置次数。头像保留在最左，项目和聊天列表保留在左侧
 
@@ -30,7 +30,7 @@ Windows Codex 底栏助手，产品显示名为 BottomBar Companion
 
 当前仅支持 **Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0**。其他版本会停止加载
 
-买家完整包已附带官方 Node.js 24.22.1 与两段原创提示音，无需另外安装 Node。解压后运行 Install.cmd，使用桌面的 BottomBar Companion 启动，Settings.cmd 可选择中文、English、时区和 WAV。详见快速开始
+买家完整包已附带官方 Node.js 24.22.1 与两段原创提示音，无需另外安装 Node。解压后运行 Install.cmd，使用桌面的 BottomBar Companion 启动，语言直接跟随 Codex，支持中文、English 和日本語；Settings.cmd 只设置时区和 WAV。详见快速开始
 
 本工具使用本机回环调试接口，并非官方主题 API。不修改 Codex 安装文件、官方快捷方式或 Windows 原生入口。首次加载前需完成任务并自行退出 Codex；完全退出后从官方入口启动仍为原布局
 
@@ -53,6 +53,7 @@ npm install --ignore-scripts
 npx playwright install msedge
 npm test
 npm run test:ui
+npm run test:language
 npm run test:display
 npm run test:volume
 npm run test:adapter
@@ -62,9 +63,9 @@ npm run test:install
 npm run test:settings
 ```
 
-当前本机：26 项单元测试、79 项界面检查、25 项显示检查、20 项音量检查、80 项安装检查，以及模拟原生草稿适配、真实本机 CDP 桥接、独立后台存活、30 分钟截止时间、英文托盘和设置重载检查通过。播放测试使用静音 WAV，不发送真实草稿
+本版完整回归记录见 sales/verification.json，语言实时切换、日语、托盘同步和移除选择器的设计与检查见 docs/language-follow.md。播放测试使用静音 WAV，不发送真实草稿
 
-完整 Codex 冷启动、通知点击回前台、真实多聊天提交与真实任务结束事件仍需独立验收，自动化模拟通过不代表这些流程已验证。当前聊天承载的 Codex 未被重启，运行中的底栏和提醒没有替换成此候选版
+完整 Codex 冷启动、通知点击回前台、真实多聊天提交与真实任务结束事件仍需独立验收，自动化模拟通过不代表这些流程已验证。当前聊天承载的 Codex 未被重启，底栏已加载本版并确认跟随当前 Codex 显示英文
 
 ## 许可证与发布
 

@@ -37,3 +37,11 @@ test('sub-minute remainder is not shown as zero; elapsed cycles wait for authori
   assert.equal(countdown(now-1,'weekly',now),'等待刷新');
   assert.equal(countdown(null,'weekly',now),'时间暂不可用');
 });
+test('Japanese countdowns include days, hours and minutes with translated missing values',()=>{
+  const now=Date.parse('2026-10-29T18:27:00+09:00');
+  assert.equal(countdown(now+157*60000,'fiveHour',now,'ja'),'2時間37分');
+  assert.equal(countdown(now+(3*1440+157)*60000,'weekly',now,'ja'),'3日2時間37分');
+  assert.equal(countdown(now,'weekly',now,'ja'),'更新待ち');
+  assert.equal(resetDate(null,'ja'),'時刻を取得できません');
+  assert.equal(creditText(null,true,'ja'),'無制限');
+});

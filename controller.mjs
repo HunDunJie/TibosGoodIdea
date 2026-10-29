@@ -74,7 +74,7 @@ async function targets() {
   if (!response.ok) throw new Error('Local debug endpoint is not available.');
   return (await response.json()).filter(item => item.type === 'page' && item.webSocketDebuggerUrl);
 }
-const disposeExpression = 'window.__cqbFeatures?.dispose?.(); window.__codexBottomBar?.dispose?.(); true';
+const disposeExpression = 'window.__cqbFeatures?.dispose?.(); window.__codexBottomBar?.dispose?.(); window.__cqbI18n?.dispose?.(); true';
 const probeExpression = '({rail:!!document.querySelector("nav[data-app-navigation-rail]"),frame:!!document.querySelector("[data-app-shell-frame]")})';
 await fs.mkdir(runtimeDir, {recursive:true});
 
@@ -97,7 +97,7 @@ if (args.includes('--restore-once')) {
 }
 
 await fs.rm(stopPath, {force:true});
-const preferences = await readConfig(path.resolve(option('--config',path.join(packageDir,'config.local.json'))));
+const preferences = await readConfig(path.resolve(option('--config',path.join(packageDir,'config.local.json'))),runtimeDir);
 const i18nJS = await fs.readFile(path.join(packageDir,'i18n.js'),'utf8');
 const css = await fs.readFile(path.join(packageDir, 'bottom-bar.css'), 'utf8');
 const js = await fs.readFile(path.join(packageDir, 'bottom-bar.js'), 'utf8');
@@ -117,8 +117,8 @@ if (!workerDisabled) {
   await ensureWorker(runtimeDir,path.resolve(option('--config',path.join(packageDir,'config.local.json'))));
   if (appAsar) await requestWorker(runtimeDir,'codex-path',{path:path.join(path.dirname(path.dirname(appAsar)),'ChatGPT.exe')}).catch(() => {});
 }
-const injection = `(()=>{const run=()=>{window.__cqbPreferences=${JSON.stringify({language:preferences.language,timeZone:preferences.timeZone})};${i18nJS}\nwindow.__codexBottomBarBindings=${JSON.stringify(nativeBindings)};window.__codexBottomBarFeatureBindings=${JSON.stringify(featureBindings)};let style=document.getElementById('codex-bottom-bar-style');if(!style){style=document.createElement('style');style.id='codex-bottom-bar-style';(document.head||document.documentElement).append(style)}style.textContent=${JSON.stringify(css)};${js}\n${nativeFeatureJS}\n${featureJS}\n};if(document.documentElement)run();else document.addEventListener('DOMContentLoaded',run,{once:true})})()`;
-const allowed = new Set(['status','toggle','observe','claim-send','finish-send','completion','interaction','stop','sound-settings','volume-status']);
+const injection = `(()=>{const run=()=>{window.__cqbPreferences=${JSON.stringify({timeZone:preferences.uiTimeZone})};${i18nJS}\nwindow.__codexBottomBarBindings=${JSON.stringify(nativeBindings)};window.__codexBottomBarFeatureBindings=${JSON.stringify(featureBindings)};let style=document.getElementById('codex-bottom-bar-style');if(!style){style=document.createElement('style');style.id='codex-bottom-bar-style';(document.head||document.documentElement).append(style)}style.textContent=${JSON.stringify(css)};${js}\n${nativeFeatureJS}\n${featureJS}\n};if(document.documentElement)run();else document.addEventListener('DOMContentLoaded',run,{once:true})})()`;
+const allowed = new Set(['status','toggle','observe','claim-send','finish-send','completion','interaction','stop','sound-settings','volume-status','ui-language']);
 function installBridge(cdp, mainFrame) {
   cdp.on('Runtime.executionContextCreated',({context}) => {
     if (context.auxData?.isDefault && context.auxData.frameId === mainFrame) cdp.mainContext = context.id;

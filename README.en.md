@@ -9,7 +9,7 @@ The existing productId is retained for settings compatibility; see [docs/PROJECT
 
 [中文](README.md) · [Quick start](QUICKSTART.en.md) · [Compatibility](COMPATIBILITY.md)
 
-**0.8.0-rc.2**, local release candidate, not publicly listed. An independent Windows add-on prepared by 由龙见象, with no OpenAI affiliation or endorsement
+**0.8.0-rc.3**, local release candidate, not publicly listed. An independent Windows add-on prepared by 由龙见象, with no OpenAI affiliation or endorsement
 
 Move Codex's icon navigation to the bottom and see purchased credits, separate five-hour and weekly quota, reset times and available resets in one row. The profile stays at the far left; chats and projects remain in the left panel
 
@@ -25,7 +25,7 @@ Moving the mouse inside Codex, clicking or typing stops sound. The tray and Stop
 
 Supported: **Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0**. Other client versions are rejected
 
-The buyer ZIP includes official Node.js 24.22.1, original tones and Chinese/English guides. Extract all files, run Install.cmd, then use the BottomBar Companion shortcut. Settings.cmd selects language, time zone and optional custom WAVs. See the quick start
+The buyer ZIP includes official Node.js 24.22.1, original tones and Chinese/English/Japanese guides. Extract all files, run Install.cmd, then use the BottomBar Companion shortcut. Language follows Codex automatically in Chinese, English or Japanese. Settings.cmd only selects the time zone and optional custom WAVs. See the quick start
 
 This uses a local debugging endpoint rather than an official theme API. It leaves Codex installation files and official launch entries unchanged. Finish tasks and exit Codex yourself before first use. Opening Codex normally after a full exit uses the original layout
 
@@ -33,11 +33,11 @@ This uses a local debugging endpoint rather than an official theme API. It leave
 
 Source requires Node.js 22+, Python 3, Windows PowerShell 5.1 and Microsoft Edge. Run download-runtime.ps1 to obtain the pinned, checksum-verified official Node binary, then `python pack-buyer.py --manifest-only` and Start.cmd
 
-Run `npm install --ignore-scripts`, `npx playwright install msedge`, `npm test` and the package scripts test:ui, test:display, test:volume, test:adapter, test:controller, test:worker, test:install, test:settings. Windows CI is included
+Run `npm install --ignore-scripts`, `npx playwright install msedge`, `npm test` and the package scripts test:ui, test:language, test:display, test:volume, test:adapter, test:controller, test:worker, test:install, test:settings. Windows CI is included
 
-Local checks passed: 26 unit tests, 79 UI checks, 25 display checks, 20 volume checks, 80 installer checks, plus isolated draft-adapter, real local CDP, detached reminder, deadline persistence and bilingual settings/worker integration checks. Audio fixtures are silent and no real chat drafts are submitted
+Current regression evidence is preserved in sales/verification.json. Live language switching, Japanese translations, tray synchronization and removal of the language selector are documented in docs/language-follow.md. Audio fixtures are silent and no real chat drafts are submitted
 
-Full Codex cold start, notification activation, real multi-chat submission and real task completion still need independent acceptance. Mock tests do not establish these. The running Codex hosting this work has not been restarted or switched to this release candidate
+Full Codex cold start, notification activation, real multi-chat submission and real task completion still need independent acceptance. Mock tests do not establish these. Codex hosting this work has not been restarted; the add-on was reloaded and confirmed to follow its current English language
 
 ## License and distribution
 

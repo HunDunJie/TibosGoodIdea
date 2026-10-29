@@ -38,6 +38,12 @@ try {
   for (let i = 0; i < 40; i++) { status = await requestWorker(stateDir,'status'); if (status.ringing === 'refresh') break; await wait(100); }
   workerPid = status.workerPid; assert.notEqual(workerPid,result.parentPid); assert.equal(status.ringing,'refresh','detached worker must fire after parent exits');
   let player = await requestWorker(stateDir,'player-status'); assert.equal(player.notificationsShown,1,'refresh requests a Windows notification');
+  const languageDeadline=status.ringingUntil;
+  await requestWorker(stateDir,'ui-language',{language:'ja'});
+  status=await requestWorker(stateDir,'status');player=await requestWorker(stateDir,'player-status');
+  assert.equal(status.ringing,'refresh');assert.equal(status.ringingUntil,languageDeadline,'A language change cannot extend or stop playback');
+  assert.equal(player.language,'ja');assert.equal(player.notificationsShown,1,'A language change cannot repeat the notification');
+  assert.equal(player.playing,'refresh');
   assert.equal(process.kill(workerPid,0),true);
   await externalControl('stop'); status = await requestWorker(stateDir,'status'); assert.equal(status.ringing,null); assert.equal(status.refresh.enabled,true);
   await requestWorker(stateDir,'toggle',{feature:'completion',enabled:true});

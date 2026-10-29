@@ -13,8 +13,8 @@ Portable use is available through `Start.cmd`. Keep the extracted folder while u
 
 ## Settings and controls
 
-- `Settings.cmd`: choose Chinese/English, time zone and custom WAV files. Empty sound fields use the included tones.
-- Time zone `auto`: Beijing time for Chinese, local time for English. You can enter `UTC` or an IANA name such as `America/New_York`.
+- `Settings.cmd`: choose a time zone and custom WAV files. Language follows Codex automatically in Chinese, English or Japanese, without a separate language selector. Empty sound fields use the included tones.
+- Time zone `auto`: Beijing time for Chinese, local time for English/Japanese. You can enter `UTC` or an IANA name such as `America/New_York`.
 - Saved settings apply next time you start through this add-on. Use `Reload.cmd` while running to update both the interface and reminder service without force-closing Codex. Reloading is refused during a draft-sending round.
 - `StopSound.cmd`: stop the current sound even if Codex is closed.
 - `ExitReminders.cmd`: disable all reminders and exit the service. `Restore.cmd` only restores the interface, leaving reminders running.

@@ -20,7 +20,8 @@ try {
       switch ($command.method) {
         'check' { [CodexBottomBar.WindowsAudio]::CheckFile([string]$command.path) }
         'play' { [CodexBottomBar.WindowsAudio]::Play([string]$command.path,[string]$command.kind,[bool]$command.notify) }
-        'status' { $result = @{playing=[CodexBottomBar.WindowsAudio]::PlayingKind;notificationsShown=[CodexBottomBar.WindowsAudio]::NotificationsShown;language=[CodexBottomBar.WindowsAudio]::Language} }
+        'status' { $result = @{playing=[CodexBottomBar.WindowsAudio]::PlayingKind;notificationsShown=[CodexBottomBar.WindowsAudio]::NotificationsShown;language=[CodexBottomBar.WindowsAudio]::Language;trayLabels=[CodexBottomBar.WindowsAudio]::ReadTrayLabels()} }
+        'language' { [CodexBottomBar.WindowsAudio]::SetLanguage([string]$command.language); $result=@{language=[CodexBottomBar.WindowsAudio]::Language} }
         'stop' { [CodexBottomBar.WindowsAudio]::Stop() }
         'codex' { [CodexBottomBar.WindowsAudio]::SetCodex([string]$command.path) }
         'sound-settings' { [CodexBottomBar.WindowsAudio]::SoundSettings() }

@@ -14,7 +14,8 @@ const {version:workerVersion} = JSON.parse(await fs.readFile(path.join(here,'pac
 await fs.mkdir(stateDir,{recursive:true});
 const stateFile = path.join(stateDir,'features.json');
 let config = {}, initial = {};
-config = await readConfig(path.resolve(option('--config',path.join(here,'config.local.json'))));
+config = await readConfig(path.resolve(option('--config',path.join(here,'config.local.json'))),stateDir);
+let reportedLanguage = null;
 try { initial = JSON.parse(await fs.readFile(stateFile,'utf8')); } catch {}
 let queue = Promise.resolve(), closing = false, timer = null;
 const serial = action => { const result = queue.then(action); queue = result.catch(() => {}); return result; };
@@ -36,6 +37,18 @@ async function dispatch(method,payload = {}) {
   switch (method) {
     case 'status': return {...engine.status(),workerPid:process.pid,workerVersion,workerRoot:here,configStamp:configFingerprint(config)};
     case 'player-status': return audio.call('status');
+    case 'ui-language': {
+      if (!['zh-CN','en','ja'].includes(payload.language)) throw new Error('Invalid Codex language');
+      if (reportedLanguage !== payload.language) {
+        await audio.call('language',{language:payload.language});
+        config.language=payload.language;
+        const languageFile=path.join(stateDir,'codex-language.json');
+        await fs.writeFile(languageFile+'.tmp',JSON.stringify({language:payload.language}),'utf8');
+        await fs.rename(languageFile+'.tmp',languageFile);
+        reportedLanguage=payload.language;
+      }
+      return {language:config.language};
+    }
     case 'restart': setTimeout(() => void serial(() => shutdown(false)),100); return {restarting:true};
     case 'toggle': return engine.toggle(payload.feature,payload.enabled);
     case 'observe': return engine.observe(payload);

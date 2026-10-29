@@ -3,7 +3,7 @@
   "published": false,
   "seller": "由龙见象",
   "product": "BottomBar Companion",
-  "version": "0.8.0-rc.2",
+  "version": "0.8.0-rc.3",
   "prices": {
     "domestic": {
       "currency": "CNY",
@@ -14,7 +14,7 @@
       "amount": "0.90"
     }
   },
-  "buyerFile": "../dist/BottomBar-Companion-0.8.0-rc.2-Windows-x64.zip",
+  "buyerFile": "../dist/BottomBar-Companion-0.8.0-rc.3-Windows-x64.zip",
   "domestic": {
     "platform": "面包多",
     "accountVerified": false,

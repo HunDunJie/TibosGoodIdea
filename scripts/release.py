@@ -260,7 +260,7 @@ def publish(notes):
         print(json.dumps({'checkpoint': 'ci-pending' if checks['pending'] else 'ci-failed', **checks}));return 3 if checks['pending'] else 1
     if release['draft']:
         release = gh.request(f'/releases/{release["id"]}', 'PATCH', {'draft': False})
-    receipt['draft'] = release['draft'];receipt['githubStorageDigestsMatch'] = True
+    receipt['releaseUrl'] = release['html_url'];receipt['draft'] = release['draft'];receipt['githubStorageDigestsMatch'] = True
     write_json(state_dir()/'publication.json', receipt)
     print(json.dumps({'published': True, 'url': release['html_url']}));return 0
 
@@ -293,6 +293,7 @@ def verify():
     receipt = read_json(state_dir()/'publication.json');gh = GitHub();check_assets(receipt)
     release = gh.request(f'/releases/{receipt["releaseId"]}')
     if release['draft']:raise RuntimeError('Release is still a draft')
+    receipt['releaseUrl'] = release['html_url'];receipt['draft'] = release['draft']
     assets = gh.request(f'/releases/{release["id"]}/assets?per_page=100')
     for item in receipt['assets']:
         if not any(a['name'] == item['name'] and matching_asset(a, item) for a in assets):raise RuntimeError('Public asset mismatch')

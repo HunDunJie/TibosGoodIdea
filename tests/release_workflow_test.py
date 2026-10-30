@@ -94,6 +94,23 @@ class ReleaseTests(unittest.TestCase):
             with self.assertRaises(RuntimeError) as error:gh.request('/releases')
             self.assertNotIn(gh.token, str(error.exception))
 
+    def test_verify_refreshes_draft_url_from_public_release(self):
+        with tempfile.TemporaryDirectory(prefix='tibo-release-public-') as folder, patch.object(release, 'ROOT', Path(folder)):
+            root = Path(folder)
+            for name in ['product.json', 'package.json']:release.write_json(root/name, {'version': '1.0.0'})
+            receipt_file = release.state_dir()/'publication.json'
+            release.write_json(receipt_file, {'releaseId': 1, 'releaseCommit': 'exact', 'releaseUrl': 'https://example.test/untagged-draft', 'draft': True, 'assets': []})
+            public_url = 'https://example.test/releases/tag/v1.0.0'
+            catalog = '{"releases": []}\n'
+            (root/'updates').mkdir();(root/'updates/program-catalog.json').write_bytes(catalog.encode('utf-8'))
+            gh = Mock();gh.request.side_effect = [{'id': 1, 'draft': False, 'html_url': public_url}, [], catalog]
+            with patch.object(release, 'GitHub', return_value=gh), patch.object(release, 'check_assets'), patch.object(release, 'ci_status', return_value={'passed': True}), patch.object(release, 'catalog_check', return_value={'signatureVerified': True}), patch('sys.stdout', new_callable=io.StringIO) as output:
+                release.verify()
+            saved = release.read_json(receipt_file)
+            self.assertEqual(saved['releaseUrl'], public_url)
+            self.assertFalse(saved['draft'])
+            self.assertEqual(json.loads(output.getvalue())['url'], public_url)
+
     def test_fingerprint_changes_with_inputs_and_restores(self):
         with tempfile.TemporaryDirectory(prefix='tibo-release-tree-') as folder, patch.object(release, 'ROOT', Path(folder)):
             root = Path(folder);release.run(['git', 'init', '-q'])

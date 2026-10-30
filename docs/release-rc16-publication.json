@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-30",
+  "version": "0.8.0-rc.16",
+  "releaseUrl": "https://github.com/HunDunJie/TibosGoodIdea/releases/tag/v0.8.0-rc.16",
+  "releaseId": 429017870,
+  "releaseCommit": "a0aabfdd72d754619432ea4e0152b23d58040333",
+  "prerelease": true,
+  "assets": [
+    {
+      "name": "TibosGoodIdea-0.8.0-rc.16-Windows-x64.zip",
+      "bytes": 49650950,
+      "sha256": "6a5747f97577d6b16db3543f40ce18b0c1e212900c929f36adec2feabc2e7440"
+    },
+    {
+      "name": "TibosGoodIdea-0.8.0-rc.16-Windows-x64.zip.sha256",
+      "bytes": 109,
+      "sha256": "71723f2a1b50ae7e4a988bfeb92ff6a1ca8c2da8abe48177b15bd20f3f452fb9"
+    },
+    {
+      "name": "TibosGoodIdea-0.8.0-rc.16-source.zip",
+      "bytes": 16606992,
+      "sha256": "daeb432900d800b65f2f6ce58a164ba4027c0d7832d22681698ff46aa9ec50b4"
+    },
+    {
+      "name": "TibosGoodIdea-0.8.0-rc.16-source.zip.sha256",
+      "bytes": 104,
+      "sha256": "b9fab2f0593ee53d72fd7a4765ccbaa0fb676dcddfeae9a74e9e227e3b2115d5"
+    }
+  ],
+  "githubStorageDigestsMatch": true,
+  "localArchiveCrcAndManifestVerified": true,
+  "fullPublicDownloadVerified": false,
+  "downloadVerificationLimitation": "Local direct connections to github.com and the asset download route failed; GitHub returned matching stored digests and byte counts for all four uploaded assets",
+  "mainCi": {
+    "id": 41056940394,
+    "conclusion": "success"
+  },
+  "tagCi": {
+    "id": 41056940675,
+    "attempt": 2,
+    "status": "in_progress",
+    "initialFailure": "First attempt returned offline while staging the simulated rollback candidate; exact cause unavailable in that log",
+    "updateIntegrationPassedOnRetry": true
+  },
+  "localUpdateIntegrationRecheckPassed": true,
+  "programCatalog": {
+    "revision": 2,
+    "kind": "fix",
+    "client": "f971028af3cb424351c9f473cfb766a40211406a71ffcddae1b7670b7b29dcd3",
+    "codexVersion": "26.1027.3384.0",
+    "signatureVerified": true,
+    "archiveDigestAndInventoryVerified": true,
+    "wrongClientRejected": true,
+    "sameVersionDoesNotLoop": true
+  },
+  "newSourceIncludesProTestsAndReviewReports": true,
+  "realCodexChanged": false,
+  "realDraftsSent": false,
+  "audibleMusicPlayed": false
+}

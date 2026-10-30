@@ -37,6 +37,8 @@ Incompatible state migrations or updater protocols require manual installation. 
 
 The initially bundled signed program index has no release candidates. It provides the trust root; a future compatible release becomes downloadable only after the maintainer publishes and signs it. Adapter-only changes continue to use the existing declarative adapter index.
 
+The public index now offers the rc.16 fix for the verified Codex 26.1027.3384.0 fingerprint. Its Windows ZIP retains the previous seed index, avoiding a self-referential archive checksum; do not rebuild or replace published assets after signing the public index. Release evidence is recorded in [release-rc16-publication.json](release-rc16-publication.json).
+
 ## Verification boundary
 
 The design was reviewed in three rounds (36 scenarios) before implementation. That document is design evidence, not test execution. Automated tests separately cover signatures, versions, compatibility, cache/backoff, rollback, worker handoff, archive validation and removal. The Windows integration test builds a complete signed fixture package, runs the bundled Node offline checks, switches real isolated reminder workers, verifies original alarm/send IDs and settings, exercises bootstrap routing, and uninstalls both payloads. It never connects to Codex, sends real drafts or plays audible music.

@@ -30,4 +30,8 @@
 
 本地备份位于 `E:/文档/ChatGPT/TibosGoodIdea/diagnostics/native-features-before-route-fix-20261030.js.bak`
 
-GitHub 上现有 rc.16 资产没有修改，本次代码尚未提交或发布，后续正式升级须包含本修复
+上述记录对应本地热修复完成时点，当时 GitHub 上的 rc.16 资产没有修改
+
+## rc.17 发布补记
+
+本修复现已纳入 [v0.8.0-rc.17](https://github.com/HunDunJie/TibosGoodIdea/releases/tag/v0.8.0-rc.17)，与通用测试发布流程一起交付。发布代码提交为 `42c63a1`，本地完整 63 步检查及 main/tag 两次 Windows CI 均通过。发布过程未替换历史 rc.16 资产

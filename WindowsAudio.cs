@@ -104,6 +104,9 @@ namespace CodexBottomBar {
       items[4].Text = T("声音设置", "Sound settings", "サウンド設定");
       items[5].Text = T("退出提醒服务（取消所有提醒）", "Exit service (cancel all reminders)", "通知サービスを終了（すべて解除）");
       items[6].Text = T("取消定时关闭", "Cancel scheduled shutdown", "シャットダウン予約を解除");
+      items[8].Text = T("TiBo 设置", "TiBo settings", "TiBo の設定");
+      items[9].Text = T("打开 TiBo 文件夹", "Open TiBo folder", "TiBo フォルダーを開く");
+      items[10].Text = T("退出 TiBo（恢复界面并取消所有计划）", "Exit TiBo (restore layout and cancel all plans)", "TiBo を終了（レイアウト復元・すべて解除）");
       tray.Text = T("Tibo’s Good Idea：左键停止响铃，右键管理", "Tibo’s Good Idea: click to stop, right-click to manage", "Tibo’s Good Idea：クリックで停止、右クリックで管理");
     }
     public static string[] ReadTrayLabels() {
@@ -112,6 +115,13 @@ namespace CodexBottomBar {
         var result = new string[5]; var items = tray.ContextMenuStrip.Items;
         for (int i=0;i<3;i++) result[i]=items[i].Text;
         result[3]=items[4].Text;result[4]=items[5].Text;return result;
+      }));
+    }
+    public static string[] ReadManagementLabels() {
+      if (uiDispatcher == null) return new string[0];
+      return (string[])uiDispatcher.Invoke(new Func<string[]>(delegate {
+        var items = tray.ContextMenuStrip.Items;
+        return new string[] { items[8].Text, items[9].Text, items[10].Text };
       }));
     }
     public static void Start() {
@@ -128,6 +138,10 @@ namespace CodexBottomBar {
           menu.Items.Add("", null, delegate { SoundSettings(); });
           menu.Items.Add("", null, delegate { Stop(); Emit("shutdown", "tray"); });
           menu.Items.Add("", null, delegate { Emit("disable-shutdown", "tray"); });
+          menu.Items.Add(new ToolStripSeparator());
+          menu.Items.Add("", null, delegate { Emit("settings", "tray"); });
+          menu.Items.Add("", null, delegate { Emit("open-folder", "tray"); });
+          menu.Items.Add("", null, delegate { Stop(); Emit("exit-tibo", "tray"); });
           tray = new NotifyIcon { Icon = SystemIcons.Information, ContextMenuStrip = menu, Visible = true };
           UpdateTrayLanguage();
           tray.MouseClick += delegate(object sender, MouseEventArgs e) { if (e.Button == MouseButtons.Left) { Stop(); Emit("stop", "tray"); } };

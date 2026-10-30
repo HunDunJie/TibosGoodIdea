@@ -38,6 +38,7 @@ try{
     await requestWorker(dir,'ui-language',{language});
     const player=await requestWorker(dir,'player-status');
     assert.equal(player.language,language);assert.equal(player.trayLabels[0],label);
+    assert.equal(player.managementLabels.length,3);assert.ok(player.managementLabels.every(s=>s.length>0));
     assert.equal(player.notificationsShown,0);assert.equal(player.playing,null);
     status=await ensureConfiguredWorker(dir,configFile);
     assert.equal(status.workerPid,pid,'Locale changes must not restart the worker');

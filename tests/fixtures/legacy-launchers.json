@@ -1,0 +1,23 @@
+{
+  "Check.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script check.ps1\nif errorlevel 1 pause\n",
+  "DisableReset.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script control-reminders.ps1 -Action disable-refresh\nif errorlevel 1 pause\n",
+  "ExitReminders.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script control-reminders.ps1 -Action shutdown\nif errorlevel 1 pause\n",
+  "Install.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0install.ps1\"\nif errorlevel 1 pause\n",
+  "Reload.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script reload.ps1\nif errorlevel 1 pause\n",
+  "Restore.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script restore.ps1\nif errorlevel 1 pause\n",
+  "Settings.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script settings.ps1\nif errorlevel 1 pause\n",
+  "StopSound.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script control-reminders.ps1 -Action stop\nif errorlevel 1 pause\n",
+  "Uninstall.cmd": "@echo off\nsetlocal\nset \"TIBO_UNINSTALL_SCRIPT=%~dp0bootstrap.ps1\"\ncd /d \"%TEMP%\"\n(\n  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%TIBO_UNINSTALL_SCRIPT%\" -Script uninstall.ps1 %*\n  if errorlevel 1 (\n    pause\n    exit 1\n  )\n  exit 0\n)\n",
+  "Update.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script update.ps1\nif errorlevel 1 pause\n",
+  "停止响铃.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script control-reminders.ps1 -Action stop\nif errorlevel 1 pause\n",
+  "关闭刷新提醒.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script control-reminders.ps1 -Action disable-refresh\nif errorlevel 1 pause\n",
+  "卸载.cmd": "@echo off\nsetlocal\nset \"TIBO_UNINSTALL_SCRIPT=%~dp0bootstrap.ps1\"\ncd /d \"%TEMP%\"\n(\n  powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%TIBO_UNINSTALL_SCRIPT%\" -Script uninstall.ps1 %*\n  if errorlevel 1 (\n    pause\n    exit 1\n  )\n  exit 0\n)\n",
+  "安装.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0install.ps1\"\nif errorlevel 1 pause\n",
+  "开启底栏.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script start.ps1\nif errorlevel 1 pause\n",
+  "恢复原界面.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script restore.ps1\nif errorlevel 1 pause\n",
+  "检查更新.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script update.ps1\nif errorlevel 1 pause\n",
+  "设置.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script settings.ps1\nif errorlevel 1 pause\n",
+  "退出提醒服务.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script control-reminders.ps1 -Action shutdown\nif errorlevel 1 pause\n",
+  "重启并开启底栏.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script start.ps1 -Restart\nif errorlevel 1 pause\n",
+  "重新加载.cmd": "@echo off\npowershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0bootstrap.ps1\" -Script reload.ps1\nif errorlevel 1 pause\n"
+}

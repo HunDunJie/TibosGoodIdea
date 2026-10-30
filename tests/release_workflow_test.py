@@ -16,6 +16,17 @@ spec.loader.exec_module(release)
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_deleted_paths_have_same_fingerprint_before_staging_and_after_commit(self):
+        with tempfile.TemporaryDirectory(prefix='tibo-release-tree-') as folder, patch.object(release, 'ROOT', Path(folder)), patch.object(release, 'version', return_value='1.0.0'):
+            root = Path(folder)
+            (root/'keep.txt').write_text('source', encoding='utf-8')
+            with patch.object(release, 'git', return_value='keep.txt\0removed.cmd\0'):
+                before = release.snapshot()
+            with patch.object(release, 'git', return_value='keep.txt\0'):
+                self.assertEqual(before, release.snapshot())
+                (root/'keep.txt').write_text('changed', encoding='utf-8')
+                self.assertNotEqual(before['sha256'], release.snapshot()['sha256'])
+
     def test_receipt_requires_exact_successful_full_recent_tree(self):
         now = dt.datetime(2026, 10, 30, tzinfo=dt.timezone.utc)
         source = {'version': '0.8.0-rc.17', 'sha256': 'tree'}

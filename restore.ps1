@@ -2,7 +2,7 @@
 . (Join-Path $PSScriptRoot 'launcher-common.ps1')
 . (Join-Path $PSScriptRoot 'lifecycle-common.ps1')
 $ErrorActionPreference = 'Stop'
-$runtimeRoot = if ($StateDir) { $StateDir } else { Join-Path $env:LOCALAPPDATA 'CodexBottomBar' }
+$runtimeRoot = if ($StateDir) { $StateDir } else { Get-CqbStateDir }
 New-Item -ItemType Directory -Path $runtimeRoot -Force | Out-Null
 $restoreLock=Enter-CqbLifecycleLock $runtimeRoot
 try {

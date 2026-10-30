@@ -39,3 +39,8 @@ client-bottom-*.png
 *.wav
 !sounds/completion.wav
 !sounds/refresh.wav
+
+# Portable runtime owns only these local records
+/data/
+/install-info.json
+/install-info.json.tmp

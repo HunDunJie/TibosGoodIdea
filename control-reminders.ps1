@@ -4,7 +4,7 @@
 $ErrorActionPreference = 'Stop'
 $nodeExe = Get-CqbNode
 if (-not (Test-Path -LiteralPath $nodeExe)) { throw (L '找不到 Node.js。' 'Node.js was not found.' 'Node.js が見つかりません') }
-$runtimeRoot = if ($StateDir) { $StateDir } else { Join-Path $env:LOCALAPPDATA 'CodexBottomBar' }
+$runtimeRoot = if ($StateDir) { $StateDir } else { Get-CqbStateDir }
 $reply=Invoke-CqbWorker $nodeExe $PSScriptRoot $runtimeRoot $Action
 if ($reply.ExitCode -ne 0) { Write-Host (L '提醒服务未运行，当前没有后台响铃。' 'The reminder service is not running; no add-on sound is playing.' '通知サービスは起動していません 現在、通知音は再生されていません'); exit 0 }
 $result=$reply.Output

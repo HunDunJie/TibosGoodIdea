@@ -13,9 +13,19 @@
     "tests/install.mjs",
     "tests/lifecycle.cjs",
     "tests/launcher-arguments.cjs",
-    "tests/settings-worker.mjs"
-    ,"tests/shutdown-system.mjs"
+    "tests/settings-worker.mjs",
+    "tests/shutdown-system.mjs",
+    "tests/portable.mjs"
   ],
-  "quickIntegration": ["tests/native-adapter.cjs", "tests/send-reset.cjs"],
-  "generatedImages": ["preview-wide.png", "preview-narrow.png", "preview-countdown.png", "preview-tooltips.png", "preview-volume-warning.png"]
+  "quickIntegration": [
+    "tests/native-adapter.cjs",
+    "tests/send-reset.cjs"
+  ],
+  "generatedImages": [
+    "preview-wide.png",
+    "preview-narrow.png",
+    "preview-countdown.png",
+    "preview-tooltips.png",
+    "preview-volume-warning.png"
+  ]
 }

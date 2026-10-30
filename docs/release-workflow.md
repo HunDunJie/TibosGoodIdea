@@ -8,9 +8,9 @@
 runtime/node.exe scripts/test.mjs quick
 ```
 
-包含语法检查、单元测试、发布工具自测、原生适配及定时发送集成测试。改动特有测试按需补充。`full` 才具有发布资格，包含同一语法/单元检查及全部 15 组界面、服务、安装卸载、更新回滚和 Windows 关机计划注册/取消测试；关机命令只做注入验证，不实际关闭电脑
+包含语法检查、单元测试、发布工具自测、原生适配及定时发送集成测试。改动特有测试按需补充。`full` 才具有发布资格，包含同一语法/单元检查及全部 16 组界面、服务、安装卸载、更新回滚和 Windows 关机计划注册/取消测试；关机命令只做注入验证，不实际关闭电脑
 
-测试逐项执行，失败即停；详细输出保存在 `work/validation/<version>/<mode>`，聊天只需读取最终 JSON 及失败日志尾部。程序会还原测试生成的五张截图。结果绑定 Git 可见输入文件的 SHA-256 指纹；相同代码 24 小时内复用通过报告，`--force` 可强制重跑。CI 始终强制执行，并保存报告和日志为 Actions artifact。没有运行真正 Codex 的草稿提交或有声验收
+测试逐项执行，失败即停；详细输出保存在 `work/validation/<version>/<mode>`，聊天只需读取最终 JSON 及失败日志尾部。程序会还原测试生成的五张截图。结果绑定 Git 可见实际输入文件的 SHA-256 指纹，已经删除的路径不保留随提交消失的临时标记，因此暂存、提交不会单独改变同一源码树的指纹；相同代码 24 小时内复用通过报告，`--force` 可强制重跑。CI 始终强制执行，并保存报告和日志为 Actions artifact。没有运行真正 Codex 的草稿提交或有声验收
 
 ## 已获发布授权后的顺序
 
@@ -41,7 +41,7 @@ runtime/node.exe scripts/test.mjs quick
    python scripts/release.py index --asar '实际安装位置/app/resources/app.asar' --kind fix
    ```
 
-   复用外置的 `%LOCALAPPDATA%/TibosGoodIdea-Maintainer/program-signing-private.pem`；私钥与凭据不进入仓库、命令参数或日志。必须先公开不可变 ZIP，再生成指向它的更高修订号索引，避免 ZIP 包含自身校验值。功能性选装更新用 `--kind feature`。同版本匹配的索引重复执行不涨修订号
+   复用外置的 `%LOCALAPPDATA%/TibosGoodIdea-Maintainer/program-signing-private.pem`；私钥与凭据不进入仓库、命令参数或日志。必须先公开不可变 ZIP，再生成指向它的更高修订号索引，避免 ZIP 包含自身校验值。功能性更新用 `--kind feature`。同版本匹配的索引重复执行不涨修订号
 
 6. 自审并提交 `updates/program-catalog.json`，用 `[skip ci]` 提交元数据、推送 main；不重建 Windows/源码 ZIP。最后运行：
 

@@ -1,9 +1,19 @@
 ﻿param([switch]$Restart, [int]$Port = 9347, [string]$StateDir = '')
+# Bridge older installed bootstraps into the current startup policy.
+if($env:TIBO_STARTUP_READY -ne '1'){
+  $entry=@{Script='start.ps1';Port=$Port}
+  if($env:TIBO_INSTALL_ROOT){$entry.RootDir=$env:TIBO_INSTALL_ROOT}
+  if($StateDir){$entry.StateDir=$StateDir}
+  if($Restart){$entry.Restart=$true}
+  & (Join-Path $PSScriptRoot 'bootstrap.ps1') @entry
+  exit
+}
+
 . (Join-Path $PSScriptRoot 'launcher-common.ps1')
 . (Join-Path $PSScriptRoot 'lifecycle-common.ps1')
 $ErrorActionPreference = 'Stop'
 $packageRoot = $PSScriptRoot
-$runtimeRoot = if ($StateDir) { $StateDir } else { Join-Path $env:LOCALAPPDATA 'CodexBottomBar' }
+$runtimeRoot = if ($StateDir) { $StateDir } else { Get-CqbStateDir }
 New-Item -ItemType Directory -Path $runtimeRoot -Force | Out-Null
 $nodeExe = Get-CqbNode
 if (-not (Test-Path -LiteralPath $nodeExe -PathType Leaf)) { throw (L '未找到 Codex 自带的 Node.js。' 'Node.js is missing. Extract the complete package again.' 'Node.js が見つかりません 完全なパッケージを再展開してください') }
@@ -11,11 +21,7 @@ $appPackage = Get-AppxPackage -Name 'OpenAI.Codex' | Sort-Object Version -Descen
 if (-not $appPackage) { throw (L '未找到当前用户安装的 Codex 商店版。' 'Codex from the Microsoft Store is not installed for this Windows user.' 'この Windows ユーザーの Microsoft Store 版 Codex が見つかりません') }
 # Renderer interfaces are discovered per capability by the controller; no blanket version gate.
 $appExe = Join-Path $appPackage.InstallLocation 'app\ChatGPT.exe'
-if($env:TIBO_INSTALL_ROOT){
-  $updateRoot=$env:TIBO_INSTALL_ROOT
-  $updateArgs=@(('"'+(Join-Path $updateRoot 'update-cli.mjs')+'"'),'check','--root',('"'+$updateRoot+'"'),'--asar',('"'+(Join-Path $appPackage.InstallLocation 'app\resources\app.asar')+'"'))
-  Start-Process -FilePath (Join-Path $updateRoot 'runtime\node.exe') -ArgumentList $updateArgs -WindowStyle Hidden|Out-Null
-}
+
 if (-not (Test-Path -LiteralPath $appExe -PathType Leaf)) { throw (L 'Codex 可执行文件不存在。' 'The Codex executable was not found.' 'Codex の実行ファイルが見つかりません') }
 $manifest = Get-AppxPackageManifest -Package $appPackage.PackageFullName
 $application = @($manifest.Package.Applications.Application) | Where-Object {
@@ -44,7 +50,7 @@ function Assert-LocalDebugOwner {
 }
 if (-not (Assert-LocalDebugOwner)) {
   $running = @(Get-CodexMain)
-  if ($running.Count -and -not $Restart) { throw (L '请结束正在运行的任务后关闭 Codex，再双击“开启底栏.cmd”；或用 -Restart 明确重启。' 'Finish running tasks, close Codex yourself, then run Start.cmd. The add-on will not force-close Codex.' '実行中のタスクを完了し Codex を終了してから Start.cmd を実行してください') }
+  if ($running.Count -and -not $Restart) { throw (L '请结束正在运行的任务后关闭 Codex，再双击 Start.cmd' 'Finish running tasks, close Codex yourself, then run Start.cmd. The add-on will not force-close Codex.' '実行中のタスクを完了し Codex を終了してから Start.cmd を実行してください') }
   if ($running.Count) {
     foreach ($item in $running) {
       $process = Get-Process -Id $item.ProcessId

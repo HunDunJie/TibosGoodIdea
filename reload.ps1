@@ -1,7 +1,7 @@
 ﻿param([string]$StateDir='')
 . (Join-Path $PSScriptRoot 'launcher-common.ps1')
 $nodeExe=Get-CqbNode
-if(-not $StateDir){$StateDir=Join-Path $env:LOCALAPPDATA 'CodexBottomBar'}
+if(-not $StateDir){$StateDir=Get-CqbStateDir}
 $priorErrorAction=$ErrorActionPreference
 try {
   $ErrorActionPreference='Continue'

@@ -7,10 +7,16 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import net from 'node:net';
 import http from 'node:http';
-const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const source=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 if(process.platform!=='win32'){console.log('Windows installer test skipped');process.exit(0);}
 const tempRoot=await fs.realpath(os.tmpdir());
 const temp=await fs.mkdtemp(path.join(tempRoot,'cqb-install-test-'));
+// Preserve coverage of older installed launchers without shipping those aliases.
+const root=path.join(temp,'legacy source');await fs.mkdir(root);
+const legacyLaunchers=JSON.parse(await fs.readFile(path.join(source,'tests/fixtures/legacy-launchers.json'),'utf8'));
+const legacyFiles=[...new Set([...JSON.parse(await fs.readFile(path.join(source,'release-files.json'),'utf8')),...Object.keys(legacyLaunchers)])];
+for(const name of legacyFiles){await fs.mkdir(path.dirname(path.join(root,name)),{recursive:true});if(Object.hasOwn(legacyLaunchers,name))await fs.writeFile(path.join(root,name),legacyLaunchers[name]);else await fs.copyFile(path.join(source,name),path.join(root,name));}
+await fs.writeFile(path.join(root,'release-files.json'),JSON.stringify(legacyFiles));
 const target=path.join(temp,'installed'), config=path.join(target,'config.local.json');
 let checks=0,passed=false;
 const check=(value,message)=>{assert.ok(value,message);checks++;};

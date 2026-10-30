@@ -9,7 +9,7 @@ import { readFeatureBindings } from './feature-bindings.mjs';
 import {getAdapterCatalog} from './adapter-updates.mjs';
 import {clientFingerprint} from './program-updates.mjs';
 import { ensureWorker, requestWorker } from './worker-client.mjs';
-import { defaultStateDir, controllerPipePath } from './runtime-paths.mjs';
+import { defaultStateDir, controllerPipePath, controllerPortPipe } from './runtime-paths.mjs';
 import { readSystemVolume } from './audio-client.mjs';
 import {saveStateJson} from './state-file.mjs';
 import {checkShutdownNetwork} from './shutdown-engine.mjs';
@@ -96,6 +96,11 @@ await fs.mkdir(runtimeDir, {recursive:true});
 const instance=net.createServer(socket=>socket.end());
 await new Promise((resolve,reject)=>{instance.once('error',reject);instance.listen(controllerPipePath(runtimeDir),resolve)});
 instance.unref();
+// State-directory locks alone cannot prevent two extracted copies injecting
+// into the same Codex. Hold a second process-lifetime lease for the CDP port.
+const clientInstance=net.createServer(socket=>socket.end());
+await new Promise((resolve,reject)=>{clientInstance.once('error',reject);clientInstance.listen(controllerPortPipe(port),resolve)});
+clientInstance.unref();
 if (args.includes('--restore-once')) {
   let restored = 0;
   let prior; try { prior = JSON.parse(await fs.readFile(statePath, 'utf8')); } catch {}
@@ -114,6 +119,7 @@ if (args.includes('--restore-once')) {
   await saveControllerState({pid:null,port,stopped:true,installed:0});
   console.log(JSON.stringify({restored,clientClosed:pages===null}));
   await new Promise(resolve=>instance.close(resolve));
+  await new Promise(resolve=>clientInstance.close(resolve));
   process.exit(0);
 }
 
@@ -249,4 +255,5 @@ try {
   await saveControllerState({pid:null, port, stopped:true, installed:0});
   console.log('Bottom bar restored; controller stopped.');
   await new Promise(resolve=>instance.close(resolve));
+  await new Promise(resolve=>clientInstance.close(resolve));
 }

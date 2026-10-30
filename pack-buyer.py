@@ -3,8 +3,7 @@ from pathlib import Path
 import hashlib,json,zipfile,sys
 root=Path(__file__).resolve().parent
 names='''
-Start.cmd Settings.cmd Restore.cmd StopSound.cmd DisableReset.cmd ExitReminders.cmd Reload.cmd Install.cmd Uninstall.cmd Check.cmd
-开启底栏.cmd 恢复原界面.cmd 停止响铃.cmd 关闭刷新提醒.cmd 退出提醒服务.cmd 设置.cmd 重新加载.cmd 安装.cmd 卸载.cmd
+Start.cmd
 start.ps1 restore.ps1 control-reminders.ps1 launcher-common.ps1 lifecycle-common.ps1 settings.ps1 install.ps1 uninstall.ps1 reload.ps1 check.ps1
 WindowsActivation.cs WindowsAudio.cs audio-host.ps1 audio-client.mjs alarm-worker.mjs worker-client.mjs runtime-paths.mjs state-file.mjs
 bottom-bar.css bottom-bar.js feature-ui.js native-features.js feature-engine.mjs native-bindings.mjs feature-bindings.mjs controller.mjs
@@ -13,9 +12,10 @@ asar-reader.mjs adapter-updates.mjs updates/catalog.json updates/public-key.pem 
 LICENSE LICENSE.zh-CN.md LICENSE.en.md THIRD-PARTY-NOTICES.md QUICKSTART.zh-CN.md QUICKSTART.en.md QUICKSTART.ja.md COMPATIBILITY.md
 sounds/completion.wav sounds/refresh.wav sounds/README.md runtime/node.exe runtime/LICENSE-Node.txt runtime/NOTICE.md
 release-files.json
-Update.cmd 检查更新.cmd bootstrap.ps1 update.ps1 update-cli.mjs program-updates.mjs update-files.mjs update-lease.mjs
+bootstrap.ps1 update.ps1 update-cli.mjs program-updates.mjs update-files.mjs update-lease.mjs
 shutdown-engine.mjs shutdown-system.mjs shutdown-guard.mjs shutdown-task.ps1
 updates/program-catalog.json updates/program-public-key.pem
+portable-runtime.mjs startup-updates.mjs manage.ps1
 '''.split()
 (root/'release-files.json').write_text(json.dumps(names,ensure_ascii=False,indent=2)+'\n',encoding='utf-8',newline='\n')
 missing=[n for n in names if not(root/n).is_file()]

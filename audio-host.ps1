@@ -21,7 +21,7 @@ try {
       switch ($command.method) {
         'check' { [CodexBottomBar.WindowsAudio]::CheckFile([string]$command.path) }
         'play' { [CodexBottomBar.WindowsAudio]::Play([string]$command.path,[string]$command.kind,[bool]$command.notify) }
-        'status' { $result = @{playing=[CodexBottomBar.WindowsAudio]::PlayingKind;notificationsShown=[CodexBottomBar.WindowsAudio]::NotificationsShown;language=[CodexBottomBar.WindowsAudio]::Language;trayLabels=[CodexBottomBar.WindowsAudio]::ReadTrayLabels();codexConfigured=[CodexBottomBar.WindowsAudio]::CodexConfigured} }
+        'status' { $result = @{playing=[CodexBottomBar.WindowsAudio]::PlayingKind;notificationsShown=[CodexBottomBar.WindowsAudio]::NotificationsShown;language=[CodexBottomBar.WindowsAudio]::Language;trayLabels=[CodexBottomBar.WindowsAudio]::ReadTrayLabels();managementLabels=[CodexBottomBar.WindowsAudio]::ReadManagementLabels();codexConfigured=[CodexBottomBar.WindowsAudio]::CodexConfigured} }
         'language' { [CodexBottomBar.WindowsAudio]::SetLanguage([string]$command.language); $result=@{language=[CodexBottomBar.WindowsAudio]::Language} }
         'stop' { [CodexBottomBar.WindowsAudio]::Stop() }
         'shutdown-notice' { [CodexBottomBar.WindowsAudio]::ShutdownNotice([string]$command.time) }

@@ -1,7 +1,15 @@
 ﻿$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding=New-Object Text.UTF8Encoding($false)
+$OutputEncoding=[Console]::OutputEncoding
+function Get-CqbStateDir {
+  if($env:TIBO_STATE_DIR){return $env:TIBO_STATE_DIR}
+  $directory=if($env:TIBO_INSTALL_ROOT){$env:TIBO_INSTALL_ROOT}else{$PSScriptRoot}
+  try {if(([IO.File]::ReadAllText((Join-Path $directory 'install-info.json'))|ConvertFrom-Json).mode -eq 'portable'){return (Join-Path $directory 'data')}} catch {}
+  Join-Path $env:LOCALAPPDATA 'CodexBottomBar'
+}
 function Set-CqbLanguage([string]$StateDir='') {
   $selected=[Globalization.CultureInfo]::CurrentUICulture.Name
-  if(-not $StateDir){$StateDir=Join-Path $env:LOCALAPPDATA 'CodexBottomBar'}
+  if(-not $StateDir){$StateDir=Get-CqbStateDir}
   try {
     $saved=[IO.File]::ReadAllText((Join-Path $StateDir 'codex-language.json'))|ConvertFrom-Json
     if($saved.language -in @('zh-CN','en','ja')){$selected=$saved.language}
@@ -36,4 +44,3 @@ function Get-CqbConfigPath {
   $directory=if($env:TIBO_INSTALL_ROOT){$env:TIBO_INSTALL_ROOT}else{$PSScriptRoot}
   Join-Path $directory 'config.local.json'
 }
-if(-not(Test-Path -LiteralPath (Get-CqbConfigPath))){Save-CqbJson (Get-CqbConfigPath) ([ordered]@{language='auto';timeZone='auto';completionAudio='';refreshAudio=''})}

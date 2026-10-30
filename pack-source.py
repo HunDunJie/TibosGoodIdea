@@ -7,7 +7,7 @@ import zipfile
 root = Path(__file__).resolve().parent
 names = [name for name in json.loads((root/'release-files.json').read_text(encoding='utf-8')) if name!='runtime/node.exe']
 names += """
-.gitignore README.md README.en.md download-runtime.ps1 重启并开启底栏.cmd
+.gitignore README.md README.en.md download-runtime.ps1
 preview.html preview-wide.png preview-narrow.png preview-countdown.png preview-tooltips.png preview-volume-warning.png
 pack-source.py pack-buyer.py pack-seller.py .gitattributes
 scripts/sign-adapters.mjs updates/entries.json updates/README.md docs/automatic-adaptation.md docs/open-source-audit.json
@@ -20,6 +20,8 @@ docs/worker-wake-fix.md docs/worker-wake-verification.json
 tests/engine.test.mjs tests/display.test.mjs tests/locale.test.mjs tests/ui.cjs tests/language.cjs tests/display.cjs tests/volume.cjs tests/native-adapter.cjs tests/send-reset.cjs
 tests/controller.cjs tests/lifecycle.cjs tests/launcher-arguments.cjs tests/worker-integration.mjs tests/install.mjs tests/settings-worker.mjs .github/workflows/test.yml
 """.split()
+names += ['tests/fixtures/legacy-launchers.json']
+names += ['docs/portable-single-entry-design.md','tests/portable.test.mjs','tests/portable.mjs']
 names += ['docs/program-updates-verification.json']
 names += ['docs/scheduled-shutdown-design.md','tests/shutdown.test.mjs','tests/shutdown-system.mjs','tests/shutdown-bindings.test.mjs']
 names += '''

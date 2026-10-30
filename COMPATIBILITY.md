@@ -1,6 +1,6 @@
 # Compatibility / 兼容性
 
-Version 0.8.0-rc.18 · Windows 11 x64 · Microsoft Store Codex
+Version 0.8.0-rc.19 · Windows 11 x64 · Microsoft Store Codex
 
 ## Current evidence / 当前证据
 
@@ -23,7 +23,7 @@ Unverified submission never falls back to guessed network requests or simulated 
 
 ## Adapter updates / 适配更新
 
-The controller checks the fixed public catalog in the background, normally every 12 hours (priority checks after client/capability changes), with a 3.5-second network timeout and bounded download size
+Every Start.cmd launch checks the fixed signed adapter catalog and the separate program catalog, with bounded network timeouts and sizes. Additional controller background checks retain their 12-hour cache and priority checks after client/capability changes
 Ed25519 signatures are verified with the bundled public key, revisions cannot replace a newer verified catalog with an older one, and all local module hashes must match an entry
 Only declarative export mappings are accepted. No remote scripts are evaluated
 Offline, invalid or unavailable updates retain bundled/verified local data; the local syntax recognizer remains available

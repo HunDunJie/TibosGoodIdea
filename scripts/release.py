@@ -57,14 +57,14 @@ def node():
 
 
 def snapshot():
-    names = sorted(set(git('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0'))-{''})
+    candidates = set(git('ls-files', '-z', '--cached', '--others', '--exclude-standard').split('\0'))-{''}
+    # Hash the actual source tree. A removed tracked path must not leave a
+    # staging-only tombstone that disappears on commit and invalidates a build.
+    names = sorted(name for name in candidates if (ROOT/name).is_file())
     h = hashlib.sha256()
     for name in names:
         file = ROOT/name
-        if file.is_file():
-            h.update(name.encode('utf-8')+b'\0'+bytes.fromhex(digest(file)))
-        else:
-            h.update(name.encode('utf-8')+b'\0DELETED')
+        h.update(name.encode('utf-8')+b'\0'+bytes.fromhex(digest(file)))
     return {'version': version(), 'sha256': h.hexdigest(), 'files': names}
 
 

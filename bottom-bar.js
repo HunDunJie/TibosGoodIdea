@@ -5,7 +5,7 @@
   else api.install(window);
 })(function () {
   'use strict';
-  const VERSION = '0.8.0-rc.18';
+  const VERSION = '0.8.0-rc.19';
   const localeAPI = typeof module === 'object' && module.exports ? require('./i18n.js') : null;
   const TIME_MODES_KEY = 'codex-bottom-bar.time-modes.v1';
   const NUMBER = value => typeof value === 'number' && Number.isFinite(value);

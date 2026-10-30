@@ -11,11 +11,20 @@ import {saveStateJson} from './state-file.mjs';
 import {UpdateLease} from './update-lease.mjs';
 import {ShutdownEngine} from './shutdown-engine.mjs';
 import {WindowsShutdown} from './shutdown-system.mjs';
+import {spawn} from 'node:child_process';
+import {portableOwnerPipe} from './runtime-paths.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url)), args = process.argv.slice(2);
 const option = (name,fallback) => args.includes(name) ? args[args.indexOf(name)+1] : fallback;
 const stateDir = path.resolve(option('--state-dir',defaultStateDir()));
 const {version:workerVersion} = JSON.parse(await fs.readFile(path.join(here,'package.json'),'utf8'));
 await fs.mkdir(stateDir,{recursive:true});
+const portableRoot=process.env.TIBO_PORTABLE_ROOT;
+if(portableRoot){
+  const info=JSON.parse(await fs.readFile(path.join(portableRoot,'install-info.json'),'utf8'));
+  if(info.productId!=='bottom-bar-companion'||info.mode!=='portable')throw Error('Invalid portable service owner');
+  const owner=net.createServer(socket=>{socket.on('error',()=>{});socket.end(JSON.stringify({root:path.resolve(portableRoot),stateDir,pid:process.pid})+'\n');});
+  await new Promise((resolve,reject)=>{owner.once('error',reject);owner.listen(portableOwnerPipe(),resolve)});owner.unref();
+}
 const stateFile = path.join(stateDir,'features.json');
 let config = {}, initial = {};
 config = await readConfig(path.resolve(option('--config',path.join(here,'config.local.json'))),stateDir);
@@ -28,10 +37,15 @@ else delete config.codexPath;
 let queue = Promise.resolve(), closing = false, timer = null, updateCommitted=false;
 const serial = action => { const result = queue.then(action); queue = result.catch(() => {}); return result; };
 let engine;
+function manage(action){
+  const root=process.env.TIBO_INSTALL_ROOT??here;
+  const child=spawn('powershell.exe',['-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',path.join(here,'bootstrap.ps1'),'-RootDir',root,'-Script',action==='settings'?'settings.ps1':'manage.ps1','-StateDir',stateDir,...(action==='exit'?['-Action','exit']:[])],{detached:true,windowsHide:true,stdio:'ignore'});
+  child.on('error',()=>{});child.unref();
+}
 const updateLease = new UpdateLease();
 const audio = new WindowsAudioClient(config,event => {
   if (closing) return;
-  if(engine?.shutdown&&['disable-shutdown','shutdown','player-exited'].includes(event.event))engine.shutdown.cancelEpoch++;
+  if(engine?.shutdown&&['disable-shutdown','shutdown','player-exited','exit-tibo'].includes(event.event))engine.shutdown.cancelEpoch++;
   void serial(async () => {
     if (event.event === 'stop') await engine.stop(event.reason);
     if (event.event === 'disable-refresh') await engine.toggle('refresh',false);
@@ -39,6 +53,9 @@ const audio = new WindowsAudioClient(config,event => {
     if (event.event === 'disable-shutdown') await engine.shutdown.disable();
     if (event.event === 'player-exited' && engine.shutdown.state.enabled) await engine.shutdown.disable();
     if (event.event === 'shutdown') await shutdown(true);
+    if (event.event === 'settings') manage('settings');
+    if (event.event === 'open-folder') {const child=spawn('explorer.exe',[process.env.TIBO_INSTALL_ROOT??here],{windowsHide:true,stdio:'ignore'});child.on('error',()=>{});child.unref();}
+    if (event.event === 'exit-tibo') {await engine.shutdown.disable();manage('exit');}
     if (event.event === 'player-exited' && engine.state.ringing) { const kind=engine.state.ringing.kind; engine.state.ringing = null; engine.state[`${kind}Error`] = '播放器意外退出，可重新开关提醒'; await engine.commit(); }
   });
 });

@@ -64,7 +64,7 @@ function Start-CqbController([string]$NodeExe,[string]$PackageRoot,[string]$Stat
     }
     $reply=Invoke-CqbWorker $NodeExe $PackageRoot $StateDir 'start-configured'
     if($reply.ExitCode -ne 0){throw (L '提醒服务无法应用当前设置，请稍后重试' 'The reminder service could not apply these settings. Try again shortly.' '通知サービスに設定を反映できません 少し待って再試行してください')}
-    if($reuse){Write-Host (L '底栏控制器已在运行。' 'The add-on is already running. Use Reload.cmd to apply new settings.' 'ボトムバーはすでに動作中です 新しい設定は Reload.cmd で反映してください');return}
+    if($reuse){Write-Host (L '底栏控制器已在运行。' 'The add-on is already running. Settings apply on the next launch.' 'ボトムバーはすでに動作中です 設定は次回起動時に反映されます');return}
     $controllerPath=Join-Path $PackageRoot 'controller.mjs'
     $arguments=@(('"'+$controllerPath+'"'),'--port',([string]$Port),'--state-dir',('"'+$StateDir+'"'))
     if($env:TIBO_INSTALL_ROOT){$arguments+=@('--config',('"'+(Get-CqbConfigPath)+'"'))}

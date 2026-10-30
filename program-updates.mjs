@@ -28,8 +28,8 @@ export function verifyProgramCatalog(envelope,key){
   }
   return data;
 }
-export function selectRelease(catalog,{version,channel=version.includes('-')?'preview':'stable',client,manual=false,quarantined=[]}){
-  return catalog.releases.filter(r=>compareVersion(r.version,version)>0&&(r.channel===channel||channel==='preview'&&r.channel==='stable')&&r.minimumUpdater<=UPDATER_PROTOCOL&&r.stateSchema===1&&r.clients.includes(client)&&(!quarantined.includes(r.sha256))&&(manual||r.kind==='fix')).sort((a,b)=>compareVersion(b.version,a.version))[0]??null;
+export function selectRelease(catalog,{version,channel=version.includes('-')?'preview':'stable',client,manual=false,automatic=false,quarantined=[]}){
+  return catalog.releases.filter(r=>compareVersion(r.version,version)>0&&(r.channel===channel||channel==='preview'&&r.channel==='stable')&&r.minimumUpdater<=UPDATER_PROTOCOL&&r.stateSchema===1&&r.clients.includes(client)&&(!quarantined.includes(r.sha256))&&(manual||automatic||r.kind==='fix')).sort((a,b)=>compareVersion(b.version,a.version))[0]??null;
 }
 export async function clientFingerprint(asar){
   const archive=await openRendererArchive(asar);
@@ -72,13 +72,16 @@ export async function resolveActive(root,{key}={}){
 export async function stageRelease(root,release,envelope,{key,fetchImpl=fetch,signal=AbortSignal.timeout(120000),health=offlineHealth}={}){
   if(!verifyProgramCatalog(envelope,key).releases.some(r=>JSON.stringify(r)===JSON.stringify(release)))throw Error('Unsigned release');
   root=await managedRoot(root);await noLinks(root,path.join(root,'versions'));await fs.mkdir(path.join(root,'versions'),{recursive:true});
+  const relative=`versions/${release.version}-${release.sha256.slice(0,12)}`,directory=versionPath(root,relative);
+  if(await fs.stat(directory).catch(()=>null)){
+    try{const ready=await verifyVersion(root,relative,key);if(ready.release.manifestSha256!==release.manifestSha256)throw Error('Prepared inventory mismatch');return relative;}
+    catch(e){e.rejectCandidate=true;throw e;}
+  }
   const storage=await fs.statfs(root);if(storage.bavail*storage.bsize<release.bytes+256*1024*1024)throw Error('Insufficient update disk space');
   const bytes=await boundedFetch(release.url,{fetchImpl,limit:release.bytes,signal});if(bytes.length!==release.bytes||sha256(bytes)!==release.sha256)throw Error('Downloaded program checksum mismatch');
   let pkg;try{pkg=readPackage(bytes);if(pkg.manifestSha256!==release.manifestSha256)throw Error('Signed inventory mismatch');}catch(e){e.rejectCandidate=true;throw e;}
   const product=JSON.parse(pkg.entries.get('product.json')??'null');if(product?.version!==release.version||product.productId!=='bottom-bar-companion')throw Error('Downloaded product mismatch');
   if(!pkg.entries.get('updates/program-public-key.pem')?.equals(Buffer.from(key)))throw Error('Automatic trust-key replacement is not allowed');
-  const relative=`versions/${release.version}-${release.sha256.slice(0,12)}`,directory=versionPath(root,relative);
-  if(await fs.stat(directory).catch(()=>null)){await verifyVersion(root,relative,key);return relative;}
   const staging=path.join(root,'versions','.incoming-'+randomUUID());await fs.mkdir(staging);const written=[];
   try{
     for(const [name,data] of pkg.entries){const file=path.join(staging,name);await fs.mkdir(path.dirname(file),{recursive:true});await fs.writeFile(file,data,{flag:'wx'});written.push(name);}
@@ -99,24 +102,24 @@ export async function offlineHealth(directory){
     child.once('error',e=>{clearTimeout(timer);reject(e)});child.once('exit',code=>{clearTimeout(timer);code===0?resolve():reject(Error('New version PowerShell syntax check failed'));});
   });
 }
-export async function checkProgramUpdates(root,{client,key,fetchImpl=fetch,now=Date.now(),signal,manual=false,health}={}){
+export async function checkProgramUpdates(root,{client,key,fetchImpl=fetch,now=Date.now(),signal,manual=false,automatic=false,force=false,health}={}){
   root=await managedRoot(root);key??=await fs.readFile(path.join(root,'updates/program-public-key.pem'),'utf8');
   const statePath=path.join(root,'program-update-state.json');let state=await json(statePath,{});
   const active=await resolveActive(root,{key}),product=await json(path.join(active,'product.json'));
   const elapsed=now-(state.checkedAt??0),priority=client&&state.client!==client;
-  if(!manual&&elapsed>=0&&elapsed<(priority?Math.min(state.retryAfter??300000,300000):(state.retryAfter??INTERVAL)))return {status:'cached'};
+  if(!force&&!manual&&elapsed>=0&&elapsed<(priority?Math.min(state.retryAfter??300000,300000):(state.retryAfter??INTERVAL)))return {status:'cached'};
   let candidate=null;
   try{
     const bytes=await boundedFetch(PROGRAM_URL,{fetchImpl,limit:MAX_INDEX*2,signal:signal?AbortSignal.any([signal,AbortSignal.timeout(3500)]):AbortSignal.timeout(3500)}),envelope=JSON.parse(bytes),catalog=verifyProgramCatalog(envelope,key);
     const floor=await json(path.join(root,'program-update-floor.json'),{revision:0});if(catalog.revision<Math.max(floor.revision,state.revision??0))throw Error('Program catalog rollback rejected');
     await atomic(root,'program-update-floor.json',{revision:catalog.revision});
     const quarantine=(state.quarantine??[]).filter(v=>v.client===client).map(v=>v.sha256);
-    const release=selectRelease(catalog,{version:product.version,client,manual,quarantined:quarantine});candidate=release;
+    const release=selectRelease(catalog,{version:product.version,client,manual,automatic,quarantined:quarantine});candidate=release;
     const available=selectRelease(catalog,{version:product.version,client,manual:true,quarantined:quarantine});
     state={...state,checkedAt:now,client,revision:catalog.revision,retryAfter:null,failures:0,available:available?.version??null,status:release?'downloading':available?'optional':'current'};
     // Every successful index replaces the pending decision, so a withdrawn release cannot activate.
     await atomic(root,'pending-release.json',null);await atomic(root,'program-update-state.json',state);
-    if(release){const relative=await stageRelease(root,release,envelope,{key,fetchImpl,signal,health});signal?.throwIfAborted();await atomic(root,'pending-release.json',{relative,envelope,sha256:release.sha256,client,checkedAt:now,manual});state.status='ready';await atomic(root,'program-update-state.json',state);}
+    if(release){const relative=await stageRelease(root,release,envelope,{key,fetchImpl,signal,health});signal?.throwIfAborted();await atomic(root,'pending-release.json',{relative,envelope,sha256:release.sha256,client,checkedAt:now,manual,automatic});state.status='ready';await atomic(root,'program-update-state.json',state);}
     return {status:state.status,available:state.available};
   }catch(error){state={...state,checkedAt:now,client,failures:(state.failures??0)+1,status:'offline',error:String(error.message).slice(0,160)};if(error.rejectCandidate&&candidate)state.quarantine=[...(state.quarantine??[]).slice(-19),{client,sha256:candidate.sha256}];state.retryAfter=Math.min(INTERVAL,300000*2**Math.min(7,state.failures-1));await atomic(root,'program-update-state.json',state);return {status:'offline'};}
 }
@@ -139,7 +142,7 @@ export async function activatePending(root,{client,key,stateDir,codexRunning=fal
   const catalog=verifyProgramCatalog(pending.envelope,key),release=catalog.releases.find(r=>r.sha256===pending.sha256);
   const current=await resolveActive(root,{key}),version=(await json(path.join(current,'product.json'))).version;
   const state=await json(path.join(root,'program-update-state.json'),{});
-  if(!release||!selectRelease({releases:[release]},{version,client,manual:pending.manual===true,quarantined:(state.quarantine??[]).filter(q=>q.client===client).map(q=>q.sha256)}))return {status:'deferred',reason:'ineligible'};
+  if(!release||!selectRelease({releases:[release]},{version,client,manual:pending.manual===true,automatic:pending.automatic===true,quarantined:(state.quarantine??[]).filter(q=>q.client===client).map(q=>q.sha256)}))return {status:'deferred',reason:'ineligible'};
   let staged;
   try{staged=await verifyVersion(root,pending.relative,key);await health(staged.directory);}
   catch(error){state.quarantine=[...(state.quarantine??[]).slice(-19),{client,sha256:release.sha256}];state.status='rejected';await atomic(root,'program-update-state.json',state);await atomic(root,'pending-release.json',null);return {status:'rejected',error:String(error.message).slice(0,160)};}

@@ -27,6 +27,10 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     controller.on('exit',() => { exited = true; }); controller.stdout.on('data',c => output += c); controller.stderr.on('data',c => output += c);
     await page.waitForFunction(() => window.__cqbFeatures?.status().connected,null,{timeout:18000});
     assert.equal(await page.evaluate(() => typeof window.__cqbPreviewHost),'undefined','real CDP binding, not preview mock');
+    const foreignState=path.join(runtime,'second-copy');await fs.mkdir(foreignState);await fs.writeFile(path.join(foreignState,'controller.json'),'sentinel');
+    const duplicate=spawn(process.execPath,[path.join(root,'controller.mjs'),'--port','9557','--state-dir',foreignState,'--no-features'],{windowsHide:true,stdio:'ignore'});
+    assert.notEqual(await new Promise((resolve,reject)=>{duplicate.once('exit',resolve);duplicate.once('error',reject)}),0,'Different folders cannot own the same client port');
+    assert.equal(await fs.readFile(path.join(foreignState,'controller.json'),'utf8'),'sentinel');
     let state;
     for(let i=0;i<50;i++){state=JSON.parse(await fs.readFile(path.join(runtime,'controller.json'),'utf8'));if(state.installed===1)break;await sleep(100)}
     assert.equal(state.installed,1,'Controller reports the attached page after startup acknowledgement');

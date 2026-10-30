@@ -9,7 +9,7 @@ SHA-256: d702daa815eabbff763c7d3808e235cf031cf2ca70211b56847bc72f51e240e5
 
 Node.js and its dependencies retain the copyright notices and licenses reproduced
 in runtime/LICENSE-Node.txt. runtime/NOTICE.md records the runtime source.
-The add-on's commercial license does not override those permissions.
+The add-on's GPL license does not override those permissions.
 
 ## Codex / OpenAI
 
@@ -20,10 +20,26 @@ OpenAI terms govern the user's Codex service separately.
 
 ## Original add-on materials
 
-Original code, thin-line SVG icons and synthesized WAV sequences in this release
-are covered by LICENSE and the two language versions of the commercial self-use
-license. No seller's private game music or account screenshots are included.
+Original code, thin-line SVG icons and documentation in this release
+are covered by GNU GPL version 3 only; see LICENSE and the license scope summaries. No account screenshots are included.
+
+## Bundled reminder music / 内置提醒音乐
+
+The project owner selected BGM_JuShang.wav for completion reminders and
+BGM_DuDuan.wav for reset reminders. They are bundled without conversion as
+sounds/completion.wav and sounds/refresh.wav. See sounds/README.md for checksums
+and file details. The recordings retain their original rights; the software code
+license does not grant a separate right to reuse them outside this tool.
+
+内置完成提醒使用 BGM_JuShang，刷新提醒使用 BGM_DuDuan，按用户要求原样打包
+音乐保留其原有权利，软件代码的许可不单独授予将音乐用于本工具之外的权利
 
 本包的 Node.js 及其依赖遵循原许可证，详见 runtime/LICENSE-Node.txt
-商业自用许可不覆盖这些第三方权利，也不授予 Codex 服务或软件的权利
+本项目的 GPL 不改变这些第三方权利，也不授予 Codex 服务或软件的权利
 本工具的测试依赖 Playwright 不随买家包分发，源码备份只记录开发依赖声明
+
+## Acorn 8.15.0
+
+The bundled parser is Acorn 8.15.0 from https://registry.npmjs.org/acorn/-/acorn-8.15.0.tgz
+It retains its MIT license and contributor copyrights in vendor/acorn/LICENSE
+Tarball SHA-512: NZyJarBfL7nWwIq+FDL6Zp/yHEhePMNnnJ0y3qfieCrmNvYct8uvtiV41UvlSe6apAfk0fY1FbWx+NwfmpvtTg==

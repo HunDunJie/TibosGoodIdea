@@ -1,17 +1,19 @@
-# Tibo’s Good Idea commercial self-use license — draft
+# License scope
 
 Copyright (c) 2026 Codex Bottom Bar contributors
 Copyright (c) 2026 由龙见象
 
-This is a private release candidate, not a public offer for sale. Commercial
-distribution of this Codex integration awaits a response from OpenAI support.
-These terms cover the seller's own materials, not permission from OpenAI.
+The original code, original SVG icons and documentation are licensed under GNU GPL
+version 3 only (SPDX: GPL-3.0-only). The complete authoritative text is in LICENSE.
+You may use, study, modify and sell copies. When conveying modified versions,
+comply with GPLv3, including its corresponding source, license and notice requirements.
+This summary does not replace the license.
 
-1. A purchaser may install and use this version on Windows devices they use, for personal or commercial work, without a separate subscription to this add-on. They may keep backups and modify the add-on for their own use.
-2. A purchase does not transfer copyright or include a Codex account, subscription, quota or any rights to OpenAI software. It does not authorize resale, public upload, download hosting or bulk distribution of this release's original code, icons, tones or package, unless separately agreed in writing.
-3. Bundled Node.js and its third-party components retain their respective licenses. These terms do not restrict rights expressly granted by those licenses. See THIRD-PARTY-NOTICES.md and runtime/LICENSE-Node.txt.
-4. Ensure that you may use your chosen music and the Codex service. Send on reset submits your existing drafts; review them before enabling it.
-5. Support is limited to the environment in COMPATIBILITY.md. Codex updates may break compatibility. No permanent compatibility, free adaptation to future versions or fixed support response time is promised. Contact the seller through your purchase order for installation problems.
-6. If the package fails in the declared supported environment and cannot be repaired, request a refund through the order. Platform rules and applicable law apply. Mandatory consumer rights are not excluded.
+Third-party components retain their licenses (THIRD-PARTY-NOTICES.md). Bundled
+recordings retain their original rights (sounds/README.md); they are separate
+assets and are not relicensed under GPL.
 
-These terms do not retroactively revoke any previously valid license or alter third-party rights.
+This license covers our own materials and grants no rights to OpenAI software,
+accounts, services or trademarks. This independent add-on has no OpenAI endorsement
+or confirmed approval of this integration. Earlier valid grants are not retroactively
+revoked. The GPL warranty disclaimer applies.

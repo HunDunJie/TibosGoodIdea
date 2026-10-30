@@ -1,0 +1,28 @@
+{
+  "date": "2026-10-30",
+  "scope": "Git tracked and non-ignored project files; all current Git history blobs, excluding binary contents",
+  "workingTextFiles": 143,
+  "historicalTextBlobs": 179,
+  "privateFiles": [],
+  "secretMatches": [],
+  "historicalSecretMatches": [],
+  "personalPathFiles": [],
+  "historicalPrivatePathFiles": [],
+  "imageFiles": [
+    "preview-countdown.png",
+    "preview-narrow.png",
+    "preview-tooltips.png",
+    "preview-volume-warning.png",
+    "preview-wide.png",
+    "sales/assets/bottom-bar-en.png",
+    "sales/assets/bottom-bar-zh-CN.png",
+    "sales/assets/cover.en.png",
+    "sales/assets/cover.zh-CN.png",
+    "sales/assets/settings.en.png",
+    "sales/assets/settings.ja.png"
+  ],
+  "imageReview": "All 11 repository PNGs reviewed as one contact sheet; demonstration UI only, no real account or conversation screenshot",
+  "codexSourceIncluded": false,
+  "privateConfigTracked": false,
+  "liveCodexModified": false
+}

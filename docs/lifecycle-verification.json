@@ -1,0 +1,20 @@
+{
+  "version": "0.8.0-rc.5",
+  "date": "2026-10-30",
+  "baseline": "9cc2ca0baa944a03e208e63183ee9caf4b8c4979",
+  "unitTests": {"passed": true, "count": 29},
+  "installer": {"passed": true, "checks": 92, "isolatedShortcuts": true, "absentWorkerUninstall": true, "englishAndChineseSelfUninstall": true, "busyUpgradeRejectedBeforeWrite": true, "failedUpgradeByteForByteRollback": true, "failedFirstInstallCleanup": true, "foreignShortcutsPreserved": true},
+  "controllerLifecycle": {"passed": true, "concurrentCopies": true, "sameCopyReused": true, "priorControllerExitedBeforeHandoff": true, "directDuplicateRejected": true, "switchesPreserved": true, "alarmPreserved": true, "armedSendPreserved": true, "restoreWithoutReinjection": true},
+  "existingControllerIntegration": {"passed": true, "realLocalCdpBridge": true, "reload": true, "restore": true},
+  "settingsWorkerIntegration": {"passed": true, "threeLanguages": true, "switchesPreserved": true, "alarmPreserved": true, "armedSendPreserved": true},
+  "powerShellParse": true,
+  "gitDiffCheck": true,
+  "existingLegacyControllerRecognizedReadOnly": true,
+  "privateConfigSha256": "74d11d3874b3635295f1284865ee0672aab0d182541402487e110a0286d8e306",
+  "realCodexRestarted": false,
+  "liveReminderSwitchesChangedByTests": false,
+  "realDesktopShortcutsChangedByTests": false,
+  "realDraftsSent": false,
+  "musicPlayed": false,
+  "fullClientManualAcceptance": "pending"
+}

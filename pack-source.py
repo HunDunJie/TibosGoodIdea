@@ -1,4 +1,4 @@
-"""Private seller source backup, never a public buyer deliverable. Never include user music, settings, logs or screenshots."""
+"""GPL corresponding source with original asset notices; no personal settings or logs."""
 from pathlib import Path
 import hashlib
 import json
@@ -9,10 +9,16 @@ names = [name for name in json.loads((root/'release-files.json').read_text(encod
 names += """
 .gitignore README.md README.en.md download-runtime.ps1 重启并开启底栏.cmd
 preview.html preview-wide.png preview-narrow.png preview-countdown.png preview-tooltips.png preview-volume-warning.png
-pack-source.py pack-buyer.py pack-seller.py make-tones.py .gitattributes
-docs/PROJECT.md docs/migration.json docs/migration-verification.json docs/language-follow.md docs/rename.md
-tests/engine.test.mjs tests/display.test.mjs tests/locale.test.mjs tests/ui.cjs tests/language.cjs tests/display.cjs tests/volume.cjs tests/native-adapter.cjs
-tests/controller.cjs tests/worker-integration.mjs tests/install.mjs tests/settings-worker.mjs .github/workflows/test.yml
+pack-source.py pack-buyer.py pack-seller.py .gitattributes
+scripts/sign-adapters.mjs updates/entries.json updates/README.md docs/automatic-adaptation.md docs/open-source-audit.json
+docs/release-notes-rc14.md
+tests/bindings.test.mjs tests/adapter-updates.test.mjs
+docs/PROJECT.md docs/migration.json docs/migration-verification.json docs/language-follow.md docs/rename.md docs/lifecycle-fixes.md docs/lifecycle-verification.json docs/stale-state-fixes.md docs/stale-state-verification.json docs/recheck-fixes.md docs/recheck-verification.json docs/reset-send-fix.md docs/reset-send-verification.json
+docs/review-rc9.md docs/review-rc9-verification.json
+docs/launcher-path-fix.md docs/launcher-path-verification.json
+docs/worker-wake-fix.md docs/worker-wake-verification.json
+tests/engine.test.mjs tests/display.test.mjs tests/locale.test.mjs tests/ui.cjs tests/language.cjs tests/display.cjs tests/volume.cjs tests/native-adapter.cjs tests/send-reset.cjs
+tests/controller.cjs tests/lifecycle.cjs tests/launcher-arguments.cjs tests/worker-integration.mjs tests/install.mjs tests/settings-worker.mjs .github/workflows/test.yml
 """.split()
 sales_names = json.loads((root/'sales/source-files.json').read_text(encoding='utf-8'))
 names += ['sales/'+name for name in sales_names]
@@ -25,7 +31,7 @@ for name, file in files:
 version = json.loads((root / "package.json").read_text(encoding="utf-8"))["version"]
 output_dir = root / "dist"
 output_dir.mkdir(exist_ok=True)
-output = output_dir / f"TibosGoodIdea-{version}-private-source.zip"
+output = output_dir / f"TibosGoodIdea-{version}-source.zip"
 with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
     for name, file in files:
         archive.write(file, "TibosGoodIdea/" + name)

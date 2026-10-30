@@ -1,9 +1,9 @@
 {
   "name": "tibos-good-idea",
-  "version": "0.8.0-rc.4",
+  "version": "0.8.0-rc.14",
   "description": "Windows Codex single-row navigation, quota display and independent music reminders",
   "private": true,
-  "license": "SEE LICENSE IN LICENSE",
+  "license": "GPL-3.0-only",
   "engines": {
     "node": ">=22"
   },
@@ -14,12 +14,19 @@
     "test:volume": "node tests/volume.cjs",
     "test:adapter": "node tests/native-adapter.cjs",
     "test:controller": "node tests/controller.cjs",
+    "test:lifecycle": "node tests/lifecycle.cjs",
+    "test:launcher": "node tests/launcher-arguments.cjs",
     "test:worker": "node tests/worker-integration.mjs",
     "test:install": "node tests/install.mjs",
     "test:settings": "node tests/settings-worker.mjs",
-    "test:language": "node tests/language.cjs"
+    "test:language": "node tests/language.cjs",
+    "test:send-reset": "node tests/send-reset.cjs"
   },
   "devDependencies": {
     "playwright": "1.62.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/HunDunJie/TibosGoodIdea.git"
   }
 }

@@ -26,15 +26,28 @@
       const entry = [...doc.scripts].find(s => /\/index-[^/]+\.js(?:\?|$)/.test(s.src));
       if (!entry) throw new Error(t('找不到客户端模块入口'));
       const base = new URL('.',entry.src), [initial,shared] = await Promise.all([import(new URL(p.initial,base).href),import(new URL(p.shared,base).href)]);
-      initial[p.initEvents](); initial[p.initComposer]();
-      const result = {p,initial,shared,scope:shared[p.scope],composerScope:initial[p.composerScope]};
-      if (!result.scope || !initial[p.completionEvent] || typeof initial[p.readStorage] !== 'function') throw new Error(t('客户端功能接口不可用'));
+      const result = {p,initial,shared,scope:shared[p.scope],support:{completion:false,send:false},reasons:{}};
+      if (!result.scope) throw new Error(t('客户端功能接口不可用'));
+      for (const feature of ['completion','send']) {
+        if (p.capabilities?.[feature] === false) { result.reasons[feature]=t('客户端功能接口不可用'); continue; }
+        try {
+          const inits=feature==='completion' ? [p.initEvents] : p.initSend ?? [p.initComposer];
+          for (const name of new Set(inits)) {
+            if (typeof initial[name] !== 'function') throw new Error(t('客户端功能接口不可用'));
+            initial[name]();
+          }
+          if (feature==='completion' && !initial[p.completionEvent]) throw new Error(t('客户端功能接口不可用'));
+          if (feature==='send' && (!initial[p.composerScope] || typeof initial[p.readStorage] !== 'function' || !initial[p.navigation] || !initial[p.conversationBinding] || !initial[p.host] || p.navigationMode!=='native-method' && typeof initial[p.navigateLocal]!=='function')) throw new Error(t('客户端功能接口不可用'));
+          result.support[feature]=true;
+        } catch (error) { result.reasons[feature]=error.message; }
+      }
+      result.composerScope=initial[p.composerScope];
       api = result; return result;
     })().catch(error => { loading = null; throw error; });
     return loading;
   }
   function rootStore() {
-    const avatar = doc.querySelector('nav[data-app-navigation-rail] button:is([aria-label*="个人资料"],[aria-label*="profile" i],[aria-label="账户"],[aria-label*="account" i])');
+    const avatar = doc.querySelector('nav[data-app-navigation-rail] button:is([aria-label*="个人资料"],[aria-label*="profile" i],[aria-label="账户"],[aria-label*="account" i],[aria-label*="プロフィール"],[aria-label*="アカウント"])');
     return api ? findStore(avatar,api.scope) : null;
   }
   function identity(store = rootStore()) {
@@ -97,19 +110,26 @@
     async connect(onCompletion) {
       await init(); const store = rootStore(); if (!store) throw new Error(t('尚未取得客户端状态'));
       unsubscribe?.(); let first = true, previous;
-      unsubscribe = store.watch(({get}) => {
+      unsubscribe = null;
+      const capabilities={...api.support,reasons:{...api.reasons}};
+      if (capabilities.completion) try { unsubscribe = store.watch(({get}) => {
         const event = get(api.initial[api.p.completionEvent]);
         if (first) { first = false; previous = event; return; }
         if (!event || event === previous || disposed) return;
         previous = event;
         onCompletion({hostId:event.hostId,conversationId:event.conversationId,turnId:event.turnId,status:event.status,hasPendingContinuation:!!event.hasPendingContinuation});
-      });
-      return {completion:true,send:true};
+      }); } catch { capabilities.completion=false; capabilities.reasons.completion=t('客户端功能接口不可用'); }
+      if (capabilities.send) try {
+        const nav=store.get(api.initial[api.p.navigation]);
+        if (typeof nav?.navigate!=='function' || api.p.navigationMode==='native-method' && typeof nav.navigateToLocalConversation!=='function') throw Error();
+      } catch { capabilities.send=false; capabilities.reasons.send=t('客户端功能接口不可用'); }
+      return capabilities;
     },
     identity,
     async refreshQuota() { const value = identity(); if (value) await value.client.refetchQueries({queryKey:['rate-limit-status'],exact:true,type:'all'}); },
     async sendRound({isCurrent = () => true} = {}) {
       await init(); const store = rootStore(), account = identity(store)?.accountId;
+      if (!api.support.send) throw new Error(t('客户端功能接口不可用'));
       if (!account) throw new Error(t('当前账户和额度数据不一致'));
       const all = drafts(store,account), original = `${location.pathname}${location.search}${location.hash}`;
       const nav = store.get(api.initial[api.p.navigation]);
@@ -120,7 +140,13 @@
           const fresh = drafts(store,account).find(d => d.kind === draft.kind && d.id === draft.id);
           if (!fresh || fresh.stamp !== draft.stamp) { results.skipped++; continue; }
           try {
-            if (draft.kind === 'local') await api.initial[api.p.navigateLocal](store,draft.id,store.get(api.initial[api.p.host],draft.id));
+            if (draft.kind === 'local') {
+              const host=store.get(api.initial[api.p.host],draft.id);
+              const navigated=api.p.navigationMode==='native-method'
+                ? await nav.navigateToLocalConversation(draft.id,host==='local' ? undefined : host)
+                : await api.initial[api.p.navigateLocal](store,draft.id,host);
+              if(navigated===false)throw new Error(t('客户端功能接口不可用'));
+            }
             else await nav.navigate(draft.kind === 'chatgpt' ? `/c/${encodeURIComponent(draft.id)}` : `/remote/${encodeURIComponent(draft.id)}`);
             let composer, submit;
             for (let i = 0; i < 100; i++) {

@@ -40,7 +40,8 @@ export class FeatureEngine {
       if (this.state.send.phase === 'running') throw new Error('正在发送，请等待本轮结束');
       const reset = this.quota?.resetsAt;
       if (enabled && (!reset || reset <= this.now())) throw new Error('尚未取得下一次五小时重置时间，请稍后再开启');
-      this.state.send = enabled ? {phase:'armed', id:randomUUID(), target:reset, account:this.quota.account, remaining:this.quota.remaining, armedAt:this.now()} : {phase:'off'};
+      this.state.send = enabled ? {phase:'armed', id:randomUUID(), target:reset, account:this.quota.account, remaining:this.quota.remaining,
+        availableResets:this.quota.availableResets, quotaUpdatedAt:this.quota.updatedAt, armedAt:this.now()} : {phase:'off'};
     } else if (feature === 'completion' || feature === 'refresh') {
       if (enabled) await this.audio.check(feature); // Fail visibly if no playable file exists.
       this.state[`${feature}Enabled`] = enabled; delete this.state[`${feature}Error`];
@@ -55,6 +56,7 @@ export class FeatureEngine {
   schedule() {
     if (!this.state.refreshEnabled || !this.quota?.resetsAt) return;
     const {account, resetsAt} = this.quota;
+    if (resetsAt <= (this.state.refreshResetAfter ?? 0)) return;
     const id = `${account}:${resetsAt}`;
     if (this.state.fired.includes(id)) return;
     // A refresh sample can arrive after the old reset, but before its +1 minute alarm.
@@ -72,19 +74,49 @@ export class FeatureEngine {
     if (!sample || sample.resetsAt !== null && !Number.isFinite(sample.resetsAt) || !Number.isFinite(sample.remaining)) return this.status();
     const account = this.account(sample.accountId);
     if (!account) return this.status();
-    // Process an elapsed alarm before replacing its quota cycle.
-    await this.tick();
+    const updatedAt=Number.isFinite(sample.updatedAt) ? sample.updatedAt : 0;
+    const armed=this.state.send;
+    const previousQuota=this.quota ?? this.state.quotaCheckpoint;
+    // Multiple windows may report an older cached sample, including after a restart.
+    if (previousQuota?.account === account && updatedAt < previousQuota.updatedAt ||
+      armed.phase === 'armed' && armed.account === account && updatedAt < (armed.quotaUpdatedAt ?? 0)) return this.status();
     const before = JSON.stringify(this.state);
-    const oldAccount = this.quota?.account ?? this.state.alarm?.account;
+    const oldAccount = previousQuota?.account ?? this.state.alarm?.account;
     if (oldAccount && oldAccount !== account) {
-      this.state.alarm = null; this.state.nextAlarm = null;
+      this.state.alarm = null; this.state.nextAlarm = null; this.state.refreshResetAfter = null;
       if (this.state.send.phase === 'armed') this.state.send = {phase:'cancelled', error:'账户已切换，本轮已取消'};
       if (this.state.ringing) await this.stop('account-change');
     }
-    this.quota = {account, resetsAt:sample.resetsAt, remaining:sample.remaining,
-      updatedAt:Number.isFinite(sample.updatedAt) ? sample.updatedAt : 0};
+    const availableResets=Number.isInteger(sample.availableResets) && sample.availableResets >= 0 ? sample.availableResets : null;
+    const previousResets=previousQuota?.availableResets ?? (this.state.quotaCheckpoint?.account === account ? this.state.quotaCheckpoint.availableResets : null);
+    const resetCardUsed=previousQuota?.account === account && updatedAt > previousQuota.updatedAt &&
+      Number.isInteger(previousResets) && availableResets !== null && availableResets < previousResets;
+    const alarm=this.state.alarm;
+    const correctedReset=alarm?.account === account && updatedAt > (previousQuota?.updatedAt ?? 0) &&
+      updatedAt < alarm.reset && sample.resetsAt !== alarm.reset;
+    // A card or pre-reset correction cancels the obsolete alarm BEFORE tick can play it.
+    // Natural rollover keeps the old reset's +1 minute reminder.
+    if (resetCardUsed || correctedReset) {
+      this.state.alarm=null; this.state.nextAlarm=null; this.state.refreshResetAfter=updatedAt;
+    }
+    // Cancel the old account first; only its own samples may fire its elapsed alarm.
+    await this.tick();
+    this.quota = {account, resetsAt:sample.resetsAt, remaining:sample.remaining, availableResets, updatedAt};
+    // Persist only quota metadata; a fresh native response is still required to claim a send.
+    this.state.quotaCheckpoint={account,availableResets:availableResets ?? (previousQuota?.account === account ? previousResets : null),updatedAt};
     const send = this.state.send;
     if (send.phase === 'armed' && send.account !== account) this.state.send = {phase:'cancelled', error:'账户已切换，本轮已取消'};
+    else if (send.phase === 'armed' && updatedAt > (send.quotaUpdatedAt ?? 0)) {
+      const cardUsed=Number.isInteger(send.availableResets) && this.quota.availableResets !== null && this.quota.availableResets < send.availableResets;
+      // Before the target, changed reset times belong to a rescheduled cycle.
+      // At/after the target, a normal rollover must remain eligible for this round.
+      if (cardUsed || sample.resetsAt !== send.target && (send.target === null || updatedAt < send.target)) {
+        send.target=sample.resetsAt !== null && sample.resetsAt <= updatedAt ? null : sample.resetsAt;
+        send.remaining=sample.remaining;
+      }
+      send.quotaUpdatedAt=updatedAt;
+      if(this.quota.availableResets !== null)send.availableResets=this.quota.availableResets;
+    }
     this.schedule(); if (before !== JSON.stringify(this.state)) await this.commit(); return this.status();
   }
   async tick() {
@@ -106,7 +138,7 @@ export class FeatureEngine {
   }
   async claimSend() {
     const s = this.state.send, q = this.quota;
-    if (s.phase !== 'armed' || !q || this.now() < s.target || q.account !== s.account) return null;
+    if (s.phase !== 'armed' || !Number.isFinite(s.target) || !q || this.now() < s.target || q.account !== s.account) return null;
     if (this.now() > s.target + 5 * 3600000) {
       this.state.send = {phase:'expired', error:'错过本轮刷新，已关闭；没有发送草稿'}; await this.commit(); return null;
     }

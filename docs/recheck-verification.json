@@ -1,0 +1,23 @@
+{
+  "version": "0.8.0-rc.7",
+  "date": "2026-10-30",
+  "baseline": "9cc2ca0baa944a03e208e63183ee9caf4b8c4979",
+  "unitTests": {"passed": true, "count": 30, "dueAlarmCancelledBeforeAccountChangePlayback": true},
+  "nativeAdapter": {"passed": true, "threeNativeProfileLanguages": true, "threeDirectUsageLanguages": true, "nativeSubmissionDelegation": true, "draftAliasDeduplication": true, "changedDraftPreserved": true, "failedDraftPreserved": true, "accountSwitchStopsRound": true, "roundCancellation": true, "allHostCompletionSubscription": true},
+  "languageUi": {"passed": true, "checks": 33, "liveLanguageChanges": true, "retainsTooltip": true, "preservesFeatureState": true},
+  "settingsWorker": {"passed": true, "transientFeatureStateLock": true, "transientLanguageStateLock": true, "sameWorkerAfterLocks": true, "threeTrayLanguages": true, "schedulePreserved": true, "armedSendPreserved": true},
+  "installer": {"passed": true, "checks": 102},
+  "controllerLifecycle": {"passed": true, "concurrentCopies": true, "reusedPidStartup": true, "unrelatedProcessPreserved": true, "orphanedRendererRecovery": true, "switchesAndSchedulesPreserved": true},
+  "controllerIntegration": {"passed": true, "localCdpBridge": true, "reload": true, "restore": true},
+  "nodeSyntax": true,
+  "powerShellParse": true,
+  "scriptEncodingAndLineEndings": true,
+  "gitDiffCheck": true,
+  "privateConfigSha256": "74d11d3874b3635295f1284865ee0672aab0d182541402487e110a0286d8e306",
+  "realCodexRestarted": false,
+  "liveReminderSwitchesChangedByTests": false,
+  "realDraftsSent": false,
+  "musicPlayed": false,
+  "reminderNotificationsShown": false,
+  "fullClientManualAcceptance": "pending"
+}

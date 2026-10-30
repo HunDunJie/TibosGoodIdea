@@ -1,15 +1,19 @@
 import {readConfig} from './locale-config.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { readNativeBindings } from './native-bindings.mjs';
 import { readFeatureBindings } from './feature-bindings.mjs';
+import {getAdapterCatalog} from './adapter-updates.mjs';
 import { ensureWorker, requestWorker } from './worker-client.mjs';
-import { defaultStateDir } from './runtime-paths.mjs';
+import { defaultStateDir, controllerPipePath } from './runtime-paths.mjs';
 import { readSystemVolume } from './audio-client.mjs';
+import {saveStateJson} from './state-file.mjs';
 
 const packageDir = path.dirname(fileURLToPath(import.meta.url));
+const packageVersion=JSON.parse(await fs.readFile(path.join(packageDir,'package.json'),'utf8')).version;
 const args = process.argv.slice(2);
 const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name) + 1] : fallback;
 const port = Number(option('--port', '9347'));
@@ -17,6 +21,7 @@ if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error('Inv
 const runtimeDir = path.resolve(option('--state-dir', defaultStateDir()));
 const statePath = path.join(runtimeDir, 'controller.json');
 const stopPath = path.join(runtimeDir, 'stop.flag');
+const saveControllerState=record=>saveStateJson(statePath,record);
 const connections = new Map();
 let stopped = false;
 process.on('SIGTERM', () => { stopped = true; });
@@ -69,8 +74,15 @@ class CDP {
   }
   close() { this.socket.close(); }
 }
-async function targets() {
-  const response = await fetch(`http://127.0.0.1:${port}/json/list`, {signal:AbortSignal.timeout(3000)});
+async function targets({allowClosed=false}={}) {
+  let response;
+  try { response = await fetch(`http://127.0.0.1:${port}/json/list`, {signal:AbortSignal.timeout(3000)}); }
+  catch (error) {
+    const cause=error.cause;
+    const refused=cause?.code==='ECONNREFUSED' || (cause instanceof AggregateError && cause.errors.length>0 && cause.errors.every(item=>item?.code==='ECONNREFUSED'));
+    if(allowClosed && refused)return null;
+    throw error;
+  }
   if (!response.ok) throw new Error('Local debug endpoint is not available.');
   return (await response.json()).filter(item => item.type === 'page' && item.webSocketDebuggerUrl);
 }
@@ -78,10 +90,15 @@ const disposeExpression = 'window.__cqbFeatures?.dispose?.(); window.__codexBott
 const probeExpression = '({rail:!!document.querySelector("nav[data-app-navigation-rail]"),frame:!!document.querySelector("[data-app-shell-frame]")})';
 await fs.mkdir(runtimeDir, {recursive:true});
 
+// Both normal startup and one-off recovery require exclusive controller ownership.
+const instance=net.createServer(socket=>socket.end());
+await new Promise((resolve,reject)=>{instance.once('error',reject);instance.listen(controllerPipePath(runtimeDir),resolve)});
+instance.unref();
 if (args.includes('--restore-once')) {
   let restored = 0;
   let prior; try { prior = JSON.parse(await fs.readFile(statePath, 'utf8')); } catch {}
-  for (const target of await targets()) {
+  const pages=await targets({allowClosed:true});
+  for (const target of pages ?? []) {
     const cdp = new CDP(target.webSocketDebuggerUrl);
     try {
       const probe = await cdp.evaluate(probeExpression);
@@ -92,10 +109,13 @@ if (args.includes('--restore-once')) {
       }
     } finally { cdp.close(); }
   }
-  console.log(JSON.stringify({restored}));
+  await saveControllerState({pid:null,port,stopped:true,installed:0});
+  console.log(JSON.stringify({restored,clientClosed:pages===null}));
+  await new Promise(resolve=>instance.close(resolve));
   process.exit(0);
 }
 
+// Only the owner may clear a stop request, inject scripts or write controller state.
 await fs.rm(stopPath, {force:true});
 const preferences = await readConfig(path.resolve(option('--config',path.join(packageDir,'config.local.json'))),runtimeDir);
 const i18nJS = await fs.readFile(path.join(packageDir,'i18n.js'),'utf8');
@@ -106,19 +126,29 @@ const nativeFeatureJS = await fs.readFile(path.join(packageDir,'native-features.
 const workerDisabled = args.includes('--no-features'); // Isolated controller test fixtures only.
 let featureBindings = null;
 let nativeBindings = null;
+let adapterUpdates={status:'not-checked',revision:null};
 const appAsar = option('--app-asar', null);
 if (appAsar) {
   try { nativeBindings = await readNativeBindings(appAsar); }
   catch { console.log('Native usage binding unavailable; protected menu fallback enabled.'); }
-  try { featureBindings = await readFeatureBindings(appAsar); }
-  catch { console.log('Task and draft features unavailable for this renderer version.'); }
+  let catalog=[];
+  try { const result=await getAdapterCatalog(runtimeDir); catalog=result.entries; adapterUpdates={status:result.status,revision:result.revision}; }
+  catch { adapterUpdates={status:'unavailable',revision:null}; }
+  try { featureBindings = await readFeatureBindings(appAsar,{catalog}); }
+  catch { console.log('Native feature discovery unavailable; layout and independent reminders remain available.'); }
 }
-if (!workerDisabled) {
-  await ensureWorker(runtimeDir,path.resolve(option('--config',path.join(packageDir,'config.local.json'))));
-  if (appAsar) await requestWorker(runtimeDir,'codex-path',{path:path.join(path.dirname(path.dirname(appAsar)),'ChatGPT.exe')}).catch(() => {});
+let wakingWorker=null;
+async function wakeWorker() {
+  if (!wakingWorker) wakingWorker=(async()=>{
+    const status=await ensureWorker(runtimeDir,path.resolve(option('--config',path.join(packageDir,'config.local.json'))));
+    if (appAsar) await requestWorker(runtimeDir,'codex-path',{path:path.join(path.dirname(path.dirname(appAsar)),'ChatGPT.exe')}).catch(() => {});
+    return status;
+  })().finally(()=>{wakingWorker=null;});
+  return wakingWorker;
 }
+if (!workerDisabled) await wakeWorker();
 const injection = `(()=>{const run=()=>{window.__cqbPreferences=${JSON.stringify({timeZone:preferences.uiTimeZone})};${i18nJS}\nwindow.__codexBottomBarBindings=${JSON.stringify(nativeBindings)};window.__codexBottomBarFeatureBindings=${JSON.stringify(featureBindings)};let style=document.getElementById('codex-bottom-bar-style');if(!style){style=document.createElement('style');style.id='codex-bottom-bar-style';(document.head||document.documentElement).append(style)}style.textContent=${JSON.stringify(css)};${js}\n${nativeFeatureJS}\n${featureJS}\n};if(document.documentElement)run();else document.addEventListener('DOMContentLoaded',run,{once:true})})()`;
-const allowed = new Set(['status','toggle','observe','claim-send','finish-send','completion','interaction','stop','sound-settings','volume-status','ui-language']);
+const allowed = new Set(['wake-worker','status','toggle','observe','claim-send','finish-send','completion','interaction','stop','sound-settings','volume-status','ui-language']);
 function installBridge(cdp, mainFrame) {
   cdp.on('Runtime.executionContextCreated',({context}) => {
     if (context.auxData?.isDefault && context.auxData.frameId === mainFrame) cdp.mainContext = context.id;
@@ -131,7 +161,7 @@ function installBridge(cdp, mainFrame) {
         message = JSON.parse(event.payload);
         if (!Number.isInteger(message.id) || typeof message.session !== 'string' || message.session.length > 80 || !allowed.has(message.method)) return;
         if (workerDisabled) throw new Error('提醒服务未在测试环境启动');
-        const result = message.method === 'volume-status' ? await readSystemVolume() : await requestWorker(runtimeDir,message.method,message.payload,12000);
+        const result = message.method === 'wake-worker' ? await wakeWorker() : message.method === 'volume-status' ? await readSystemVolume() : await requestWorker(runtimeDir,message.method,message.payload,12000);
         await cdp.evaluate(`window.__cqbBridgeReply?.(${JSON.stringify({id:message.id,session:message.session,ok:true,result})})`);
       } catch (e) {
         if (message?.id) await cdp.evaluate(`window.__cqbBridgeReply?.(${JSON.stringify({id:message.id,session:message.session,ok:false,error:e.message})})`).catch(() => {});
@@ -142,13 +172,14 @@ function installBridge(cdp, mainFrame) {
 const startedAt = new Date().toISOString();
 let installed = 0, available = 0;
 async function state() {
-  const record = {pid:process.pid, port, startedAt, installed, dataAvailable:available,packageRoot:packageDir,
+  const record = {pid:process.pid, port, startedAt, installed, dataAvailable:available,packageRoot:packageDir,controllerVersion:packageVersion,
+    adapterUpdates,nativeCapabilities:featureBindings?.capabilities ?? {send:false,completion:false},
     scripts:Object.fromEntries([...connections].map(([id, entry]) => [id, entry.scriptId]))};
-  await fs.writeFile(`${statePath}.tmp`, JSON.stringify(record, null, 2), 'utf8');
-  await fs.rename(`${statePath}.tmp`, statePath);
+  await saveControllerState(record);
 }
 console.log('Bottom bar controller started (loopback only).');
 try {
+  await state();
   while (!stopped) {
     try { await fs.access(stopPath); break; } catch {}
     try {
@@ -187,6 +218,8 @@ try {
       }
       await state();
     } catch {
+      // Once the client exits, /json/list fails too; closed sockets still need pruning.
+      for (const [id,entry] of connections) if (entry.cdp.closed) {entry.cdp.close();connections.delete(id);}
       installed = 0; available = 0; await state();
       if (Date.now() - Date.parse(startedAt) > 120000 && !connections.size) break;
     }
@@ -199,6 +232,7 @@ try {
     await entry.cdp.call('Runtime.removeBinding',{name:'__cqbHost'}).catch(() => {});
     entry.cdp.close();
   }
-  await fs.writeFile(statePath, JSON.stringify({pid:null, port, stopped:true, installed:0}), 'utf8');
+  await saveControllerState({pid:null, port, stopped:true, installed:0});
   console.log('Bottom bar restored; controller stopped.');
+  await new Promise(resolve=>instance.close(resolve));
 }

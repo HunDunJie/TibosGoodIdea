@@ -1,3 +1,5 @@
+> 历史资料归档：当前自有代码已改为 GPL-3.0-only 开源，以下旧版销售草案中的私有仓库、禁止转售及商业自用限制不代表当前许可，现以根目录 LICENSE 为准；未开放销售或收款
+
 # 卖家使用说明
 
 这是 0.8.0-rc.4 的本地销售准备材料，国内 ¥3.90，海外 US$0.90
@@ -7,7 +9,7 @@
 1. 查看 index.html 可切换中英文，封面在 assets/cover.zh-CN.png 和 assets/cover.en.png
 2. listing.zh-CN.md 和 listing.en.md 是可复制的商品文案，after-purchase 两份文件是付款后的交付文字
 3. 向商品上传交付文件时，只选 TibosGoodIdea-0.8.0-rc.4-Windows-x64.zip，不上传 seller-kit 或 private-source
-4. 买家包含运行环境、原创音效、双语说明与许可，个人配置和私人音乐未打包
+4. 买家包含运行环境、BGM_JuShang 和 BGM_DuDuan 两首提醒音乐、中英日说明与许可，个人配置未打包
 5. 源码压缩包仅自己保存，不在卖家资料包内，未公开 GitHub，购买者没有被授予转售或公开分发本工具的权利，第三方许可仍保留
 6. verification.json 记录技术验证，seller-release-checklist.md 记录待办，不把自动化模拟结果当成真实客户端完成验收
 

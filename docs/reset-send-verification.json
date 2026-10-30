@@ -1,0 +1,22 @@
+{
+  "version": "0.8.0-rc.8",
+  "date": "2026-10-30",
+  "unitTests": {"passed": true, "count": 37, "newResetSendCases": 7},
+  "sendResetUi": {"passed": true, "liveTooltipUpdated": true, "oldTimeDidNotSend": true, "missingTimePolled": true, "nullTimeDidNotSend": true, "naturalResetSentOnce": true, "completedRoundStayedOff": true},
+  "nativeAdapter": {"passed": true, "threeLanguages": true, "availableResetsInQuotaSample": true},
+  "languageUi": {"passed": true, "checks": 33},
+  "settingsWorker": {"passed": true, "switchesAndSchedulesPreserved": true, "armedSendPreserved": true},
+  "controllerIntegration": {"passed": true, "reload": true, "restore": true},
+  "controllerLifecycle": {"passed": true, "samePathWorkerUpgrade": true, "switchesAndSchedulesPreserved": true, "armedSendPreserved": true, "orphanedRendererRecovery": true},
+  "nodeSyntax": true,
+  "powerShellParse": true,
+  "scriptEncodingAndLineEndings": true,
+  "gitDiffCheck": true,
+  "privateConfigSha256": "74d11d3874b3635295f1284865ee0672aab0d182541402487e110a0286d8e306",
+  "realCodexRestarted": false,
+  "liveWorkerReloaded": false,
+  "realResetCardsUsed": false,
+  "realDraftsSent": false,
+  "musicPlayed": false,
+  "fullClientManualAcceptance": "pending"
+}

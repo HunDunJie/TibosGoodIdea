@@ -1,0 +1,52 @@
+{
+  "version": "0.8.0-rc.10",
+  "date": "2026-10-30",
+  "rootCause": "PowerShell argument concatenation inserted spaces inside quoted app.asar path",
+  "installedCodex": {
+    "version": "26.1023.6621.0",
+    "rendererFingerprintValid": true,
+    "usageBindingsValid": true,
+    "featureBindingsValid": true
+  },
+  "launcherArguments": {
+    "passed": true,
+    "reproducedBeforeFix": true,
+    "realWindowsChild": true,
+    "spaceAndUnicodePaths": true,
+    "archivePathExact": true,
+    "noArchiveArgument": true,
+    "installedArchiveBindings": true
+  },
+  "controllerLifecycle": {
+    "passed": true,
+    "samePathWorkerUpgrade": true,
+    "samePathControllerUpgrade": true,
+    "singleInstance": true,
+    "statePreserved": true,
+    "orphanRecovery": true
+  },
+  "staticValidation": {
+    "powerShellParse": true,
+    "nodeSyntax": true,
+    "encodingAndLineEndings": true,
+    "gitDiffCheck": true
+  },
+  "packageValidation": {
+    "passed": true,
+    "buyerEntries": 68,
+    "sourceEntries": 141,
+    "eachEntryMatchesSource": true,
+    "buyerSha256Manifest": true,
+    "previousCandidatesUnchanged": true,
+    "privateConfigUnchanged": true
+  },
+  "privateConfigSha256": "74d11d3874b3635295f1284865ee0672aab0d182541402487e110a0286d8e306",
+  "realCodexRestarted": false,
+  "liveWorkerStarted": false,
+  "realDraftsSent": false,
+  "musicPlayed": false,
+  "notificationsShown": false,
+  "githubPushed": false,
+  "fullClientManualAcceptance": "pending",
+  "failedTestFixtureRecycled": true
+}

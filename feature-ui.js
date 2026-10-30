@@ -5,7 +5,7 @@
   win.__cqbFeatures?.dispose?.();
   const nativeAdapter = win.__cqbNativeFeatures;
   const session = win.crypto.randomUUID();
-  let active = true, state = null, connected = false, busy = false, syncing = false, nextId = 0, lastInteraction = 0, lastRefetch = 0;
+  let active = true, state = null, connected = false, busy = false, syncing = false, operation = 0, nextId = 0, lastInteraction = 0, lastRefetch = 0;
   let controls = null, connectedNative = false, nativeError = '', capabilities = {completion:false,send:false};
   let volumeGeneration = 0, volumeNoticeTimer = null, volumeCheck = {phase:'idle'};
   const localErrors = {};
@@ -54,7 +54,7 @@
     return svg;
   }
   function description(feature) {
-    if (!connected) return {text:t('未连接'),enabled:false,error:t('请用底栏启动器连接后台')};
+    if (!connected) return {text:t('未连接'),enabled:false,error:t('点击按钮重新启动提醒服务')};
     const item = state?.[feature] ?? {};
     let text;
     if (feature === 'send') text = ({off:t('已关闭'),armed:t('等待刷新'),running:t('发送中'),done:t('完成 {sent} / 跳过 {skipped}',{sent:item.sent ?? 0,skipped:(item.failed ?? 0)+(item.skipped ?? 0)}),interrupted:t('发送中断'),cancelled:t('已取消'),expired:t('已过期')})[item.phase] ?? t('已关闭');
@@ -62,7 +62,8 @@
     else text = item.phase === 'ringing' ? t('响铃中') : !item.enabled ? t('已关闭') : item.alarm ? t('已安排') : t('等刷新时间');
     if (item.error) text = feature === 'send' ? text : t('需处理');
     if (feature === 'send' && localErrors.send) text = t('未开启');
-    return {text,enabled:feature === 'send' ? ['armed','running'].includes(item.phase) : !!item.enabled,error:(localErrors[feature] ?? item.error) ? t(localErrors[feature] ?? item.error) : null};
+    const error=localErrors[feature] ?? item.error ?? (feature!=='refresh' && connectedNative && !capabilities[feature] ? capabilities.reasons?.[feature] : null);
+    return {text,enabled:feature === 'send' ? ['armed','running'].includes(item.phase) : !!item.enabled,error:error ? t(error) : null};
   }
   function render() {
     if (!controls) return;
@@ -72,7 +73,8 @@
       const button = group.querySelector('.cqb-feature-button');
       button.setAttribute('aria-label',t(nameKeys[feature]));
       button.setAttribute('aria-pressed',String(item.enabled));
-      button.disabled = !connected || feature === 'send' && state?.send?.phase === 'running';
+      const hasHost=typeof win.__cqbHost === 'function' || typeof win.__cqbPreviewHost === 'function';
+      button.disabled = !hasHost || connected && feature === 'send' && state?.send?.phase === 'running';
       button.setAttribute('aria-busy',String(busy));
       const formatTime = value => Number.isFinite(value) ? new Intl.DateTimeFormat(locale,{timeZone,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(value) : null;
       let detail;
@@ -127,10 +129,20 @@
     }
   }
   async function toggle(feature) {
-    if (busy) return; busy = true; render();
+    if (!active || busy) return; busy = true; operation++; render();
     try {
+      const current=await call('wake-worker');
+      if (!active) return;
+      state=current; connected=true; reportedLocale=null; void reportLanguage();
+      const sample=win.__codexBottomBar?.quotaSample?.();
+      if (sample) state=await call('observe',sample);
+      if (!active) return;
       const enabled = !description(feature).enabled;
-      if (enabled && feature !== 'refresh' && !capabilities[feature]) throw new Error(nativeError || '尚未连接到当前客户端的任务与草稿接口，请稍后重试');
+      if (enabled && feature !== 'refresh' && !connectedNative) {
+        try {await connectNative();} catch(e) {nativeError=e.message;}
+      }
+      if (!active) return;
+      if (enabled && feature !== 'refresh' && !capabilities[feature]) throw new Error(capabilities.reasons?.[feature] || nativeError || '尚未连接到当前客户端的任务与草稿接口，请稍后重试');
       state = await call('toggle',{feature,enabled}); connected = true;
       delete localErrors[feature];
       if (feature === 'refresh') {
@@ -139,6 +151,12 @@
       }
     } catch (e) { announce(e,feature); }
     finally { busy = false; render(); }
+  }
+  async function connectNative() {
+    if (!connectedNative && nativeAdapter) {
+      capabilities=await nativeAdapter.connect(event=>{if(active)void call('completion',event).catch(()=>{});});
+      connectedNative=true;nativeError='';
+    }
   }
   function attach() {
     const metrics = doc.getElementById('codex-bottom-bar-metrics');
@@ -153,18 +171,21 @@
     metrics.prepend(controls); render();
   }
   async function sync() {
-    if (!active || syncing) return; syncing = true;
+    if (!active || syncing || busy) return; syncing = true;
+    const generation=operation;
     try {
-      if (!connectedNative && nativeAdapter) {
-        try { capabilities = await nativeAdapter.connect(event => { if (active) void call('completion',event).catch(() => {}); }); connectedNative = true; nativeError = ''; } catch (e) { nativeError = e.message; }
-      }
+      try {await connectNative();} catch(e) {nativeError=e.message;}
+      if (!active || generation!==operation) return;
       const sample = win.__codexBottomBar?.quotaSample?.();
-      state = sample ? await call('observe',sample) : await call('status'); connected = true;
+      const current=sample ? await call('observe',sample) : await call('status');
+      if (!active || generation!==operation) return;
+      state=current; connected=true;
       const target = state?.send?.phase === 'armed' ? state.send.target : state?.refresh?.alarm?.reset;
-      if ((target && Date.now() >= target || state?.refresh?.enabled && !state.refresh.alarm) && Date.now()-lastRefetch > 10000) {
+      const waitingSendTime=state?.send?.phase === 'armed' && !Number.isFinite(target);
+      if ((Number.isFinite(target) && Date.now() >= target || waitingSendTime || state?.refresh?.enabled && !state.refresh.alarm) && Date.now()-lastRefetch > 10000) {
         lastRefetch = Date.now(); await win.__codexBottomBar?.refreshQuota?.().catch(() => {});
       }
-      if (capabilities.send && state?.send?.phase === 'armed' && Date.now() >= state.send.target) {
+      if (capabilities.send && state?.send?.phase === 'armed' && Number.isFinite(state.send.target) && Date.now() >= state.send.target) {
         const claim = await call('claim-send');
         if (claim) {
           state = await call('status'); render();
@@ -178,7 +199,7 @@
         }
       }
       attach(); render(); void reportLanguage();
-    } catch { connected = false; render(); }
+    } catch { if(active && generation===operation){connected=false;reportedLocale=null;render();} }
     finally { syncing = false; }
   }
   function interaction(event) {

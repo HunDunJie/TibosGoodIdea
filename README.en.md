@@ -1,48 +1,54 @@
-# TibosGoodIdea
+# Tibo’s Good Idea
 
-A Windows Codex bottom bar add-on, displayed in the app as Tibo’s Good Idea
+[中文](README.md) · [Install](QUICKSTART.en.md) · [日本語](QUICKSTART.ja.md)
 
-The source project and private GitHub repository are named TibosGoodIdea
-Sales materials are in sales/; generated archives and checksums go in dist/
-Personal configuration, runtime state, downloaded Node.exe and dist/ are excluded from Git
-The existing productId is retained for settings compatibility; see [docs/PROJECT.md](docs/PROJECT.md)
+A single-row Windows Codex bottom bar. Original code is open source under **GPL-3.0-only**
+The icon rail moves to the bottom with the profile at the far left, followed by purchased credits, separate five-hour and weekly quota, reset times and available resets
+Repository: TibosGoodIdea · Version: **0.8.0-rc.14**
 
-[中文](README.md) · [Quick start](QUICKSTART.en.md) · [Compatibility](COMPATIBILITY.md)
+An independent project with no affiliation with or endorsement by OpenAI or Tibo
+The source license does not constitute OpenAI approval of this client integration
 
-**0.8.0-rc.4**, local release candidate, not publicly listed. An independent Windows add-on prepared by 由龙见象, with no OpenAI affiliation or endorsement
+## Features
 
-Move Codex's icon navigation to the bottom and see purchased credits, separate five-hour and weekly quota, reset times and available resets in one row. The profile stays at the far left; chats and projects remain in the left panel
+- Send on reset: manually arm one round of existing, non-empty chat drafts after the next confirmed five-hour reset, using native submission, then turn off
+- Completion sound: play music when a connected chat finishes, for at most 30 minutes, without an additional completion notification
+- Reset reminder: notify and play music one minute after the five-hour reset, for at most 30 minutes; an already scheduled alarm survives closing Codex
+- Mouse movement, clicks or keyboard activity in Codex stop playback; the tray or StopSound.cmd can stop it without opening Codex
+- Click a time to switch between a date and a minute-updated countdown; choices persist; language follows Codex in Chinese, English and Japanese
 
-Three icons provide **Send on reset**, **Completion sound** and **Reset reminder**, in that order. State is shown in hover tips. Click either time to switch between a date and a countdown; choices persist and countdowns update every minute
+Windows must stay awake and running. There is no wake timer or logon task
+Codex must remain open for scheduled sending. Review all drafts before arming it
 
-- Send on reset arms one round of existing non-empty chat drafts after the next confirmed five-hour reset, then turns off; Codex must stay open
-- Completion sound plays when a connected chat finishes, for up to 30 minutes, without an extra completion notification
-- Reset reminder notifies and plays one minute after the five-hour reset, for up to 30 minutes; an already scheduled reminder survives closing Codex
+## Install and adapt
 
-Moving the mouse inside Codex, clicking or typing stops sound. The tray and StopSound.cmd also stop it without opening Codex. Windows must remain awake and running; the add-on does not wake the computer or install a logon task
+Download the Windows-x64 ZIP from [Releases](https://github.com/HunDunJie/TibosGoodIdea/releases), extract everything, run Install.cmd and use the generated shortcut
+Existing users can run the new Install.cmd to upgrade. Install this version once to obtain automatic adaptation
+Finish tasks and close Codex yourself before starting; the launcher does not force-close Codex
+Use Uninstall.cmd or Windows Installed Apps to uninstall
 
-## Install
+Checked on Windows 11 x64 / Microsoft Store Codex **26.1027.3384.0**
+At startup, syntax and export relationships are inspected instead of blocking the entire add-on by version
+A signed public adapter catalog is checked at startup at most once per 12 hours. A table applies only when all renderer SHA-256 fingerprints match
+Offline startup uses bundled entries, verified cache or local discovery. Changed interfaces disable only the affected draft or completion feature
+Major structural changes may still require maintenance. Future compatibility is not guaranteed; see [COMPATIBILITY.md](COMPATIBILITY.md)
 
-Supported: **Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0**. Other client versions are rejected
+This uses a local debugging connection, leaves Codex installation files and native launch entries unchanged, and uses the original layout after a full native cold start
+Only a fixed public catalog is requested remotely. Account data, quota, drafts, client code and personal settings are not uploaded. Remote JavaScript is not downloaded or executed
 
-The buyer ZIP includes official Node.js 24.22.1, original tones and Chinese/English/Japanese guides. Extract all files, run Install.cmd, then use the Tibo’s Good Idea shortcut. Language follows Codex automatically in Chinese, English or Japanese. Settings.cmd only selects the time zone and optional custom WAVs. See the quick start
+## Build and verify
 
-This uses a local debugging endpoint rather than an official theme API. It leaves Codex installation files and official launch entries unchanged. Finish tasks and exit Codex yourself before first use. Opening Codex normally after a full exit uses the original layout
+Requires Node.js 22+, Python 3, Windows PowerShell 5.1 and Microsoft Edge
+Run download-runtime.ps1 for the pinned, checksum-verified official Node binary, then `python pack-buyer.py --manifest-only` and Start.cmd
+Use `npm install --ignore-scripts`, `npm test` and the package scripts for UI, language, display, volume, native adapter, reset rescheduling, controller, worker, installer and lifecycle checks
+Windows CI is included. `python pack-buyer.py` builds the Windows bundle and hashes; `python pack-source.py` builds corresponding source
+Personal config, runtime state, signing private keys, downloaded Node.exe and dist are excluded from Git
+See [adapter maintenance](updates/README.md) and [change evidence](docs/automatic-adaptation.md)
+Mock tests do not establish full Codex cold start, notification activation or real multi-chat submission acceptance
 
-## Private source backup and checks
+## License
 
-Source requires Node.js 22+, Python 3, Windows PowerShell 5.1 and Microsoft Edge. Run download-runtime.ps1 to obtain the pinned, checksum-verified official Node binary, then `python pack-buyer.py --manifest-only` and Start.cmd
-
-Run `npm install --ignore-scripts`, `npx playwright install msedge`, `npm test` and the package scripts test:ui, test:language, test:display, test:volume, test:adapter, test:controller, test:worker, test:install, test:settings. Windows CI is included
-
-Current regression evidence is preserved in sales/verification.json. Live language switching, Japanese translations, tray synchronization and removal of the language selector are documented in docs/language-follow.md. Audio fixtures are silent and no real chat drafts are submitted
-
-Full Codex cold start, notification activation, real multi-chat submission and real task completion still need independent acceptance. Mock tests do not establish these. Codex hosting this work has not been restarted; the add-on was reloaded and confirmed to follow its current language
-
-## License and distribution
-
-Original code, icons and tones are prepared under the [commercial self-use license draft](LICENSE.en.md), with contributor and seller notices retained. Purchasers may use this version for personal or commercial work on their own devices; resale and public distribution of the add-on are not granted. Node.js retains its own licenses; see THIRD-PARTY-NOTICES.md. Source stays in a private seller backup
-
-Planned one-time prices: **CNY 3.90 / US$0.90**. No public repository or checkout is live. The user reports that OpenAI support escalated the question to a specialist; a reply is pending. Escalation is not approval. Do not sell this approach if it is not permitted. Real client acceptance and payment/delivery checks also remain
-
-`python pack-source.py` creates an allowlisted private seller source backup, not a buyer deliverable, without Node.exe, personal settings, music or logs. `python pack-buyer.py` creates the buyer ZIP with a per-file manifest and SHA-256
+Original code, SVG icons and documentation: [GPL-3.0-only](LICENSE), retaining contributor copyrights
+Distributed modifications must comply with GPL source requirements; GPL permits charging for copies
+Node, Acorn and bundled recordings retain their own rights; see [license scope](LICENSE.en.md) and [third-party notices](THIRD-PARTY-NOTICES.md)
+The sales directory is an archive of earlier preparation, not the current license or an active sales channel

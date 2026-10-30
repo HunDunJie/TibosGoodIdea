@@ -1,76 +1,57 @@
-# TibosGoodIdea
+# Tibo’s Good Idea
 
-Windows Codex 底栏助手，产品显示名为 Tibo’s Good Idea
+[English](README.en.md) · [中文安装说明](QUICKSTART.zh-CN.md) · [日本語](QUICKSTART.ja.md)
 
-正式源码项目与 GitHub 私有仓库名均为 TibosGoodIdea，销售资料在 sales/，生成的 ZIP 和校验文件在 dist/
-个人配置、运行状态、下载的 Node.exe 和 dist/ 不提交到 Git，原有 productId 保留以兼容设置
-项目结构与迁移记录见 [docs/PROJECT.md](docs/PROJECT.md)
+Windows Codex 的单行底栏附加工具，自有代码按 **GPL-3.0-only** 开源
+将最左侧图标导航移至底部，头像在最左边；同一行显示点数、5 小时额度、每周额度、刷新时间和可用重置
+项目目录和 GitHub 仓库名为 TibosGoodIdea，当前版本 **0.8.0-rc.14**
 
-[English](README.en.md) · [中文快速开始](QUICKSTART.zh-CN.md) · [兼容性](COMPATIBILITY.md)
+这是非官方项目，与 OpenAI 及 Tibo 没有关联或背书关系
+开源许可只涉及本项目自有代码，不代表 OpenAI 已批准该客户端集成方式
 
-版本 **0.8.0-rc.4**，本地发布候选包，尚未公开上架。由龙见象整理的第三方 Windows 工具，与 OpenAI 无隶属或背书关系
+## 功能
 
-把 Codex 最左侧的图标导航移到底部，在一行中显示购买点数、五小时额度、每周额度、刷新时间与可用重置次数。头像保留在最左，项目和聊天列表保留在左侧
+- 定时发送：手动开启后，在下一次确认的 5 小时额度刷新后，通过原有提交入口发送各聊天已有的非空草稿，只执行一轮
+- 完成提醒：任意已连接聊天回答结束时播放音乐，最多 30 分钟，不额外弹出完成通知
+- 刷新提醒：5 小时额度刷新后一分钟弹出通知并播放音乐，最多 30 分钟；已安排的提醒在退出 Codex 后仍有效
+- 鼠标在 Codex 内移动、点击或键盘操作会停止播放；托盘菜单和 StopSound.cmd 可在 Codex 未开启时停止
+- 日期与倒计时可点击切换并记住选择，倒计时每分钟更新；中文、英文、日文跟随 Codex
 
-![模拟数据预览](preview-wide.png)
+Windows 须保持开机且未睡眠，不会唤醒电脑，也不会安装登录自启任务
+定时发送需保持 Codex 和底栏运行，请在开启前检查各聊天草稿
 
-三个线条图标从左到右：
+## 安装与更新
 
-| 功能 | 行为 |
-| --- | --- |
-| 定时发送 | 每次手动开启，等待下一次确认额度刷新后，提交已有聊天中的非空草稿，一轮后关闭；需要 Codex 运行 |
-| 完成提醒 | 任一连接的聊天回答完成后播放音乐，最多 30 分钟，不额外发完成通知 |
-| 刷新提醒 | 五小时刷新后一分钟通知并播放音乐，最多 30 分钟；已安排的提醒在退出 Codex 后仍有效 |
+从 [Releases](https://github.com/HunDunJie/TibosGoodIdea/releases) 下载 Windows-x64 ZIP，完整解压后运行 Install.cmd，再使用生成的快捷方式
+已有安装可运行新版 Install.cmd 升级；首次升级到本版后，才具备以下自动适配机制
+运行中的任务请先结束，再手动退出 Codex；工具不会强制关闭客户端
+卸载使用 Uninstall.cmd 或 Windows 已安装应用中的卸载入口，详见安装说明
 
-在 Codex 内移动鼠标、点击或输入会停铃。托盘和 StopSound.cmd 可在不打开 Codex 时停铃。提醒服务需要 Windows 保持开机且未休眠，未设置开机自启或唤醒电脑
+当前检查环境：Windows 11 x64，Microsoft Store Codex **26.1027.3384.0**
+启动时按语法和导出关系识别接口，不再按版本号阻止整个底栏
+启动时检查公开仓库的签名适配表，间隔至少 12 小时；仅文件 SHA-256 全部匹配的表项可用
+断网时使用随包表、已验证缓存或本地识别；草稿或完成事件接口有变时仅暂停相关功能
+大幅结构变化仍可能需要维护者适配，不能保证任意未来版本都自动兼容
+详见 [兼容性与适配](COMPATIBILITY.md)
 
-时间可分别点击切换日期与倒计时，按分钟更新并保存选择。额度数字不加千位逗号，空间不足时信息区横向滚动，底栏保持单行。按钮开关及运行信息放在三行悬浮提示中
+实现使用本机调试连接，不修改 Codex 安装文件或原生启动入口；从原生入口完全冷启动仍使用原界面
+远端只请求固定的公开适配表，不上传账号、额度、草稿、客户端代码或个人配置，不自动下载执行远端 JavaScript
 
-## 使用
-
-当前仅支持 **Windows 11 x64 / Microsoft Store Codex 26.1023.6621.0**。其他版本会停止加载
-
-买家完整包已附带官方 Node.js 24.22.1 与两段原创提示音，无需另外安装 Node。解压后运行 Install.cmd，使用桌面的 Tibo’s Good Idea 启动，语言直接跟随 Codex，支持中文、English 和日本語；Settings.cmd 只设置时区和 WAV。详见快速开始
-
-本工具使用本机回环调试接口，并非官方主题 API。不修改 Codex 安装文件、官方快捷方式或 Windows 原生入口。首次加载前需完成任务并自行退出 Codex；完全退出后从官方入口启动仍为原布局
-
-## 私有源码备份与开发
+## 源码与验证
 
 需要 Node.js 22+、Python 3、Windows PowerShell 5.1 和 Microsoft Edge
+运行 download-runtime.ps1 下载校验固定版本的官方 Node；运行 `python pack-buyer.py --manifest-only` 后可用 Start.cmd 启动
+开发依赖使用 `npm install --ignore-scripts`，运行 `npm test` 及 package.json 中的 UI、语言、显示、音量、适配器、发送重排、控制器、安装卸载和后台测试
+Windows CI 在 .github/workflows/test.yml
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File download-runtime.ps1
-python pack-buyer.py --manifest-only
-.\Start.cmd
-```
+`python pack-buyer.py` 生成完整 Windows 包及 SHA-256，`python pack-source.py` 生成对应源码包
+个人配置、后台状态、签名私钥、下载的运行时和 dist 均不进入 Git
+签名维护流程见 [updates/README.md](updates/README.md)，本次改动与验证见 [docs/automatic-adaptation.md](docs/automatic-adaptation.md)
+模拟测试不会发送真实草稿或播放真实音乐，真实冷启动、通知返回和真实多聊天发送仍需单独验收
 
-源码不包含 Node 可执行文件；download-runtime.ps1 只从官网获取固定版本并核对 SHA-256。个人音乐、配置、运行状态、日志和真实账户截图不进入源码或买家包
+## 许可证
 
-## 验证
-
-```powershell
-npm install --ignore-scripts
-npx playwright install msedge
-npm test
-npm run test:ui
-npm run test:language
-npm run test:display
-npm run test:volume
-npm run test:adapter
-npm run test:controller
-npm run test:worker
-npm run test:install
-npm run test:settings
-```
-
-本版完整回归记录见 sales/verification.json，语言实时切换、日语、托盘同步和移除选择器的设计与检查见 docs/language-follow.md。播放测试使用静音 WAV，不发送真实草稿
-
-完整 Codex 冷启动、通知点击回前台、真实多聊天提交与真实任务结束事件仍需独立验收，自动化模拟通过不代表这些流程已验证。当前聊天承载的 Codex 未被重启，底栏已加载本版并确认跟随当前 Codex 语言
-
-## 许可证与发布
-
-自有代码、原创图标和内置提示音按[商业自用许可草案](LICENSE.zh-CN.md)准备，保留既有贡献者与卖家版权声明。购买者可在自己使用的设备上用于个人或商业工作，不授予转售或公开分发本工具的权利。Node.js 及第三方组件继续适用原许可证，详见 THIRD-PARTY-NOTICES.md。源码留作卖家私有备份，不公开上传
-
-建议商品标价为国内 **¥3.90**、海外 **US$0.90**。当前没有公开仓库或销售链接。OpenAI 支持已按用户转述升级至专员，目前等待回复，不把受理或排队视为批准。若当前方案不获允许，则不销售；还需完成实际客户端与收款交付验收
-
-`python pack-source.py` 生成卖家私有源码 ZIP，不用于买家交付；`python pack-buyer.py` 生成买家 ZIP、逐文件校验清单和 SHA-256
+自有代码、图标和说明为 [GPL-3.0-only](LICENSE)，保留原贡献者版权声明
+分发修改版也须按 GPL 提供相应源码，允许按 GPL 收费分发
+Node、Acorn 和内置音乐分别保留原有权利，范围见 [许可说明](LICENSE.zh-CN.md) 与 [第三方声明](THIRD-PARTY-NOTICES.md)
+历史 sales 目录仅保留旧版准备记录，不是当前发布许可或已开通的销售渠道

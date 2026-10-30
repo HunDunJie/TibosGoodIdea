@@ -6,6 +6,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {defaultStateDir, pipePath} from './runtime-paths.mjs';
 import {readConfig,configFingerprint} from './locale-config.mjs';
 import i18n from './i18n.js';
+import fs from 'node:fs/promises';
 const here = path.dirname(fileURLToPath(import.meta.url));
 export function requestWorker(stateDir, method, payload = {}, timeout = 5000) {
   return new Promise((resolve,reject) => {
@@ -45,7 +46,8 @@ export async function reloadWorker(stateDir,configPath) {
 }
 export async function ensureConfiguredWorker(stateDir,configPath) {
   const current=await ensureWorker(stateDir,configPath),config=await readConfig(configPath,stateDir);
-  return current.workerRoot===here&&current.configStamp===configFingerprint(config)?current:reloadWorker(stateDir,configPath);
+  const {version}=JSON.parse(await fs.readFile(path.join(here,'package.json'),'utf8'));
+  return current.workerRoot===here&&current.workerVersion===version&&current.configStamp===configFingerprint(config)?current:reloadWorker(stateDir,configPath);
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2), at = args.indexOf('--state-dir');

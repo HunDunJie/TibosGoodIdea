@@ -4,9 +4,21 @@ import os from 'node:os';
 import assert from 'node:assert/strict';
 import {setTimeout as wait} from 'node:timers/promises';
 import {ensureConfiguredWorker,requestWorker} from '../worker-client.mjs';
+import {spawn} from 'node:child_process';
 if(process.platform!=='win32'){console.log('Windows settings reload test skipped');process.exit(0);}
 const dir=await fs.mkdtemp(path.join(os.tmpdir(),'cqb-settings-test-')),configFile=path.join(dir,'settings.json');
 let pid,passed=false;
+async function withReadLock(name,action) {
+  const file=path.join(dir,name),script=path.join(dir,'lock-state.ps1');
+  const encoded=Buffer.from(file,'utf8').toString('base64');
+  await fs.writeFile(script,'\ufeff'+`$file=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encoded}'))\n$handle=[IO.File]::Open($file,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)\ntry {Write-Output 'locked';Start-Sleep -Milliseconds 800} finally {$handle.Dispose()}\n`);
+  const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',script],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+  const exited=new Promise((resolve,reject)=>{child.once('exit',resolve);child.once('error',reject)});
+  try {
+    await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('State lock not acquired')),5000);child.stdout.once('data',()=>{clearTimeout(timer);resolve()});child.once('error',error=>{clearTimeout(timer);reject(error)})});
+    return await action();
+  } finally {assert.equal(await exited,0,'The isolated read-lock holder exited');}
+}
 try{
   await fs.writeFile(configFile,JSON.stringify({language:'zh-CN',timeZone:'UTC'}));
   await fs.writeFile(path.join(dir,'codex-language.json'),JSON.stringify({language:'en'}));
@@ -26,6 +38,13 @@ try{
     assert.equal(status.workerPid,pid,'Locale changes must not restart the worker');
     assert.equal(status.refresh.alarm.due,due);assert.equal(status.completion.enabled,true);assert.equal(status.send.id,sendId);
   }
+  const afterLock=await withReadLock('features.json',()=>requestWorker(dir,'toggle',{feature:'completion',enabled:true}));
+  assert.equal(afterLock.completion.enabled,true);
+  assert.equal(JSON.parse(await fs.readFile(path.join(dir,'features.json'),'utf8')).completionEnabled,true);
+  await withReadLock('codex-language.json',()=>requestWorker(dir,'ui-language',{language:'en'}));
+  assert.equal(JSON.parse(await fs.readFile(path.join(dir,'codex-language.json'),'utf8')).language,'en');
+  await requestWorker(dir,'ui-language',{language:'ja'});
+  assert.equal((await requestWorker(dir,'status')).workerPid,pid,'Transient locks must not exit the worker');
   await assert.rejects(requestWorker(dir,'ui-language',{language:'invalid'}));
   assert.equal((await requestWorker(dir,'player-status')).language,'ja');
   assert.equal(JSON.parse(await fs.readFile(path.join(dir,'codex-language.json'),'utf8')).language,'ja');
@@ -37,7 +56,7 @@ try{
   assert.equal((await requestWorker(dir,'player-status')).language,'ja','Last Codex locale survives a restart without Codex');
   assert.equal(status.send.id,sendId,'Language changes preserve an armed sending round');
   assert.equal(status.ringing,null);passed=true;
-  console.log(JSON.stringify({passed,threeTrayLanguages:true,liveLanguageWithoutRestart:true,cachedLanguageSurvivesRestart:true,ignoresLegacyOverrides:true,unchangedConfigNoRestart:true,preservesSwitches:true,preservesSchedule:true,preservesArmedSend:true,audioPlayed:false}));
+  console.log(JSON.stringify({passed,transientFeatureStateLock:true,transientLanguageStateLock:true,threeTrayLanguages:true,liveLanguageWithoutRestart:true,cachedLanguageSurvivesRestart:true,ignoresLegacyOverrides:true,unchangedConfigNoRestart:true,preservesSwitches:true,preservesSchedule:true,preservesArmedSend:true,audioPlayed:false}));
 }finally{
   await requestWorker(dir,'shutdown').catch(()=>{});
   let stopped=!pid;

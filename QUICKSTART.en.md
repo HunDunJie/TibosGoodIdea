@@ -2,7 +2,7 @@
 
 An independent Codex add-on prepared by 由龙见象 (Youlong Jianxiang), with no affiliation with or endorsement by OpenAI. No account, subscription or extra quota is included.
 
-This release candidate supports **Windows 11 x64 and Microsoft Store Codex 26.1023.6621.0 only**. Other versions are rejected. Full Codex cold-start and operating-system notification activation still need manual acceptance.
+Checked on **Windows 11 x64 and Microsoft Store Codex 26.1027.3384.0**. Interfaces are discovered separately at startup; unknown versions are not blocked wholesale. Signed adapter updates are checked automatically. Full Codex cold-start and notification activation still need manual acceptance.
 
 1. Extract the whole ZIP to a normal folder. Do not run it inside the archive.
 2. Run `Install.cmd`, without administrator access. It installs to `%LOCALAPPDATA%\Programs\TibosGoodIdea` and creates a desktop shortcut.
@@ -37,4 +37,4 @@ The computer must remain powered on. Sounds cannot play while shut down, suspend
 
 Run `Check.cmd` for compatibility details. Codex updates may break compatibility until a new adapter is available. No permanent compatibility or update timeline is promised. Contact the seller through your purchase order; do not publish account details, private paths or chat contents.
 
-Original add-on materials are prepared under the commercial self-use license draft. A purchaser may use this version for personal or commercial work on their own devices; resale and public distribution of the add-on are not granted. See LICENSE.en.md. Node.js and third-party components retain their own licenses; see THIRD-PARTY-NOTICES.md.
+Original program code, SVG icons and documentation use GPL-3.0-only. Distributed modifications must comply with its corresponding source requirements. See LICENSE and LICENSE.en.md. Node.js, Acorn and bundled recordings retain their own rights; see THIRD-PARTY-NOTICES.md.

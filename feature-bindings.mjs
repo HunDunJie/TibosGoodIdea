@@ -1,32 +1,104 @@
-import fs from 'node:fs/promises';
-import path from 'node:path';
 import {createHash} from 'node:crypto';
+import {parse} from './vendor/acorn/acorn.mjs';
+import {openRendererArchive} from './asar-reader.mjs';
 
-// Version gate: these private renderer APIs must never be guessed after a client update.
-const supported = {
-  'app-initial-db76c3384587.js':'8511d0206f33dfd5bcc5f2a9d2273c9952f4844c9d79fdfb0404634d7a9d5723',
-  'app-shared-3b88f728481f.js':'049e002cddcc8b63436e0197d3f061302eafa7e760379b5937e3ea876384ccd7',
-  'composer-content-b105c3967bfa.js':'22b12a52038740d1e82fffbf02e5507bc1144ea708f88cbfe5384bec30198a87',
-};
-export async function readFeatureBindings(asarPath) {
-  const file = await fs.open(asarPath,'r');
-  try {
-    const head = Buffer.alloc(16); await file.read(head,0,16,0);
-    const size = head.readUInt32LE(12); if (size > 32*1024*1024) throw new Error('Archive header too large');
-    const bytes = Buffer.alloc(size); await file.read(bytes,0,size,16);
-    const entries = new Map();
-    function walk(node,prefix='') { for (const [name,entry] of Object.entries(node.files ?? {})) { const full = prefix ? `${prefix}/${name}` : name; if (entry.files) walk(entry,full); else if (name in supported) entries.set(name,entry); } }
-    walk(JSON.parse(bytes.toString('utf8')));
-    for (const [name,hash] of Object.entries(supported)) {
-      const entry = entries.get(name);
-      if (!entry || entry.unpacked || entry.size > 12*1024*1024) throw new Error('Unsupported Codex renderer');
-      if (hash) {
-        const content = Buffer.alloc(entry.size); await file.read(content,0,content.length,8+head.readUInt32LE(4)+Number(entry.offset));
-        if (createHash('sha256').update(content).digest('hex') !== hash) throw new Error('Codex renderer fingerprint changed');
-      }
+const literal = n => n?.type === 'Literal' ? n.value : n?.type === 'TemplateLiteral' && !n.expressions.length ? n.quasis[0].value.cooked : undefined;
+const property = n => n?.computed ? literal(n.property ?? n.key) : (n.property ?? n.key)?.name ?? literal(n.key);
+function visit(node, fn) {
+  if (!node?.type) return;
+  fn(node);
+  for (const value of Object.values(node)) {
+    if (Array.isArray(value)) { for (const item of value) if (item?.type) visit(item, fn); }
+    else if (value?.type) visit(value, fn);
+  }
+}
+function has(node, predicate) { let found = false; visit(node, n => { if (predicate(n)) found = true; }); return found; }
+const hasText = (node, text) => has(node, n => literal(n) === text);
+const hasMethod = (node, name) => has(node, n => n.type === 'MemberExpression' && property(n) === name);
+const one = items => items.length === 1 ? items[0] : null;
+
+// Read syntax only. No Codex source is evaluated, copied into a release or uploaded.
+function indexModule(source) {
+  const ast = parse(source, {ecmaVersion:'latest', sourceType:'module'}), exports = new Map(), imports = new Map(), globals = new Set(), definitions = new Map(), functions = [];
+  for (const n of ast.body) {
+    if (n.type === 'ExportNamedDeclaration') for (const s of n.specifiers) exports.set(s.local.name, s.exported.name ?? s.exported.value);
+    if (n.type === 'ImportDeclaration') for (const s of n.specifiers) if (s.type === 'ImportSpecifier') imports.set(s.local.name, {module:n.source.value.split('/').at(-1), export:s.imported.name ?? s.imported.value});
+    if (n.type === 'VariableDeclaration') for (const d of n.declarations) if (d.id.type === 'Identifier') globals.add(d.id.name);
+    if (n.type === 'FunctionDeclaration') { globals.add(n.id.name); functions.push(n); }
+  }
+  function walk(n, owner = null) {
+    if (!n?.type) return;
+    if (n.type === 'FunctionDeclaration') owner = n;
+    const name = n.type === 'AssignmentExpression' && n.left.type === 'Identifier' ? n.left.name : n.type === 'VariableDeclarator' && n.id.type === 'Identifier' ? n.id.name : null;
+    const expr = n.type === 'AssignmentExpression' ? n.right : n.type === 'VariableDeclarator' ? n.init : null;
+    if (name && expr && globals.has(name)) {
+      const list = definitions.get(name) ?? []; list.push({name, expr, owner}); definitions.set(name, list);
     }
-    return {version:'26.1023.6621.0', initial:path.basename(Object.keys(supported)[0]), shared:path.basename(Object.keys(supported)[1]),
-      scope:'uct', retainedScope:'lwt', initEvents:'ICn', completionEvent:'ZCn', initComposer:'fpt', composerScope:'MQn',
-      readStorage:'Ntr', draft:'Sft', prompt:'Hft', navigation:'ZAn', navigateLocal:'tjn', conversationBinding:'b0n', composerKey:'HQn', host:'VJn'};
-  } finally { await file.close(); }
+    for (const value of Object.values(n)) {
+      if (Array.isArray(value)) { for (const item of value) if (item?.type) walk(item, owner); }
+      else if (value?.type) walk(value, owner);
+    }
+  }
+  walk(ast);
+  const defs = [...definitions.values()].filter(list => list.length === 1).map(list => list[0]);
+  return {exports, imports, defs, functions};
+}
+
+export function discoverFeatureBindings(initialSource, sharedSource, composerSource, names) {
+  const m = indexModule(initialSource), shared = indexModule(sharedSource);
+  const exported = d => d && m.exports.get(d.name), initializer = d => d?.owner && m.exports.get(d.owner.id.name);
+  const calls = m.defs.filter(d => d.expr.type === 'CallExpression');
+  const event = one(calls.filter(d => exported(d) && d.expr.arguments[2]?.type === 'ObjectExpression'
+    && d.expr.arguments[2].properties.some(p => property(p) === 'onMount') && hasText(d.expr, 'turn-completed') && hasMethod(d.expr, 'subscribe')));
+  const composerScope = one(calls.filter(d => exported(d) && literal(d.expr.arguments[0]) === 'ComposerScope'));
+  const draftInit = one(m.functions.filter(f => m.exports.has(f.id.name) && hasText(f.body, 'composer-prompt-drafts-v2') && hasText(f.body, 'composer-prompt-drafts-v1')));
+  const bindingInit = one(m.functions.filter(f => m.exports.has(f.id.name) && hasText(f.body, 'client-thread-bindings-v1')));
+  const binding = one(calls.filter(d => exported(d) && d.owner === bindingInit && d.expr.arguments[1]?.type === 'ArrowFunctionExpression' && hasText(d.expr, 'local:')));
+  const storage = [];
+  if (binding) visit(binding.expr.arguments[1], n => {
+    if (n.type === 'CallExpression' && n.callee.type === 'Identifier' && m.exports.has(n.callee.name) && n.arguments.length === 2 && n.arguments[1].type === 'UnaryExpression' && n.arguments[1].operator === 'void') storage.push(n.callee.name);
+  });
+  const storageName = one([...new Set(storage)]);
+  const navDefaults = one(m.defs.filter(d => d.expr.type === 'ObjectExpression' && ['navigate','navigateToLocalConversation','prepareNavigation'].every(key => d.expr.properties.some(p => property(p) === key))));
+  const navigation = navDefaults && one(calls.filter(d => exported(d) && d.expr.arguments[1]?.name === navDefaults.name));
+  const host = one(calls.filter(d => {
+    const arrow = d.expr.arguments[1], last = arrow?.body?.type === 'BlockStatement' ? arrow.body.body.at(-1)?.argument : arrow?.body;
+    return exported(d) && d.expr.arguments.length === 2 && hasMethod(d.expr, 'has') && hasMethod(d.expr, 'values') && hasMethod(d.expr, 'next') && last?.type === 'LogicalExpression' && last.operator === '??' && literal(last.right) === 'local';
+  }));
+  const rootImports = [event, binding, navigation].filter(Boolean).map(d => m.imports.get(d.expr.arguments[0]?.name)).filter(Boolean);
+  const scopes = [...new Map(rootImports.map(b => [`${b.module}:${b.export}`,b])).values()], root = one(scopes);
+  const rootValid = root?.module === names.shared && [...shared.exports.values()].includes(root.export);
+  const completion = !!(rootValid && exported(event) && initializer(event));
+  const submitShape = ['handleSubmit','submitDisabled','isResponseInProgress','focusComposerAfterSubmit','onAccepted'].every(key => composerSource.includes(key));
+  const send = !!(rootValid && composerScope && initializer(composerScope) && draftInit && binding && initializer(binding) && storageName && navigation && initializer(navigation) && host && initializer(host) && submitShape);
+  return {schema:2, discovery:'syntax', ...names, scope:rootValid ? root.export : null,
+    initEvents:initializer(event), completionEvent:exported(event),
+    initComposer:draftInit && m.exports.get(draftInit.id.name), composerScope:exported(composerScope),
+    readStorage:storageName && m.exports.get(storageName), navigation:exported(navigation), conversationBinding:exported(binding), host:exported(host),
+    navigationMode:'native-method',
+    initSend:[initializer(composerScope), draftInit && m.exports.get(draftInit.id.name), initializer(binding), initializer(navigation), initializer(host)].filter(Boolean),
+    capabilities:{completion,send}, reasons:{completion:completion ? null : 'completion-interface-unverified', send:send ? null : 'draft-interface-unverified'}};
+}
+
+export async function readRendererModules(asarPath) {
+  const archive = await openRendererArchive(asarPath);
+  try {
+    async function select(prefix, minimum = 0) {
+      const matches = [];
+      for (const name of archive.names.filter(n => n.startsWith(prefix + '-') && n.endsWith('.js'))) {
+        const bytes = await archive.read(name);
+        if (bytes.length > minimum) matches.push({name,bytes});
+      }
+      const result = one(matches); if (!result) throw Error(`Ambiguous or missing ${prefix} asset`); return result;
+    }
+    const [initial,shared,composer] = await Promise.all([select('app-initial'),select('app-shared'),select('composer-content',1000).catch(() => ({name:null,bytes:Buffer.alloc(0)}))]);
+    const modules = {initial,shared,composer};
+    return {modules, fingerprints:Object.fromEntries(Object.values(modules).filter(m=>m.name).map(({name,bytes}) => [name,createHash('sha256').update(bytes).digest('hex')]))};
+  } finally { await archive.close(); }
+}
+export async function readFeatureBindings(asarPath, {catalog = []} = {}) {
+  const {modules:m, fingerprints} = await readRendererModules(asarPath);
+  const patch = catalog.find(entry => Object.keys(entry.fingerprints).length === Object.keys(fingerprints).length && Object.entries(fingerprints).every(([name,hash]) => entry.fingerprints[name] === hash));
+  if (patch) return {...patch.bindings, discovery:'signed-catalog', fingerprints};
+  return {...discoverFeatureBindings(m.initial.bytes.toString('utf8'),m.shared.bytes.toString('utf8'),m.composer.bytes.toString('utf8'),{initial:m.initial.name,shared:m.shared.name}),fingerprints};
 }

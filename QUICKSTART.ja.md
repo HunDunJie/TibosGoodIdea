@@ -1,10 +1,10 @@
 # クイックスタート
 
-TibosGoodIdea / Tibo’s Good Idea 0.8.0-rc.4
+TibosGoodIdea / Tibo’s Good Idea 0.8.0-rc.14
 由龙见象による独立したツールです OpenAI との提携や公式の推奨はありません
 現在は非公開の候補版であり、販売を開始していません
 
-対応環境：Windows 11 x64、Microsoft Store 版 Codex 26.1023.6621.0
+対応環境：Windows 11 x64、Microsoft Store 版 Codex 26.1027.3384.0
 
 1. ZIP 全体を通常のフォルダーに展開し、Install.cmd を実行します 管理者権限は不要です
 2. 初回は実行中のタスクを完了して Codex を終了し、Tibo’s Good Idea のショートカットから起動します
@@ -35,4 +35,7 @@ Uninstall.cmd は管理対象のファイルを削除し、設定をバックア
 
 このツールには Codex のアカウント、サブスクリプション、追加使用量は含まれません
 使用条件は LICENSE.en.md / LICENSE.zh-CN.md、第三者のライセンスは THIRD-PARTY-NOTICES.md を確認してください
-クライアントの更新で互換性が失われる場合があります 問い合わせは購入先の注文ページから行ってください
+起動時に署名付き適応表を確認します 大きな構造変更には更新版が必要な場合があります 問い合わせは GitHub Issues を利用してください
+
+独自コード、SVG アイコン、文書は GPL-3.0-only です 変更版の配布時は対応するソースの提供など GPL の条件に従ってください
+Node.js、Acorn、録音素材はそれぞれ元の権利を保持します

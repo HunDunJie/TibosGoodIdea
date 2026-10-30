@@ -28,6 +28,58 @@ test('disabling cancels only this service and clears its next alarm',async () =>
   assert.equal(f.engine.state.alarm,null); assert.equal(f.engine.state.nextAlarm,null);
   f.at(20000000); await f.engine.tick(); assert.deepEqual(f.played,[]);
 });
+
+test('a corrected reset before the target replaces an imminent reminder',async () => {
+  const f=fixture(); await f.engine.observe(f.sample()); await f.engine.toggle('refresh',true);
+  f.at(1099990); await f.engine.observe(f.sample(19000000,100));
+  assert.equal(f.engine.state.alarm.reset,19000000); assert.equal(f.engine.state.nextAlarm,null);
+  f.at(1160000); await f.engine.tick(); assert.deepEqual(f.playCalls,[]);
+});
+
+test('a reset card replaces both the imminent alarm and its queued successor',async () => {
+  const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('refresh',true);
+  f.at(1100010); await f.engine.observe({...f.sample(19000000,100),availableResets:2});
+  assert.equal(f.engine.state.nextAlarm.reset,19000000);
+  f.at(1120000); await f.engine.observe({...f.sample(20000000,100),availableResets:1});
+  assert.equal(f.engine.state.alarm.reset,20000000); assert.equal(f.engine.state.nextAlarm,null);
+  f.at(1160000); await f.engine.tick(); assert.deepEqual(f.playCalls,[]);
+  f.at(20060000); await f.engine.tick(); assert.equal(f.playCalls.length,1);
+});
+
+test('a reset card received at the old alarm time cancels before playing',async () => {
+  const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('refresh',true);
+  f.at(1160000); await f.engine.observe({...f.sample(19000000,100),availableResets:1});
+  assert.deepEqual(f.playCalls,[]); assert.equal(f.engine.state.alarm.reset,19000000);
+});
+
+test('temporarily missing reset inventory does not erase the reminder card baseline',async () => {
+  const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('refresh',true);
+  f.at(1050000); await f.engine.observe(f.sample());
+  f.at(1160000); await f.engine.observe({...f.sample(19000000,100),availableResets:1});
+  assert.deepEqual(f.playCalls,[]); assert.equal(f.engine.state.alarm.reset,19000000);
+});
+
+test('refresh reminder remembers its reset-card baseline after a worker restart',async () => {
+  const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('refresh',true);
+  const restarted=fixture(f.saved); restarted.at(1160000);
+  await restarted.engine.observe({...restarted.sample(19000000,100),availableResets:1});
+  assert.deepEqual(restarted.playCalls,[]); assert.equal(restarted.engine.state.alarm.reset,19000000);
+});
+
+test('a reset card with missing or expired time never revives its old reminder after restart',async () => {
+  for(const reset of [null,1100000]){
+    const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('refresh',true);
+    f.at(1100010); await f.engine.observe({...f.sample(reset,100),availableResets:1});
+    assert.equal(f.engine.state.alarm,null);
+    const restarted=fixture(f.saved); restarted.at(1160000);
+    await restarted.engine.observe({...restarted.sample(1100000,0,1000000),availableResets:2});
+    await restarted.engine.tick(); assert.equal(restarted.engine.state.alarm,null); assert.deepEqual(restarted.playCalls,[]);
+    await restarted.engine.observe({...restarted.sample(1100000,100),availableResets:1});
+    assert.equal(restarted.engine.state.alarm,null);
+    restarted.at(1160010); await restarted.engine.observe({...restarted.sample(19000000,80),availableResets:1});
+    assert.equal(restarted.engine.state.alarm.reset,19000000);
+  }
+});
 test('saved alarm fires with no Codex connection or quota polling',async () => {
   const f = fixture(); await f.engine.observe(f.sample()); await f.engine.toggle('refresh',true);
   const restarted = fixture(f.saved); restarted.at(1160010); await restarted.engine.resume();
@@ -66,10 +118,82 @@ test('an unused full bucket may have no next reset timestamp',async () => {
   const f = fixture(); await f.engine.observe(f.sample()); await f.engine.toggle('send',true);
   f.at(1100010); await f.engine.observe(f.sample(null,100)); assert.ok(await f.engine.claimSend());
 });
+
+test('reset card moves an armed round to the new reset and never sends at the old time',async () => {
+  const f = fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('send',true);
+  const id=f.engine.state.send.id;
+  f.at(1050000); await f.engine.observe({...f.sample(19000000,100),availableResets:1});
+  assert.equal(f.engine.state.send.target,19000000); assert.equal(f.saved.send.target,19000000); assert.equal(f.engine.state.send.id,id);
+  f.at(1100010); assert.equal(await f.engine.claimSend(),null);
+  f.at(19000001); await f.engine.observe({...f.sample(37000000,100),availableResets:1});
+  assert.equal(f.engine.state.send.target,19000000,'Natural refresh must not postpone the armed round');
+  assert.deepEqual(await f.engine.claimSend(),{id}); assert.equal(await f.engine.claimSend(),null);
+  await f.engine.finishSend(id,{sent:2}); assert.equal(f.engine.state.send.phase,'done');
+});
+
+test('a reset correction before the target can move a round earlier without reset inventory',async () => {
+  const f=fixture(); await f.engine.observe(f.sample(1300000)); await f.engine.toggle('send',true);
+  f.at(1020000); await f.engine.observe(f.sample(1150000,100));
+  assert.equal(f.engine.state.send.target,1150000);
+  f.at(1150001); await f.engine.observe(f.sample(19000000,100)); assert.ok(await f.engine.claimSend());
+});
+
+test('reset card without a new timestamp waits, polls again, and never treats null as a due time',async () => {
+  const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('send',true);
+  f.at(1050000); await f.engine.observe({...f.sample(null,100),availableResets:1});
+  assert.equal(f.engine.state.send.phase,'armed'); assert.equal(f.engine.state.send.target,null);
+  f.at(1100010); assert.equal(await f.engine.claimSend(),null);
+  const resumed=fixture(f.saved); resumed.at(1200000);
+  await resumed.engine.observe({...resumed.sample(19000000,80),availableResets:1});
+  assert.equal(resumed.engine.state.send.target,19000000); assert.equal(await resumed.engine.claimSend(),null);
+});
+
+test('stale quota cannot revert a rescheduled round after worker restart',async () => {
+  const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('send',true);
+  f.at(1050000); await f.engine.observe({...f.sample(19000000,100),availableResets:1});
+  const resumed=fixture(f.saved); resumed.at(1100010);
+  await resumed.engine.observe({...resumed.sample(1100000,0,1000000),availableResets:2});
+  assert.equal(resumed.engine.state.send.target,19000000); assert.equal(await resumed.engine.claimSend(),null);
+  await resumed.engine.observe({...resumed.sample(19000000,90,1100010),availableResets:1});
+  assert.equal(resumed.engine.state.send.target,19000000); assert.equal(resumed.engine.state.send.phase,'armed');
+});
+
+test('confirmed reset-card use after an old due time reschedules instead of sending immediately',async () => {
+  const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('send',true);
+  f.at(1100010); await f.engine.observe({...f.sample(19000000,100),availableResets:1});
+  assert.equal(f.engine.state.send.target,19000000); assert.equal(await f.engine.claimSend(),null);
+});
+
+test('reset-card data that still carries an expired timestamp waits for a valid next target',async () => {
+  const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('send',true);
+  f.at(1100010); await f.engine.observe({...f.sample(1100000,100),availableResets:1});
+  assert.equal(f.engine.state.send.target,null); assert.equal(await f.engine.claimSend(),null);
+  f.at(1100020); await f.engine.observe({...f.sample(19000000,100),availableResets:1});
+  assert.equal(f.engine.state.send.target,19000000); assert.equal(await f.engine.claimSend(),null);
+});
+
+test('reset cards never rearm a running or completed sending round',async () => {
+  const f=fixture(); await f.engine.observe({...f.sample(),availableResets:2}); await f.engine.toggle('send',true);
+  f.at(1100010); await f.engine.observe({...f.sample(19000000,100),availableResets:2}); const claim=await f.engine.claimSend();
+  f.at(1200000); await f.engine.observe({...f.sample(20000000,100),availableResets:1});
+  assert.equal(f.engine.state.send.phase,'running'); assert.equal(f.engine.state.send.target,1100000);
+  await f.engine.finishSend(claim.id,{sent:1});
+  f.at(1300000); await f.engine.observe({...f.sample(21000000,100),availableResets:0});
+  assert.equal(f.engine.state.send.phase,'done'); assert.equal(await f.engine.claimSend(),null);
+});
 test('account change cancels armed send and replaces owned alarm',async () => {
   const f = fixture(); await f.engine.observe(f.sample()); await f.engine.toggle('refresh',true); await f.engine.toggle('send',true);
   await f.engine.observe(f.sample(1200000,80,1000000,'B'));
   assert.equal(f.engine.state.send.phase,'cancelled'); assert.equal(f.engine.state.alarm.reset,1200000);
+});
+
+test('a new account sample cancels a due alarm before any old-account music or notification',async () => {
+  const f = fixture(); await f.engine.observe(f.sample()); await f.engine.toggle('refresh',true); await f.engine.toggle('send',true);
+  f.at(1160000); await f.engine.observe(f.sample(19000000,80,1160000,'B'));
+  assert.deepEqual(f.playCalls,[],'The new account must not trigger the previous account alarm');
+  assert.equal(f.engine.state.send.phase,'cancelled');
+  assert.equal(f.engine.state.alarm.reset,19000000);
+  assert.equal(f.engine.state.fired.length,0);
 });
 test('a crashed sending round never retries on service restart',async () => {
   const f = fixture({send:{phase:'running',id:'crashed'}}); assert.equal(f.engine.state.send.phase,'interrupted'); assert.equal(await f.engine.claimSend(),null);

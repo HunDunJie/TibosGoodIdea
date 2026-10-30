@@ -1,0 +1,70 @@
+{
+  "version": "0.8.0-rc.9",
+  "date": "2026-10-30",
+  "unitTests": {
+    "passed": true,
+    "count": 43,
+    "newReminderCases": 6
+  },
+  "sendResetUi": {
+    "passed": true,
+    "oldTimeDidNotSend": true,
+    "missingTimePolled": true,
+    "naturalResetSentOnce": true
+  },
+  "controllerIntegration": {
+    "passed": true,
+    "closedClientControllerExited": true,
+    "reminderSurvivesControllerExit": true,
+    "testClockOnlyInIsolatedController": true
+  },
+  "controllerLifecycle": {
+    "passed": true,
+    "samePathWorkerUpgrade": true,
+    "samePathControllerUpgrade": true,
+    "switchesAndSchedulesPreserved": true,
+    "armedSendPreserved": true,
+    "orphanedRendererRecovery": true
+  },
+  "settingsWorker": {
+    "passed": true,
+    "transientFileLocks": true,
+    "threeTrayLanguages": true,
+    "statePreserved": true
+  },
+  "installation": {
+    "passed": true,
+    "checks": 102,
+    "isolatedDirectory": true,
+    "liveServicesChanged": false
+  },
+  "staticValidation": {
+    "nodeSyntaxFiles": 30,
+    "powerShellParsedFiles": 12,
+    "encodingAndLineEndingFiles": 64,
+    "gitDiffCheck": true
+  },
+  "packageValidation": {
+    "passed": true,
+    "buyerEntries": 68,
+    "sourceEntries": 138,
+    "eachEntryMatchesSource": true,
+    "buyerSha256Manifest": true,
+    "previousCandidateUnchanged": true,
+    "privateConfigUnchanged": true
+  },
+  "privateConfigSha256": "74d11d3874b3635295f1284865ee0672aab0d182541402487e110a0286d8e306",
+  "realCodexRestarted": false,
+  "liveWorkerReloaded": false,
+  "realResetCardsUsed": false,
+  "realDraftsSent": false,
+  "musicPlayed": false,
+  "notificationsShown": false,
+  "githubPushed": false,
+  "fullClientManualAcceptance": "pending",
+  "failedTestTemporaryFolders": {
+    "count": 2,
+    "movedToRecycleBin": true,
+    "activeTestProcesses": 0
+  }
+}

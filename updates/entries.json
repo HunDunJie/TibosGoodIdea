@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "revision": 2,
+  "entries": [
+    {
+      "fingerprints": {
+        "app-initial-4267e52fe5b0.js": "ba06de8c5418586b49ca7d639ea5ad2af531c1037454ec69b10b9ea11e00992e",
+        "app-shared-b9a49a97ca55.js": "f4b8ddb204fe43881fe4a625c09938e96aca597585583af1d86fc611c79d2e47",
+        "composer-content-e36dff9dfe56.js": "4cc66a80634a012e2d9f71bc17421d0bdc24d41759fc30e6f7b6fda35779e854"
+      },
+      "bindings": {
+        "schema": 2,
+        "initial": "app-initial-4267e52fe5b0.js",
+        "shared": "app-shared-b9a49a97ca55.js",
+        "scope": "klt",
+        "initEvents": "tGn",
+        "completionEvent": "gGn",
+        "initComposer": "Uxt",
+        "composerScope": "b6n",
+        "readStorage": "Rcr",
+        "navigation": "fEn",
+        "conversationBinding": "_7n",
+        "host": "c3n",
+        "navigationMode": "native-method",
+        "initSend": [
+          "M6n",
+          "Uxt",
+          "g7n",
+          "mEn",
+          "o3n"
+        ],
+        "capabilities": {
+          "completion": true,
+          "send": true
+        },
+        "reasons": {
+          "completion": null,
+          "send": null
+        }
+      }
+    },
+    {
+      "fingerprints": {
+        "app-initial-db76c3384587.js": "8511d0206f33dfd5bcc5f2a9d2273c9952f4844c9d79fdfb0404634d7a9d5723",
+        "app-shared-3b88f728481f.js": "049e002cddcc8b63436e0197d3f061302eafa7e760379b5937e3ea876384ccd7",
+        "composer-content-b105c3967bfa.js": "22b12a52038740d1e82fffbf02e5507bc1144ea708f88cbfe5384bec30198a87"
+      },
+      "bindings": {
+        "schema": 2,
+        "initial": "app-initial-db76c3384587.js",
+        "shared": "app-shared-3b88f728481f.js",
+        "scope": "uct",
+        "initEvents": "ICn",
+        "completionEvent": "ZCn",
+        "initComposer": "fpt",
+        "composerScope": "MQn",
+        "readStorage": "Ntr",
+        "navigation": "ZAn",
+        "navigateLocal": "tjn",
+        "conversationBinding": "b0n",
+        "host": "VJn",
+        "navigationMode": "legacy-helper",
+        "initSend": [
+          "fpt"
+        ],
+        "capabilities": {
+          "completion": true,
+          "send": true
+        },
+        "reasons": {
+          "completion": null,
+          "send": null
+        }
+      }
+    }
+  ]
+}

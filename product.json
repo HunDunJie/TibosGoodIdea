@@ -2,15 +2,11 @@
   "productId": "bottom-bar-companion",
   "name": "Tibo’s Good Idea",
   "seller": "由龙见象",
-  "version": "0.8.0-rc.4",
+  "version": "0.8.0-rc.14",
   "stage": "release-candidate",
-  "price": {
-    "CNY": 3.9,
-    "USD": 0.9
-  },
-  "payment": "one-time",
   "supportedCodexVersions": [
-    "26.1023.6621.0"
+    "26.1023.6621.0",
+    "26.1027.3384.0"
   ],
   "testedOS": "Windows 11 x64",
   "languages": [
@@ -18,10 +14,11 @@
     "en",
     "ja"
   ],
-  "license": "LicenseRef-TibosGoodIdea-Commercial",
+  "license": "GPL-3.0-only",
   "officialAffiliation": false,
-  "published": false,
-  "distribution": "private-candidate",
-  "commercialPermission": "awaiting-support-response",
-  "languagePolicy": "follow-codex"
+  "distribution": "open-source",
+  "commercialPermission": "not-confirmed",
+  "languagePolicy": "follow-codex",
+  "compatibilityPolicy": "discover-per-capability",
+  "adapterUpdateSource": "https://raw.githubusercontent.com/HunDunJie/TibosGoodIdea/main/updates/catalog.json"
 }

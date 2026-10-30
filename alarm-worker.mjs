@@ -7,6 +7,7 @@ import {fileURLToPath} from 'node:url';
 import {FeatureEngine} from './feature-engine.mjs';
 import {WindowsAudioClient} from './audio-client.mjs';
 import {defaultStateDir,pipePath} from './runtime-paths.mjs';
+import {saveStateJson} from './state-file.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url)), args = process.argv.slice(2);
 const option = (name,fallback) => args.includes(name) ? args[args.indexOf(name)+1] : fallback;
 const stateDir = path.resolve(option('--state-dir',defaultStateDir()));
@@ -30,9 +31,7 @@ const audio = new WindowsAudioClient(config,event => {
     if (event.event === 'player-exited' && engine.state.ringing) { engine.state.ringing = null; engine.state.refreshError = '播放器意外退出，可重新开关提醒'; await engine.commit(); }
   });
 });
-engine = new FeatureEngine({state:initial,audio,save:async state => {
-  await fs.writeFile(`${stateFile}.tmp`,JSON.stringify(state,null,2),'utf8'); await fs.rename(`${stateFile}.tmp`,stateFile);
-}});
+engine = new FeatureEngine({state:initial,audio,save:state=>saveStateJson(stateFile,state)});
 async function dispatch(method,payload = {}) {
   switch (method) {
     case 'status': return {...engine.status(),workerPid:process.pid,workerVersion,workerRoot:here,configStamp:configFingerprint(config)};
@@ -43,8 +42,7 @@ async function dispatch(method,payload = {}) {
         await audio.call('language',{language:payload.language});
         config.language=payload.language;
         const languageFile=path.join(stateDir,'codex-language.json');
-        await fs.writeFile(languageFile+'.tmp',JSON.stringify({language:payload.language}),'utf8');
-        await fs.rename(languageFile+'.tmp',languageFile);
+        await saveStateJson(languageFile,{language:payload.language});
         reportedLanguage=payload.language;
       }
       return {language:config.language};

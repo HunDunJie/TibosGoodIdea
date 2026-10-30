@@ -1,0 +1,66 @@
+{
+  "version": "0.8.0-rc.11",
+  "date": "2026-10-30",
+  "controllerIntegration": {
+    "passed": true,
+    "allThreeButtonsWakeService": true,
+    "eachButtonTestedTwice": true,
+    "singleClickEnables": true,
+    "cachedEnabledStateIgnored": true,
+    "otherSwitchesRemainOff": true,
+    "pollingDoesNotRestart": true,
+    "wakeRestoresLanguage": true,
+    "noRealDrafts": true,
+    "noAudibleSound": true,
+    "restoreAndClosedClientExit": true
+  },
+  "sendResetUi": {
+    "passed": true,
+    "naturalResetSendsOnce": true,
+    "nullTimeWaits": true
+  },
+  "unitTests": {
+    "passed": true,
+    "count": 43
+  },
+  "uiChecks": {
+    "passed": true,
+    "count": 79
+  },
+  "languageChecks": {
+    "passed": true,
+    "count": 33
+  },
+  "volumeChecks": {
+    "passed": true,
+    "count": 20,
+    "systemVolumeChanged": false
+  },
+  "staticValidation": {
+    "nodeSyntax": true,
+    "utf8AndLineEndings": true,
+    "gitDiffCheck": true
+  },
+  "packageValidation": {
+    "passed": true,
+    "buyerEntries": 68,
+    "sourceEntries": 143,
+    "eachEntryMatchesSource": true,
+    "buyerSha256Manifest": true,
+    "previousCandidatesUnchanged": true,
+    "privateConfigUnchanged": true
+  },
+  "privateConfigSha256": "74d11d3874b3635295f1284865ee0672aab0d182541402487e110a0286d8e306",
+  "realCodexRestarted": false,
+  "liveWorkerStarted": false,
+  "realDraftsSent": false,
+  "musicPlayed": false,
+  "notificationsShown": false,
+  "githubPushed": false,
+  "fullClientManualAcceptance": "pending",
+  "testCleanup": {
+    "failedFoldersRecycled": 2,
+    "isolatedWorkerExited": true,
+    "controllerStoppedBeforeWorkerCleanup": true
+  }
+}

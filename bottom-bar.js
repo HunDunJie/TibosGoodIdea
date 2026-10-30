@@ -251,7 +251,7 @@
       return node;
     }
     function profileTrigger() {
-      return rail?.querySelector('button:is([aria-label*="个人资料"],[aria-label*="profile" i],[aria-label="账户"],[aria-label*="account" i])');
+      return rail?.querySelector('button:is([aria-label*="个人资料"],[aria-label*="profile" i],[aria-label="账户"],[aria-label*="account" i],[aria-label*="プロフィール"],[aria-label*="アカウント"])');
     }
     function nativeProfileMenu(trigger) {
       const menuId = trigger.getAttribute('aria-controls');
@@ -277,7 +277,7 @@
         if (fiber.child) pending.push(fiber.child);
       }
       // Fallback for clients without exposed component props: activate the native menu entry.
-      const entry = [...menu.querySelectorAll('button,[role="menuitem"],a')].find(node => /可用重置|available resets/i.test(node.textContent ?? ''));
+      const entry = [...menu.querySelectorAll('button,[role="menuitem"],a')].find(node => /可用重置|available resets|利用可能なリセット/i.test(node.textContent ?? ''));
       return entry ? () => entry.click() : null;
     }
     async function openUsageDirectly() {
@@ -358,7 +358,7 @@
             }
             action = nativeUsageAction(trigger);
             if (!action && menu && !expandedSummary) {
-              const summary = [...menu.querySelectorAll('button,[role="menuitem"]')].find(node => /^(剩余用量|Remaining usage|Usage)$/i.test(node.textContent?.trim() ?? ''));
+              const summary = [...menu.querySelectorAll('button,[role="menuitem"]')].find(node => /^(剩余用量|Remaining usage|Usage|使用状況)$/i.test(node.textContent?.trim() ?? ''));
               if (summary) { expandedSummary = true; summary.click(); }
             }
           }
@@ -520,8 +520,8 @@
         const account = usageClient.getQueryData(['vscode','account-info']);
         const raw = usageClient.getQueryData(['rate-limit-status']);
         if (!account?.accountId || raw?.account_id !== account.accountId) return null;
-        const five = normalize(raw)?.fiveHour;
-        return five && five.remaining != null ? {accountId:account.accountId,resetsAt:five.resetsAt,remaining:five.remaining,updatedAt:usageClient.getQueryState?.(['rate-limit-status'])?.dataUpdatedAt ?? 0} : null;
+        const snapshot=normalize(raw),five=snapshot?.fiveHour;
+        return five && five.remaining != null ? {accountId:account.accountId,resetsAt:five.resetsAt,remaining:five.remaining,availableResets:snapshot.resets,updatedAt:usageClient.getQueryState?.(['rate-limit-status'])?.dataUpdatedAt ?? 0} : null;
       },
       async refreshQuota() {
         if (this.quotaSample() && typeof usageClient?.refetchQueries === 'function')

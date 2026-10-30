@@ -19,13 +19,13 @@ Three small icons add useful controls:
 - **Completion sound:** play a sound when a connected chat finishes, for up to 30 minutes, without an extra completion popup
 - **Reset reminder:** notify and play one minute after the five-hour reset, for up to 30 minutes; an already scheduled reminder works after closing Codex
 
-Move the mouse inside Codex to stop sound, or use the tray without reopening Codex. Language follows Codex in Chinese, English or Japanese; set your time zone and use the original included tones or your own WAVs
+Move the mouse inside Codex to stop sound, or use the tray without reopening Codex. Language follows Codex in Chinese, English or Japanese; set your time zone and use the included BGM_JuShang completion music and BGM_DuDuan reset music or your own WAVs
 
 ## Before buying
 
 Release candidate for **Windows 11 x64 and Microsoft Store Codex 26.1023.6621.0 only**. Other client versions are rejected. Use the add-on shortcut; official launch entries remain unchanged. The computer must be awake for reminders
 
-Includes the complete ZIP, official Node.js runtime, original tones and Chinese, English and Japanese setup/uninstall guides. No Codex account, subscription, extra credits or activation key is included
+Includes the complete ZIP, official Node.js runtime, two reminder music tracks and Chinese, English and Japanese setup/uninstall guides. No Codex account, subscription, extra credits or activation key is included
 
 Independent third-party add-on with no OpenAI affiliation or endorsement. Original add-on materials use a commercial self-use license: personal or commercial work is allowed, but resale and public distribution of the add-on are not granted. Node.js and other third-party components retain their licenses. Future Codex releases may require a new adapter; no lifetime compatibility promise
 

@@ -38,9 +38,10 @@
   "tagCi": {
     "id": 41056940675,
     "attempt": 2,
-    "status": "in_progress",
+    "status": "completed",
     "initialFailure": "First attempt returned offline while staging the simulated rollback candidate; exact cause unavailable in that log",
-    "updateIntegrationPassedOnRetry": true
+    "updateIntegrationPassedOnRetry": true,
+    "conclusion": "success"
   },
   "localUpdateIntegrationRecheckPassed": true,
   "programCatalog": {
@@ -51,7 +52,9 @@
     "signatureVerified": true,
     "archiveDigestAndInventoryVerified": true,
     "wrongClientRejected": true,
-    "sameVersionDoesNotLoop": true
+    "sameVersionDoesNotLoop": true,
+    "publicRawIndexDownloadedAndVerified": true,
+    "publicUrl": "https://raw.githubusercontent.com/HunDunJie/TibosGoodIdea/main/updates/program-catalog.json"
   },
   "newSourceIncludesProTestsAndReviewReports": true,
   "realCodexChanged": false,

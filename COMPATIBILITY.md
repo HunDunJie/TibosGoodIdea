@@ -31,4 +31,4 @@ Offline, invalid or unavailable updates retain bundled/verified local data; the 
 维护者需验证新版本后发布新的签名表；更大的变化可能需要新版程序
 Windows notifications, real Codex cold start, actual completed tasks and real multi-chat sending require manual acceptance separately
 
-Full program updater / 完整程序更新: [docs/program-updates.md](docs/program-updates.md)
+Full program updater / 完整程序更新: [docs/program-updates.md](https://github.com/HunDunJie/TibosGoodIdea/blob/main/docs/program-updates.md)

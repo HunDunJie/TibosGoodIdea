@@ -39,4 +39,4 @@
 
 自有代码、原创图标和说明按 GPL-3.0-only 开源，分发修改版须提供相应源码，详见 LICENSE 与 LICENSE.zh-CN.md。Node.js、Acorn 和录音分别保留原有权利，详见 THIRD-PARTY-NOTICES.md
 
-Full program updater / 完整程序更新: [docs/program-updates.md](docs/program-updates.md)
+完整更新规则：[程序更新说明](https://github.com/HunDunJie/TibosGoodIdea/blob/main/docs/program-updates.md)

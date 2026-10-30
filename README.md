@@ -1,10 +1,14 @@
-# Tibo’s Good Idea
+# Tibo’s Good Idea — Codex 额度底栏与桌面皮肤
 
 [English](README.en.md) · [中文安装说明](QUICKSTART.zh-CN.md) · [日本語](QUICKSTART.ja.md)
 
 Windows Codex 的单行底栏附加工具，自有代码按 **GPL-3.0-only** 开源
 将最左侧图标导航移至底部，头像在最左边；同一行显示点数、5 小时额度、每周额度、刷新时间和可用重置
 项目目录和 GitHub 仓库名为 TibosGoodIdea，当前版本 **0.8.0-rc.15**
+
+**English:** A Windows Codex desktop skin and quota bottom bar showing remaining usage, five-hour and weekly limits, reset times, reset countdowns and available resets, with scheduled draft sending and music reminders
+
+**日本語:** Windows 版 Codex のデスクトップ用スキン・ボトムバー 残り利用枠、5時間・週間の利用制限、リセット時刻、リセットまでのカウントダウン、利用可能なリセット回数を表示し、下書きの予約送信と音楽通知に対応します
 
 这是非官方项目，与 OpenAI 及 Tibo 没有关联或背书关系
 开源许可只涉及本项目自有代码，不代表 OpenAI 已批准该客户端集成方式
@@ -67,6 +71,21 @@ Windows CI 在 .github/workflows/test.yml
 个人配置、后台状态、签名私钥、下载的运行时和 dist 均不进入 Git
 签名维护流程见 [updates/README.md](updates/README.md)，本次改动与验证见 [docs/automatic-adaptation.md](docs/automatic-adaptation.md)
 模拟测试不会发送真实草稿或播放真实音乐，真实冷启动、通知返回和真实多聊天发送仍需单独验收
+
+## 搜索关键词 / Search terms / 検索キーワード
+
+| 中文 | English | 日本語 |
+| --- | --- | --- |
+| Codex 皮肤、界面美化 | Codex skin, desktop theme | Codex スキン、テーマ、UI カスタマイズ |
+| Codex 底栏、底部导航栏 | Codex bottom bar, bottom navigation | Codex ボトムバー、下部ナビゲーション |
+| 剩余额度、用量显示、额度监控 | remaining quota, usage display, quota monitor | 残り利用枠、使用量表示、利用状況モニター |
+| 五小时额度、每周额度 | five-hour quota, weekly quota | 5時間の利用枠、週間利用枠 |
+| 刷新时间、重置时间、刷新倒计时 | reset time, quota reset countdown | リセット時刻、リセットまでのカウントダウン |
+| 可用重置、重置次数 | available resets, reset credits | 利用可能なリセット回数、リセットクレジット |
+| 定时发送、草稿自动发送 | scheduled draft sending, send on quota reset | 下書きの予約送信、利用枠リセット後の自動送信 |
+| 完成提醒、任务结束提醒 | task completion reminder, completion sound | タスク完了通知、回答完了通知 |
+| 刷新提醒、音乐提醒 | quota reset reminder, music notification | リセット通知、音楽通知 |
+| 中英日多语言、Windows 桌面工具 | multilingual Windows desktop utility | 中国語・英語・日本語対応、Windows デスクトップツール |
 
 ## 许可证
 

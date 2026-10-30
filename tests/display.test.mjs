@@ -45,3 +45,26 @@ test('Japanese countdowns include days, hours and minutes with translated missin
   assert.equal(resetDate(null,'ja'),'時刻を取得できません');
   assert.equal(creditText(null,true,'ja'),'無制限');
 });
+
+test('explicit Pro windows without a five-hour limit retain weekly usage, credits and reset inventory',()=>{
+  for(const plan_type of ['pro','promax','prolite']) {
+    const data=normalize({plan_type,rate_limit:{primary_window:null,secondary_window:{limit_window_seconds:604800,used_percent:42}},credits:{balance:'1234.5'},rate_limit_reset_credits:{available_count:2}});
+    assert.equal(data.fiveHourLimit,'none'); assert.equal(data.fiveHour,null);
+    assert.equal(data.weekly.remaining,58); assert.equal(data.creditBalance,1234.5); assert.equal(data.resets,2);
+  }
+  assert.equal(normalize({plan_type:'pro',rate_limit:{primary_window:null,secondary_window:null}}).fiveHourLimit,'none');
+  assert.equal(normalize({planType:'pro',rateLimit:{primary:{windowDurationMins:10080,usedPercent:25},secondary:null}}).fiveHourLimit,'none');
+});
+
+test('missing, malformed and non-Pro windows never imply no five-hour limit',()=>{
+  for(const raw of [
+    {},{plan_type:'pro'},{plan_type:'pro',rate_limit:null},
+    {plan_type:'pro',rate_limit:{}},{plan_type:'pro',rate_limit:{primary_window:null}},
+    {plan_type:'pro',rate_limit:{primary_window:null,secondary_window:{}}},
+    {plan_type:'pro',rate_limit:{primary_window:null,secondary_window:{limit_window_seconds:604800}}},
+    {plan_type:'plus',rate_limit:{primary_window:null,secondary_window:null}},
+    {credits:{unlimited:true}},
+  ]) assert.notEqual(normalize(raw)?.fiveHourLimit,'none',JSON.stringify(raw));
+  const data=normalize({plan_type:'pro',rate_limit:{primary_window:{limit_window_seconds:18000,used_percent:10},secondary_window:null}});
+  assert.equal(data.fiveHourLimit,'limited'); assert.equal(data.fiveHour.remaining,90);
+});

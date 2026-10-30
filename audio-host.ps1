@@ -1,4 +1,4 @@
-﻿param([switch]$ReadVolume, [string]$Language = 'zh-CN')
+﻿param([switch]$ReadVolume, [string]$Language = 'zh-CN', [string]$CodexPath = '')
 $ErrorActionPreference = 'Stop'
 [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
@@ -10,6 +10,7 @@ try {
     exit 0
   }
   [CodexBottomBar.WindowsAudio]::SetLanguage($Language)
+  if($CodexPath){[CodexBottomBar.WindowsAudio]::SetCodex($CodexPath)}
   [CodexBottomBar.WindowsAudio]::Start()
   [Console]::Out.WriteLine('{"event":"ready"}')
   while ($null -ne ($line = [Console]::ReadLine())) {
@@ -20,7 +21,7 @@ try {
       switch ($command.method) {
         'check' { [CodexBottomBar.WindowsAudio]::CheckFile([string]$command.path) }
         'play' { [CodexBottomBar.WindowsAudio]::Play([string]$command.path,[string]$command.kind,[bool]$command.notify) }
-        'status' { $result = @{playing=[CodexBottomBar.WindowsAudio]::PlayingKind;notificationsShown=[CodexBottomBar.WindowsAudio]::NotificationsShown;language=[CodexBottomBar.WindowsAudio]::Language;trayLabels=[CodexBottomBar.WindowsAudio]::ReadTrayLabels()} }
+        'status' { $result = @{playing=[CodexBottomBar.WindowsAudio]::PlayingKind;notificationsShown=[CodexBottomBar.WindowsAudio]::NotificationsShown;language=[CodexBottomBar.WindowsAudio]::Language;trayLabels=[CodexBottomBar.WindowsAudio]::ReadTrayLabels();codexConfigured=[CodexBottomBar.WindowsAudio]::CodexConfigured} }
         'language' { [CodexBottomBar.WindowsAudio]::SetLanguage([string]$command.language); $result=@{language=[CodexBottomBar.WindowsAudio]::Language} }
         'stop' { [CodexBottomBar.WindowsAudio]::Stop() }
         'codex' { [CodexBottomBar.WindowsAudio]::SetCodex([string]$command.path) }

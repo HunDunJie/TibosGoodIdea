@@ -81,7 +81,8 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve,ms));
     }
     assert.equal(await page.evaluate(()=>window.__wakeDraftRounds),0);
     await fs.writeFile(path.join(runtime,'stop.flag'),'restore');
-    for (let i=0;i<40&&!exited;i++) await sleep(150);
+    // Allow the 3s poll and an in-flight CDP call's 8s timeout before declaring shutdown stuck.
+    for (let i=0;i<100&&!exited;i++) await sleep(150);
     assert.ok(exited); assert.equal(controller.exitCode,0); assert.equal(await page.locator('#codex-bottom-bar-metrics').count(),0);
     assert.equal(process.kill(worker.workerPid,0),true,'restoring layout must not kill independent reminder');
     await page.reload(); await sleep(150); assert.equal(await page.locator('#codex-bottom-bar-metrics').count(),0);

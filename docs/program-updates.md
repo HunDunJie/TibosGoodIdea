@@ -21,6 +21,8 @@ Installed versions live under `versions/`. The fixed root bootstrap and pinned p
 
 Worker handoff is serialized with normal operations: prepare establishes a 30-second lease, commit rechecks busy state, saves the latest state and exits without disableAll. Claims and enabling features are blocked during handoff. A failed activation restores the previous code and quarantines that candidate for the current client. Rollback never restores stale drafts, send batches, alarm or user-setting snapshots. An interrupted sending round retains the existing no-retry rule.
 
+Rollback is complete only after the candidate process exits and any previously running reminder service starts again. A busy candidate or failed restoration keeps the crash journal open for the next launch instead of reporting success or starting a competing worker. A lost commit reply is distinguished from a still-running service using its committed-exit status. The fallback target is the verified code actually selected before activation, including when a damaged active payload has already fallen back.
+
 Incompatible state migrations or updater protocols require manual installation. The fixed bootstrap is a deliberate boundary: future changes to it also require a manual upgrade. An interrupted download can leave its `.incoming-*` directory after a hard process/system crash; it is never activated or recursively removed as an unknown folder. No native Codex launch entry is changed.
 
 ## Maintainer publishing

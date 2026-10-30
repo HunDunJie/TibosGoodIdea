@@ -4,7 +4,7 @@
 
 Windows Codex 的单行底栏附加工具，自有代码按 **GPL-3.0-only** 开源
 将最左侧图标导航移至底部，头像在最左边；同一行显示点数、5 小时额度、每周额度、刷新时间和可用重置
-项目目录和 GitHub 仓库名为 TibosGoodIdea，当前版本 **0.8.0-rc.15**
+项目目录和 GitHub 仓库名为 TibosGoodIdea，当前版本 **0.8.0-rc.16**
 
 **English:** A Windows Codex desktop skin and quota bottom bar showing remaining usage, five-hour and weekly limits, reset times, reset countdowns and available resets, with scheduled draft sending and music reminders
 
@@ -20,6 +20,7 @@ Windows Codex 的单行底栏附加工具，自有代码按 **GPL-3.0-only** 开
 - 刷新提醒：5 小时额度刷新后一分钟弹出通知并播放音乐，最多 30 分钟；已安排的提醒在退出 Codex 后仍有效
 - 鼠标在 Codex 内移动、点击或键盘操作会停止播放；托盘菜单和 StopSound.cmd 可在 Codex 未开启时停止
 - 日期与倒计时可点击切换并记住选择，倒计时每分钟更新；中文、英文、日文跟随 Codex
+- 确认 Pro 账户没有 5 小时限制时隐藏该额度栏，定时发送和刷新提醒显示“不适用”并取消旧安排；每周额度、点数、可用重置及完成提醒照常使用，读取不到的数据仍显示未知
 
 Windows 须保持开机且未睡眠，不会唤醒电脑，也不会安装登录自启任务
 定时发送需保持 Codex 和底栏运行，请在开启前检查各聊天草稿
@@ -44,7 +45,7 @@ Windows 须保持开机且未睡眠，不会唤醒电脑，也不会安装登录
 
 ## 自动更新
 
-首次手动安装 rc.15 后，启动时会在后台检查并下载适配当前 Codex 的修复，下次 Codex 和控制器均关闭后再从 TiBo 启动时安全切换
+首次手动安装 rc.16 后，启动时会在后台检查并下载适配当前 Codex 的修复，下次 Codex 和控制器均关闭后再从 TiBo 启动时安全切换
 Codex 没更新时也能接收 TiBo 自身修复；仅支持其他客户端的版本不会下载
 新增功能可通过 Update.cmd / 检查更新.cmd 手动检查；正在发送、响铃或两分钟内有提醒时会推迟更新
 设置、定时发送批次与提醒计划保留，切换失败可回退；[完整更新规则](docs/program-updates.md)

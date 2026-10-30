@@ -20,6 +20,7 @@ jobs:
       - run: npm run test:volume
       - run: npm run test:adapter
       - run: npm run test:send-reset
+      - run: npm run test:pro
       - run: npm run test:controller
       - run: npm run test:worker
       - run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File download-runtime.ps1

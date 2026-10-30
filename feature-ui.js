@@ -54,6 +54,8 @@
     return svg;
   }
   function description(feature) {
+    if (feature !== 'completion' && win.__codexBottomBar?.status?.().fiveHourLimit === 'none')
+      return {text:t('不适用'),enabled:false,inapplicable:true};
     if (!connected) return {text:t('未连接'),enabled:false,error:t('点击按钮重新启动提醒服务')};
     const item = state?.[feature] ?? {};
     let text;
@@ -74,7 +76,7 @@
       button.setAttribute('aria-label',t(nameKeys[feature]));
       button.setAttribute('aria-pressed',String(item.enabled));
       const hasHost=typeof win.__cqbHost === 'function' || typeof win.__cqbPreviewHost === 'function';
-      button.disabled = !hasHost || connected && feature === 'send' && state?.send?.phase === 'running';
+      button.disabled = !hasHost || item.inapplicable || connected && feature === 'send' && state?.send?.phase === 'running';
       button.setAttribute('aria-busy',String(busy));
       const formatTime = value => Number.isFinite(value) ? new Intl.DateTimeFormat(locale,{timeZone,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(value) : null;
       let detail;
@@ -91,11 +93,12 @@
         detail = item.enabled ? time ? t('将于{time}播放音乐提醒',{time}) : t('暂未取得刷新时间')
           : t('可开启，用于额度刷新时播放音乐进行提醒，播放时长最多30分钟，退出Codex仍然有效');
       }
+      if (item.inapplicable) detail=t('当前账户没有五小时额度限制，定时发送和刷新提醒不适用');
       const phase = state?.[feature]?.phase;
       const special = !connected || item.error || ['running','done','interrupted','cancelled','expired','ringing'].includes(phase) || item.enabled && (feature === 'completion' && !capabilities.completion || feature === 'refresh' && !state?.refresh?.alarm);
       const status = special ? ` · ${item.text}${item.error ? `：${item.error}` : ''}` : '';
-      const stateLine = connected ? t(item.enabled ? '已开启' : '已关闭') : t('未连接');
-      const tooltip = `${t(nameKeys[feature])}\n${stateLine}${status}\n${detail}`.replace(/。|\.(?=\s|$)/g,'');
+      const stateLine = item.inapplicable ? t('不适用') : connected ? t(item.enabled ? '已开启' : '已关闭') : t('未连接');
+      const tooltip = `${t(nameKeys[feature])}\n${stateLine}${item.inapplicable ? '' : status}\n${detail}`.replace(/。|\.(?=\s|$)/g,'');
       setTooltip(group,tooltip); setTooltip(button,tooltip);
       button.setAttribute('aria-description',tooltip.split('\n').slice(1).join('\n'));
       group.dataset.enabled = String(item.enabled);
@@ -137,6 +140,7 @@
       const sample=win.__codexBottomBar?.quotaSample?.();
       if (sample) state=await call('observe',sample);
       if (!active) return;
+      if (description(feature).inapplicable) return;
       const enabled = !description(feature).enabled;
       if (enabled && feature !== 'refresh' && !connectedNative) {
         try {await connectNative();} catch(e) {nativeError=e.message;}

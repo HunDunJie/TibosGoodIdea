@@ -143,24 +143,27 @@ export async function activatePending(root,{client,key,stateDir,codexRunning=fal
   let staged;
   try{staged=await verifyVersion(root,pending.relative,key);await health(staged.directory);}
   catch(error){state.quarantine=[...(state.quarantine??[]).slice(-19),{client,sha256:release.sha256}];state.status='rejected';await atomic(root,'program-update-state.json',state);await atomic(root,'pending-release.json',null);return {status:'rejected',error:String(error.message).slice(0,160)};}
-  let prior=null,lease=null,stopped=false,switched=false;try{prior=await worker(stateDir,'status');}catch(e){if(!['ENOENT','ECONNREFUSED'].includes(e.code))return {status:'deferred',reason:'worker-unavailable'};}
+  let prior=null,lease=null;try{prior=await worker(stateDir,'status');}catch(e){if(!['ENOENT','ECONNREFUSED'].includes(e.code))return {status:'deferred',reason:'worker-unavailable'};}
   if(prior){if(![root,current].includes(path.resolve(prior.workerRoot??'')))return {status:'deferred',reason:'foreign-worker'};try{lease=await worker(stateDir,'prepare-update',{root});}catch{return {status:'deferred',reason:'worker-busy'};}}
   if(readClient&&await readClient().catch(()=>null)!==client){if(lease)await worker(stateDir,'cancel-update',{token:lease.token}).catch(()=>{});return {status:'deferred',reason:'client-changed'};}
-  const oldPointer=await json(path.join(root,'active-release.json'),{active:'.'});
+  // resolveActive may already have fallen back from a damaged payload. Roll back to that verified code.
+  const oldPointer={active:current===root?'.':path.relative(root,current).split(path.sep).join('/')};
   try{
     // Journal before stopping the worker: a crash anywhere after this point is recoverable.
     await atomic(root,'update-transaction.json',{previous:oldPointer.active??'.',candidate:pending.relative,sha256:release.sha256,client,wasRunning:!!prior,phase:'switching'});
-    if(prior){await worker(stateDir,'commit-update',{token:lease.token});stopped=true;for(let i=0;i<100;i++){try{await worker(stateDir,'status');await delay(100);}catch{break;}if(i===99)throw Error('Previous reminder service has not exited');}await waitForExit(prior.workerPid);}
+    if(prior){await worker(stateDir,'commit-update',{token:lease.token});for(let i=0;i<100;i++){try{await worker(stateDir,'status');await delay(100);}catch{break;}if(i===99)throw Error('Previous reminder service has not exited');}await waitForExit(prior.workerPid);}
     fault('before-pointer');
-    await atomic(root,'active-release.json',{active:pending.relative,previous:oldPointer.active??'.',sha256:release.sha256});switched=true;fault('after-pointer');
+    await atomic(root,'active-release.json',{active:pending.relative,previous:oldPointer.active,sha256:release.sha256});fault('after-pointer');
     if(prior){const ready=await launch(staged.directory,stateDir,path.join(root,'config.local.json'));if(path.resolve(ready.workerRoot)!==staged.directory||ready.workerVersion!==release.version)throw Error('New worker handshake failed');}
     await atomic(root,'update-transaction.json',{phase:'committed'});await atomic(root,'pending-release.json',null);
     return {status:'activated',version:release.version};
   }catch(error){
-    if(switched)await atomic(root,'active-release.json',oldPointer);
-    if(switched&&prior)try{const candidate=await worker(stateDir,'status');if(path.resolve(candidate.workerRoot??'')===staged.directory){const token=await worker(stateDir,'prepare-update',{root});await worker(stateDir,'commit-update',{token:token.token});await delay(500);}}catch{}
-    if(stopped)await launch(current,stateDir,path.join(root,'config.local.json')).catch(()=>{});
-    const state=await json(path.join(root,'program-update-state.json'),{});state.quarantine=[...(state.quarantine??[]).slice(-19),{client,sha256:release.sha256}];state.status='rolled-back';await atomic(root,'program-update-state.json',state);await atomic(root,'pending-release.json',null);await atomic(root,'update-transaction.json',{phase:'rolled-back'});
+    try{
+      await atomic(root,'active-release.json',oldPointer);
+      // Use the same confirmed stop/restart as crash recovery. A busy or failed worker keeps the journal open.
+      await recoverTransaction(root,{stateDir,key,launch,worker});
+    }catch(recoveryError){return {status:'recovery-required',error:String(error.message).slice(0,160),recoveryError:String(recoveryError.message).slice(0,160)};}
+    const state=await json(path.join(root,'program-update-state.json'),{});state.status='rolled-back';await atomic(root,'program-update-state.json',state);await atomic(root,'update-transaction.json',{phase:'rolled-back'});
     return {status:'rolled-back',error:String(error.message).slice(0,160)};
   }finally{if(lease)await worker(stateDir,'cancel-update',{token:lease.token}).catch(()=>{});}
 }
@@ -177,7 +180,12 @@ export async function recoverTransaction(root,{stateDir,key,launch=launchWorker,
   if(transaction.previous!=='.')previous=(await verifyVersion(root,transaction.previous,key)).directory;
   const candidate=versionPath(root,transaction.candidate);
   let live=null;try{live=await worker(stateDir,'status');}catch(e){if(!['ENOENT','ECONNREFUSED'].includes(e.code))throw e;}
-  if(live&&path.resolve(live.workerRoot??'')===candidate){const pid=live.workerPid,lease=await worker(stateDir,'prepare-update',{root});await worker(stateDir,'commit-update',{token:lease.token});for(let i=0;i<100;i++){await delay(100);try{await worker(stateDir,'status');}catch{live=null;break;}}if(live)throw Error('Recovery deferred: candidate service is still running');await waitForExit(pid);}
+  if(live&&(path.resolve(live.workerRoot??'')===candidate||path.resolve(live.workerRoot??'')===previous&&live.updateCommitted)){
+    const pid=live.workerPid;
+    if(!live.updateCommitted){const lease=await worker(stateDir,'prepare-update',{root});await worker(stateDir,'commit-update',{token:lease.token});}
+    for(let i=0;i<100;i++){await delay(100);try{await worker(stateDir,'status');}catch{live=null;break;}}
+    if(live)throw Error('Recovery deferred: reminder service is still running');await waitForExit(pid);
+  }
   if(live&&path.resolve(live.workerRoot??'')!==previous)throw Error('Recovery deferred: another installation owns the service');
   await atomic(root,'active-release.json',{active:transaction.previous??'.'});
   if(transaction.wasRunning&&!live)await launch(previous,stateDir,path.join(root,'config.local.json'));

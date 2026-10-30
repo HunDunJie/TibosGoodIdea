@@ -7,6 +7,73 @@ function fixture(initial = {}) {
   const engine = new FeatureEngine({state:initial,now:() => time,audio,save:async state => { saved = structuredClone(state); }});
   return {engine,played,playCalls,stopped,audio,get saved() { return saved; },at(value) { time = value; },sample:(reset = 1100000,remaining = 0,updatedAt = time,accountId = 'A') => ({accountId,resetsAt:reset,remaining,updatedAt})};
 }
+
+const noFiveHour=(updatedAt,accountId='A')=>({accountId,fiveHourLimit:'none',resetsAt:null,remaining:null,updatedAt});
+
+test('confirmed no-five-hour accounts cancel old alarms and sends before an elapsed alarm can fire',async()=>{
+  const f=fixture(); await f.engine.observe(f.sample());
+  await f.engine.toggle('send',true); await f.engine.toggle('refresh',true); await f.engine.toggle('completion',true);
+  f.engine.state.nextAlarm={...f.engine.state.alarm,id:'queued',reset:19000000,due:19060000};
+  f.at(1160001); await f.engine.observe(noFiveHour(1160001)); await f.engine.tick();
+  assert.equal(f.engine.status().fiveHourLimit,'none'); assert.equal(f.engine.state.alarm,null); assert.equal(f.engine.state.nextAlarm,null);
+  assert.equal(f.engine.state.refreshEnabled,false); assert.equal(f.engine.state.send.phase,'cancelled'); assert.equal(await f.engine.claimSend(),null);
+  assert.deepEqual(f.played,[]); assert.equal(f.engine.state.completionEnabled,true);
+  await assert.rejects(f.engine.toggle('send',true),/没有五小时额度限制/);
+  await assert.rejects(f.engine.toggle('refresh',true),/没有五小时额度限制/);
+  await f.engine.completion({status:'completed',turnId:'1',conversationId:'A'});
+  assert.deepEqual(f.played,['completion']);
+});
+
+test('no-five-hour applicability survives restart and a finite limit restores manual controls',async()=>{
+  const f=fixture(); await f.engine.observe(noFiveHour(1000000));
+  const restarted=fixture(f.saved); await restarted.engine.resume();
+  assert.equal(restarted.engine.status().fiveHourLimit,'none');
+  await assert.rejects(restarted.engine.toggle('refresh',true),/没有五小时额度限制/);
+  restarted.at(1000010); await restarted.engine.observe(restarted.sample(1200000,50));
+  assert.equal(restarted.engine.status().fiveHourLimit,'limited'); assert.equal(restarted.engine.state.refreshEnabled,false);
+  await restarted.engine.toggle('refresh',true); await restarted.engine.toggle('send',true);
+  assert.equal(restarted.engine.state.alarm.reset,1200000); assert.equal(restarted.engine.state.send.target,1200000);
+});
+
+test('stale and malformed no-five-hour samples cannot cancel a current finite schedule',async()=>{
+  const f=fixture(); await f.engine.observe(f.sample()); await f.engine.toggle('refresh',true); await f.engine.toggle('send',true);
+  const id=f.engine.state.send.id;
+  await f.engine.observe(noFiveHour(999999));
+  await f.engine.observe({...noFiveHour(1000010),remaining:100});
+  await f.engine.observe({...noFiveHour(1000010),resetsAt:1100000});
+  await f.engine.observe({accountId:'A',resetsAt:null,remaining:null,updatedAt:1000010});
+  assert.equal(f.engine.state.send.id,id); assert.equal(f.engine.state.alarm.reset,1100000);
+  assert.equal(f.engine.status().fiveHourLimit,'limited');
+});
+
+test('no-five-hour observation stops refresh sound but preserves completion playback',async()=>{
+  for(const kind of ['refresh','completion']) {
+    const f=fixture({ringing:{kind,startedAt:1000000},completionEnabled:true,refreshEnabled:true});
+    await f.engine.observe(noFiveHour(1000000));
+    assert.equal(f.engine.state.ringing?.kind ?? null,kind==='completion'?'completion':null);
+    assert.equal(f.stopped.length,kind==='refresh'?1:0); assert.equal(f.engine.state.completionEnabled,true);
+  }
+});
+
+test('account changes and older cached samples cannot revive a cancelled no-five-hour send',async()=>{
+  const f=fixture(); await f.engine.observe(f.sample()); await f.engine.toggle('send',true); await f.engine.toggle('refresh',true);
+  f.at(1000020); await f.engine.observe(noFiveHour(1000020));
+  await f.engine.observe(f.sample(1200000,100,1000010));
+  assert.equal(f.engine.status().fiveHourLimit,'none'); assert.equal(f.engine.state.alarm,null);
+  await f.engine.observe(f.sample(1300000,50,1000030,'B'));
+  assert.equal(f.engine.status().fiveHourLimit,'limited'); assert.equal(f.engine.state.send.phase,'cancelled');
+  assert.equal(f.engine.state.refreshEnabled,false); assert.equal(await f.engine.claimSend(),null);
+});
+
+test('removing a five-hour limit cancels a running batch and never retries an accepted round',async()=>{
+  const f=fixture(); await f.engine.observe(f.sample()); await f.engine.toggle('send',true);
+  f.at(1100010); await f.engine.observe(f.sample(19000000,100)); const claim=await f.engine.claimSend();
+  assert.ok(claim); assert.equal(f.engine.state.send.phase,'running');
+  f.at(1100020); await f.engine.observe(noFiveHour(1100020));
+  assert.equal(f.engine.state.send.phase,'cancelled');
+  await f.engine.finishSend(claim.id,{sent:1}); assert.equal(f.engine.state.send.phase,'cancelled');
+  const restarted=fixture(f.saved); await restarted.engine.resume(); assert.equal(await restarted.engine.claimSend(),null);
+});
 test('refresh alarm is +1 minute; repeated samples and enable calls do not duplicate',async () => {
   const f = fixture(); await f.engine.observe(f.sample()); await f.engine.toggle('refresh',true);
   assert.equal(f.engine.state.alarm.due,1160000);

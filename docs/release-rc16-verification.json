@@ -1,0 +1,253 @@
+{
+  "date": "2026-10-30",
+  "version": "0.8.0-rc.16",
+  "baseline": "e0d212d",
+  "unitTestsPassed": 86,
+  "nodeSyntaxFilesPassed": 45,
+  "powerShellParseFilesPassed": 14,
+  "distributionManifestFiles": 83,
+  "uiAndIntegrationChecks": [
+    {
+      "test": "ui.cjs",
+      "exitCode": 0,
+      "seconds": 18,
+      "evidence": {
+        "checks": 79,
+        "passed": true,
+        "realDraftsSent": false
+      }
+    },
+    {
+      "test": "display.cjs",
+      "exitCode": 0,
+      "seconds": 3,
+      "evidence": {
+        "passed": true,
+        "checks": 25,
+        "coldStartPersistence": true,
+        "minuteUpdates": true,
+        "realDraftsSent": false
+      }
+    },
+    {
+      "test": "language.cjs",
+      "exitCode": 0,
+      "seconds": 1,
+      "evidence": {
+        "passed": true,
+        "checks": 33,
+        "liveLanguageChanges": true,
+        "retainsTooltip": true,
+        "preservesFeatureState": true,
+        "realDraftsSent": false
+      }
+    },
+    {
+      "test": "volume.cjs",
+      "exitCode": 0,
+      "seconds": 8,
+      "evidence": {
+        "passed": true,
+        "checks": 20,
+        "realVolumeRead": true,
+        "volumeChanged": false,
+        "audioPlayed": false
+      }
+    },
+    {
+      "test": "native-adapter.cjs",
+      "exitCode": 0,
+      "seconds": 1,
+      "evidence": {
+        "passed": true,
+        "threeNativeProfileLanguages": true,
+        "threeDirectUsageLanguages": true,
+        "nativeSubmissionDelegation": true,
+        "draftAliasDeduplication": true,
+        "emptyDraftSkipped": true,
+        "changedDraftPreserved": true,
+        "failedDraftPreserved": true,
+        "accountSwitchStopsRound": true,
+        "roundCancellation": true,
+        "allHostCompletionSubscription": true,
+        "realDraftsSent": false
+      }
+    },
+    {
+      "test": "send-reset.cjs",
+      "exitCode": 0,
+      "seconds": 15,
+      "evidence": {
+        "passed": true,
+        "liveTooltipUpdated": true,
+        "oldTimeDidNotSend": true,
+        "missingTimePolled": true,
+        "nullTimeDidNotSend": true,
+        "naturalResetSentOnce": true,
+        "completedRoundStayedOff": true,
+        "realDraftsSent": false,
+        "audioPlayed": false
+      }
+    },
+    {
+      "test": "pro.cjs",
+      "exitCode": 0,
+      "seconds": 13,
+      "evidence": {
+        "passed": true,
+        "checks": 35,
+        "realDraftsSent": false,
+        "audioPlayed": false
+      }
+    },
+    {
+      "test": "worker-integration.mjs",
+      "exitCode": 0,
+      "seconds": 13,
+      "evidence": {
+        "passed": true,
+        "independentProcess": true,
+        "parentExitedBeforeAlarm": true,
+        "realWindowsPlayer": true,
+        "audibleSound": false,
+        "stopWithoutCodex": true,
+        "cancelWithoutCodex": true,
+        "completion": true,
+        "playerFailureAttributedToCompletion": true,
+        "mouseStopConfigSurvivesPlayerRestart": true,
+        "thirtyMinuteExpiry": true,
+        "restartPreservesDeadline": true,
+        "refreshNotification": true,
+        "completionNotification": false,
+        "proCancelsOldSchedules": true,
+        "proApplicabilitySurvivesRestart": true,
+        "cleanShutdown": true
+      }
+    },
+    {
+      "test": "settings-worker.mjs",
+      "exitCode": 0,
+      "seconds": 4,
+      "evidence": {
+        "passed": true,
+        "transientFeatureStateLock": true,
+        "transientLanguageStateLock": true,
+        "threeTrayLanguages": true,
+        "liveLanguageWithoutRestart": true,
+        "cachedLanguageSurvivesRestart": true,
+        "mouseStopConfigSurvivesRestart": true,
+        "invalidCodexPathsRejected": true,
+        "ignoresLegacyOverrides": true,
+        "unchangedConfigNoRestart": true,
+        "preservesSwitches": true,
+        "preservesSchedule": true,
+        "preservesArmedSend": true,
+        "audioPlayed": false
+      }
+    },
+    {
+      "test": "lifecycle.cjs",
+      "exitCode": 0,
+      "seconds": 24,
+      "evidence": {
+        "passed": true,
+        "samePathWorkerUpgrade": true,
+        "samePathControllerUpgrade": true,
+        "concurrentCopies": true,
+        "reusedPidStartup": true,
+        "unrelatedProcessPreserved": true,
+        "sameCopyReused": true,
+        "oldControllerExited": true,
+        "duplicateControllerRejected": true,
+        "unsafeRestoreRejected": true,
+        "reminderSwitchesPreserved": true,
+        "schedulePreserved": true,
+        "armedSendPreserved": true,
+        "orphanedRendererRecovery": true,
+        "restore": true,
+        "realCodexChanged": false,
+        "noMusic": true
+      }
+    },
+    {
+      "test": "launcher-arguments.cjs",
+      "exitCode": 0,
+      "seconds": 3,
+      "evidence": {
+        "passed": true,
+        "realWindowsProcess": true,
+        "spaceAndUnicodePaths": true,
+        "archivePathExact": true,
+        "archiveVisibleToChild": true,
+        "noArchiveArgument": true,
+        "installedArchiveBindings": false,
+        "realCodexChanged": false,
+        "realWorkerStarted": false
+      }
+    },
+    {
+      "test": "install.mjs",
+      "exitCode": 0,
+      "seconds": 39,
+      "evidence": {
+        "passed": true,
+        "checks": 126,
+        "isolatedDirectory": true,
+        "realShortcutsChanged": false,
+        "liveServicesChanged": false,
+        "absentWorkerUninstall": true,
+        "selfDirectoryUninstall": true,
+        "upgradeBusyRejected": true,
+        "upgradeRollback": true,
+        "shortcutOwnership": true,
+        "staleControllerUninstall": true,
+        "reusedPidUninstall": true,
+        "liveEndpointErrorsPreserved": true
+      }
+    },
+    {
+      "test": "update-integration.mjs",
+      "exitCode": 0,
+      "seconds": 20,
+      "evidence": {
+        "passed": true,
+        "realSignedPackage": true,
+        "files": 83,
+        "offlineNodeChecks": true,
+        "realWorkerHandoff": true,
+        "realWorkerRollback": true,
+        "rollbackPreservesAlarmsAndBatch": true,
+        "failedCandidateExited": true,
+        "rootConfigPreserved": true,
+        "alarmsAndBatchPreserved": true,
+        "leaseBlocksNewWork": true,
+        "bootstrapRoutesSettings": true,
+        "concurrentChecksSerialized": true,
+        "uninstallCancelsDownload": true,
+        "allVersionsUninstalled": true,
+        "realCodexChanged": false,
+        "audibleSound": false
+      }
+    }
+  ],
+  "controllerIntegrationPassed": true,
+  "controllerRealRendererBridgePassed": true,
+  "controllerAllButtonsWakeServicePassed": true,
+  "verifiedCodexVersion": "26.1027.3384.0",
+  "automaticUpdateClientFingerprint": "f971028af3cb424351c9f473cfb766a40211406a71ffcddae1b7670b7b29dcd3",
+  "offlineNativeCapabilities": {
+    "send": true,
+    "completion": true
+  },
+  "realProAccountTested": false,
+  "realCodexChanged": false,
+  "realDraftsSent": false,
+  "audibleMusicPlayed": false,
+  "systemVolumeChanged": false,
+  "installedCopyChanged": false,
+  "priorReviewReports": [
+    "review-2026-10-30.md",
+    "review-2026-10-30-round2.md"
+  ],
+  "proBehavior": "pro-quota-support.md"
+}

@@ -1,6 +1,6 @@
 # Compatibility / 兼容性
 
-Version 0.8.0-rc.15 · Windows 11 x64 · Microsoft Store Codex
+Version 0.8.0-rc.16 · Windows 11 x64 · Microsoft Store Codex
 
 ## Current evidence / 当前证据
 
@@ -8,6 +8,7 @@ Version 0.8.0-rc.15 · Windows 11 x64 · Microsoft Store Codex
 - Codex 26.1023.6621.0: the previously verified exact-hash mapping remains in the bundled signed catalog
 - The current Codex process was not restarted or reloaded, and no real draft was sent or music played for these checks
 - Synthetic adapter tests cover renamed exports, quote changes, missing/ambiguous interfaces, independent degradation, native navigation, draft preservation and account switching
+- Confirmed Pro accounts without a five-hour limit hide that quota and cancel obsolete send/reset schedules; weekly usage, credits and completion reminders remain independent. This behavior was tested with fixtures, not a real Pro account
 
 ## Startup policy / 启动策略
 

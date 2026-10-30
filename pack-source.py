@@ -21,6 +21,11 @@ tests/engine.test.mjs tests/display.test.mjs tests/locale.test.mjs tests/ui.cjs 
 tests/controller.cjs tests/lifecycle.cjs tests/launcher-arguments.cjs tests/worker-integration.mjs tests/install.mjs tests/settings-worker.mjs .github/workflows/test.yml
 """.split()
 names += ['docs/program-updates-verification.json']
+names += '''
+tests/pro.cjs docs/pro-quota-support.md docs/release-notes-rc16.md docs/release-rc16-verification.json
+docs/review-2026-10-30.md docs/review-2026-10-30-verification.json
+docs/review-2026-10-30-round2.md docs/review-2026-10-30-round2-verification.json
+'''.split()
 sales_names = json.loads((root/'sales/source-files.json').read_text(encoding='utf-8'))
 names += ['sales/'+name for name in sales_names]
 names += ['sales/source-files.json']

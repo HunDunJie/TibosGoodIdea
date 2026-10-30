@@ -1,6 +1,7 @@
 // Scheduling state is independent of the Codex window. No draft contents enter this process.
 import {createHash, randomUUID} from 'node:crypto';
 export const MAX_PLAYBACK_MS = 30 * 60 * 1000;
+const NO_FIVE_HOUR_LIMIT = '当前账户没有五小时额度限制，定时发送和刷新提醒不适用';
 
 export class FeatureEngine {
   constructor({state = {}, now = Date.now, save = async () => {}, audio, onChange = () => {}}) {
@@ -15,7 +16,7 @@ export class FeatureEngine {
   async commit() { this.revision++; await this.save(this.state); this.onChange(this.status()); }
   status() {
     const s = this.state;
-    return {revision:this.revision, refresh:{enabled:s.refreshEnabled, alarm:s.alarm,
+    return {revision:this.revision, fiveHourLimit:this.quota?.fiveHourLimit ?? s.quotaCheckpoint?.fiveHourLimit ?? 'unknown', refresh:{enabled:s.refreshEnabled, alarm:s.alarm,
       phase:s.ringing?.kind === 'refresh' ? 'ringing' : !s.refreshEnabled ? 'off' : s.alarm ? 'scheduled' : 'waiting', error:s.refreshError ?? null},
       completion:{enabled:s.completionEnabled, phase:s.ringing?.kind === 'completion' ? 'ringing' : s.completionEnabled ? 'listening' : 'off', error:s.completionError ?? null},
       send:{...s.send}, ringing:s.ringing?.kind ?? null,
@@ -36,6 +37,7 @@ export class FeatureEngine {
   }
   async toggle(feature, enabled) {
     if (typeof enabled !== 'boolean') throw new Error('无效开关状态');
+    if (enabled && ['send','refresh'].includes(feature) && this.status().fiveHourLimit === 'none') throw new Error(NO_FIVE_HOUR_LIMIT);
     if (feature === 'send') {
       if (this.state.send.phase === 'running') throw new Error('正在发送，请等待本轮结束');
       const reset = this.quota?.resetsAt;
@@ -71,7 +73,9 @@ export class FeatureEngine {
     this.state.alarm = alarm;
   }
   async observe(sample) {
-    if (!sample || sample.resetsAt !== null && !Number.isFinite(sample.resetsAt) || !Number.isFinite(sample.remaining)) return this.status();
+    const noFiveHour=sample?.fiveHourLimit === 'none';
+    if (!sample || (noFiveHour ? sample.resetsAt !== null || sample.remaining !== null
+      : sample.resetsAt !== null && !Number.isFinite(sample.resetsAt) || !Number.isFinite(sample.remaining))) return this.status();
     const account = this.account(sample.accountId);
     if (!account) return this.status();
     const updatedAt=Number.isFinite(sample.updatedAt) ? sample.updatedAt : 0;
@@ -88,6 +92,18 @@ export class FeatureEngine {
       if (this.state.ringing) await this.stop('account-change');
     }
     const availableResets=Number.isInteger(sample.availableResets) && sample.availableResets >= 0 ? sample.availableResets : null;
+    if (noFiveHour) {
+      // Clear obsolete schedules before tick: an elapsed alarm must not play for
+      // an account that no longer has this quota cycle. Completion is independent.
+      this.quota={account,fiveHourLimit:'none',resetsAt:null,remaining:null,availableResets,updatedAt};
+      this.state.quotaCheckpoint={account,fiveHourLimit:'none',availableResets,updatedAt};
+      this.state.refreshEnabled=false; this.state.alarm=null; this.state.nextAlarm=null; this.state.refreshResetAfter=null;
+      delete this.state.refreshError;
+      if (['armed','running'].includes(this.state.send.phase)) this.state.send={phase:'cancelled',error:NO_FIVE_HOUR_LIMIT};
+      if (this.state.ringing?.kind === 'refresh') await this.stop('no-five-hour-limit');
+      if (before !== JSON.stringify(this.state)) await this.commit();
+      return this.status();
+    }
     const previousResets=previousQuota?.availableResets ?? (this.state.quotaCheckpoint?.account === account ? this.state.quotaCheckpoint.availableResets : null);
     const resetCardUsed=previousQuota?.account === account && updatedAt > previousQuota.updatedAt &&
       Number.isInteger(previousResets) && availableResets !== null && availableResets < previousResets;
@@ -101,9 +117,9 @@ export class FeatureEngine {
     }
     // Cancel the old account first; only its own samples may fire its elapsed alarm.
     await this.tick();
-    this.quota = {account, resetsAt:sample.resetsAt, remaining:sample.remaining, availableResets, updatedAt};
+    this.quota = {account, fiveHourLimit:'limited', resetsAt:sample.resetsAt, remaining:sample.remaining, availableResets, updatedAt};
     // Persist only quota metadata; a fresh native response is still required to claim a send.
-    this.state.quotaCheckpoint={account,availableResets:availableResets ?? (previousQuota?.account === account ? previousResets : null),updatedAt};
+    this.state.quotaCheckpoint={account,fiveHourLimit:'limited',availableResets:availableResets ?? (previousQuota?.account === account ? previousResets : null),updatedAt};
     const send = this.state.send;
     if (send.phase === 'armed' && send.account !== account) this.state.send = {phase:'cancelled', error:'账户已切换，本轮已取消'};
     else if (send.phase === 'armed' && updatedAt > (send.quotaUpdatedAt ?? 0)) {

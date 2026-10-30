@@ -38,3 +38,33 @@ test('broken offline health quarantines the payload and removes its temporary fi
 test('an unresponsive worker postpones activation instead of being assumed absent',async()=>fixture(async root=>{await prepare(root);const result=await activatePending(root,{client,key,now,health,worker:async()=>{throw Error('timeout')}});assert.equal(result.reason,'worker-unavailable');assert.equal(await resolveActive(root,{key}),root);}));
 test('client changes after offline checks cancel the handoff before the service is stopped',async()=>fixture(async root=>{await prepare(root);const calls=[],worker=async(s,m)=>{calls.push(m);return m==='status'?{workerRoot:root}:{token:'lease'};};const result=await activatePending(root,{client,key,now,health,worker,readClient:async()=>'b'.repeat(64)});assert.equal(result.reason,'client-changed');assert.ok(calls.includes('cancel-update'));assert.ok(!calls.includes('commit-update'));assert.equal(await resolveActive(root,{key}),root);}));
 test('uninstall can remove corrupted owned program files while preserving unknown notes',async()=>fixture(async root=>{await prepare(root);const pending=JSON.parse(await fs.readFile(path.join(root,'pending-release.json'))),dir=path.join(root,pending.relative);await fs.writeFile(path.join(dir,'controller.mjs'),'corrupted');await fs.unlink(path.join(dir,'product.json'));await fs.writeFile(path.join(dir,'notes.txt'),'mine');await cleanProgramUpdates(root);assert.equal(await fs.stat(path.join(dir,'controller.mjs')).catch(()=>null),null);assert.equal(await fs.readFile(path.join(dir,'notes.txt'),'utf8'),'mine');}));
+test('failed worker restoration keeps the transaction recoverable on the next launch',async()=>fixture(async root=>{
+ await prepare(root);let live=true;
+ const worker=async(s,m)=>{if(m==='status'){if(!live)return none();return {workerRoot:root};}if(m==='prepare-update')return {token:'lease'};if(m==='commit-update')live=false;return {};};
+ const result=await activatePending(root,{client,key,now,health,worker,launch:async()=>{throw Error('worker startup failed');}});
+ assert.equal(result.status,'recovery-required');assert.equal(JSON.parse(await fs.readFile(path.join(root,'update-transaction.json'))).phase,'switching');
+ let restored=null;await recoverTransaction(root,{key,worker:none,launch:async directory=>{restored=directory;return {workerRoot:directory};}});
+ assert.equal(restored,root);assert.equal(JSON.parse(await fs.readFile(path.join(root,'update-transaction.json'))).phase,'recovered');
+}));
+test('a busy candidate prevents a competing old worker and leaves rollback retryable',async()=>fixture(async root=>{
+ const p=await prepare(root);let live=root,busy=true,oldLaunches=0;
+ const worker=async(s,m)=>{if(m==='status'){if(!live)return none();return {workerRoot:live};}if(m==='prepare-update'){if(live!==root&&busy)throw Error('alarm is playing');return {token:'lease'};}if(m==='commit-update')live=null;return {};};
+ const launch=async directory=>{if(directory===root)oldLaunches++;live=directory;return {workerRoot:directory,workerVersion:directory===root?'0.8.0-rc.15':'wrong-version'};};
+ const result=await activatePending(root,{client,key,now,health,worker,launch});
+ assert.equal(result.status,'recovery-required');assert.equal(oldLaunches,0);assert.notEqual(live,root);
+ busy=false;await recoverTransaction(root,{key,worker,launch});assert.equal(live,root);assert.equal(oldLaunches,1);
+ assert.equal(JSON.parse(await fs.readFile(path.join(root,'program-update-state.json'))).quarantine.at(-1).sha256,p.release.sha256);
+}));
+test('a lost handoff reply waits for the old worker to finish exiting before restoration',async()=>fixture(async root=>{
+ await prepare(root);let committing=false,checks=0,launches=0;
+ const worker=async(s,m)=>{if(m==='status'){if(committing&&++checks>1)return none();return {workerRoot:root,updateCommitted:committing};}if(m==='prepare-update')return {token:'lease'};if(m==='commit-update'){committing=true;throw Error('handoff reply lost');}return {};};
+ const result=await activatePending(root,{client,key,now,health,worker,launch:async directory=>{launches++;return {workerRoot:directory};}});
+ assert.equal(result.status,'rolled-back');assert.equal(launches,1);assert.ok(checks>1);
+}));
+test('rollback points to verified current code when an active payload has already fallen back',async()=>fixture(async root=>{
+ await prepare(root);const stale=JSON.parse(await fs.readFile(path.join(root,'pending-release.json'))).relative;
+ await fs.writeFile(path.join(root,'active-release.json'),JSON.stringify({active:stale,previous:'.'}));await fs.appendFile(path.join(root,stale,'controller.mjs'),'broken');
+ assert.equal(await resolveActive(root,{key}),root);await fs.writeFile(path.join(root,'program-update-state.json'),'{}');await prepare(root,build('0.8.0-rc.17'));
+ assert.equal((await activatePending(root,{client,key,now,health,worker:none})).status,'activated');
+ assert.equal(JSON.parse(await fs.readFile(path.join(root,'active-release.json'))).previous,'.');
+}));

@@ -5,7 +5,7 @@
   else api.install(window);
 })(function () {
   'use strict';
-  const VERSION = '0.8.0-rc.4';
+  const VERSION = '0.8.0-rc.16';
   const localeAPI = typeof module === 'object' && module.exports ? require('./i18n.js') : null;
   const TIME_MODES_KEY = 'codex-bottom-bar.time-modes.v1';
   const NUMBER = value => typeof value === 'number' && Number.isFinite(value);
@@ -47,12 +47,22 @@
       };
     };
     const count = raw.rate_limit_reset_credits?.available_count ?? raw.rateLimitResetCredits?.availableCount;
+    const fiveHour = read(300), weekly = read(10080);
+    // Missing usage is unknown. Only a known Pro plan with both explicitly reported
+    // windows (null or a valid weekly window) confirms that no five-hour limit exists.
+    const explicitPair = [['primary_window','secondary_window'],['primary','secondary']]
+      .find(keys => keys.every(key => Object.hasOwn(limit,key)));
+    const noFiveHour = ['pro','promax','prolite'].includes(raw.plan_type ?? raw.planType) && explicitPair &&
+      explicitPair.every(key => limit[key] === null || object(limit[key]) &&
+        (limit[key].limit_window_seconds != null ? NUMBER(limit[key].limit_window_seconds) && Math.abs(limit[key].limit_window_seconds / 60 - 10080) <= 1
+          : NUMBER(limit[key].windowDurationMins) && Math.abs(limit[key].windowDurationMins - 10080) <= 1) &&
+        NUMBER(limit[key].used_percent ?? limit[key].usedPercent));
     const result = {
-      fiveHour: read(300), weekly: read(10080),
+      fiveHour, weekly, fiveHourLimit:fiveHour ? 'limited' : noFiveHour ? 'none' : 'unknown',
       resets: NUMBER(count) && Number.isInteger(count) && count >= 0 ? count : null,
       creditBalance:creditBalance(raw.credits?.balance), creditsUnlimited:raw.credits?.unlimited === true,
     };
-    return result.fiveHour || result.weekly || result.resets !== null || result.creditBalance !== null || result.creditsUnlimited ? result : null;
+    return result.fiveHour || result.weekly || result.fiveHourLimit === 'none' || result.resets !== null || result.creditBalance !== null || result.creditsUnlimited ? result : null;
   }
   function resetDate(value,locale = 'zh-CN',timeZone = 'Asia/Shanghai') {
     if (value == null) return locale === 'en' ? 'Time unavailable' : locale === 'ja' ? '時刻を取得できません' : '时间暂不可用';
@@ -201,6 +211,7 @@
       for (const [key, label] of [['fiveHour', t('5小时')], ['weekly', t('每周')]]) {
         const item = snapshot?.[key];
         const slot = metrics.querySelector(`[data-cqb-slot="${key}"]`);
+        slot.hidden = key === 'fiveHour' && snapshot?.fiveHourLimit === 'none';
         slot.querySelector('.cqb-value').textContent = remaining(item?.remaining);
         const time = slot.querySelector('.cqb-time'), relative = timeModes[key] === 'countdown';
         const text = relative ? countdown(item?.resetsAt,key,win.Date.now(),locale) : resetDate(item?.resetsAt,locale,timeZone);
@@ -513,15 +524,18 @@
     win.__codexBottomBar = {
       version: VERSION,
       setTooltip,
-      status() { return {version: VERSION, attached: !!rail?.isConnected, layout: doc.documentElement.getAttribute('data-cqb'), dataAvailable: lastSnapshot !== null, lastUsagePath,timeModes:{...timeModes},language:locale,timeZone}; },
+      status() { return {version: VERSION, attached: !!rail?.isConnected, layout: doc.documentElement.getAttribute('data-cqb'), dataAvailable: lastSnapshot !== null, fiveHourLimit:lastSnapshot?.fiveHourLimit ?? 'unknown', lastUsagePath,timeModes:{...timeModes},language:locale,timeZone}; },
       refresh: scan,
       quotaSample() {
-        if (!lastSnapshot?.fiveHour || !usageClient?.getQueryData) return null;
+        if (!usageClient?.getQueryData) return null;
         const account = usageClient.getQueryData(['vscode','account-info']);
         const raw = usageClient.getQueryData(['rate-limit-status']);
         if (!account?.accountId || raw?.account_id !== account.accountId) return null;
         const snapshot=normalize(raw),five=snapshot?.fiveHour;
-        return five && five.remaining != null ? {accountId:account.accountId,resetsAt:five.resetsAt,remaining:five.remaining,availableResets:snapshot.resets,updatedAt:usageClient.getQueryState?.(['rate-limit-status'])?.dataUpdatedAt ?? 0} : null;
+        if (!five || five.remaining == null) {
+          if (snapshot?.fiveHourLimit !== 'none') return null;
+        }
+        return {accountId:account.accountId,fiveHourLimit:snapshot.fiveHourLimit,resetsAt:five?.resetsAt ?? null,remaining:five?.remaining ?? null,availableResets:snapshot.resets,updatedAt:usageClient.getQueryState?.(['rate-limit-status'])?.dataUpdatedAt ?? 0};
       },
       async refreshQuota() {
         if (this.quotaSample() && typeof usageClient?.refetchQueries === 'function')

@@ -1,6 +1,6 @@
 {
   "name": "tibos-good-idea",
-  "version": "0.8.0-rc.15",
+  "version": "0.8.0-rc.16",
   "description": "Windows Codex single-row navigation, quota display and independent music reminders",
   "private": true,
   "license": "GPL-3.0-only",
@@ -21,6 +21,7 @@
     "test:settings": "node tests/settings-worker.mjs",
     "test:language": "node tests/language.cjs",
     "test:send-reset": "node tests/send-reset.cjs",
+    "test:pro": "node tests/pro.cjs",
     "test:updates": "node --test tests/program-updates.test.mjs",
     "test:update-integration": "node tests/update-integration.mjs"
   },

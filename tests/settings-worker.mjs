@@ -24,6 +24,10 @@ try{
   await fs.writeFile(configFile,JSON.stringify({language:'zh-CN',timeZone:'UTC'}));
   await fs.writeFile(path.join(dir,'codex-language.json'),JSON.stringify({language:'en'}));
   let status=await ensureConfiguredWorker(dir,configFile);pid=status.workerPid;
+  await requestWorker(dir,'codex-path',{path:path.join(dir,'Codex 路径','ChatGPT.exe')});
+  assert.equal((await requestWorker(dir,'player-status')).codexConfigured,true);
+  await assert.rejects(requestWorker(dir,'codex-path',{path:'ChatGPT.exe'}));
+  await assert.rejects(requestWorker(dir,'codex-path',{path:path.join(dir,'other.exe')}));
   assert.equal((await requestWorker(dir,'player-status')).language,'en');
   await requestWorker(dir,'observe',{accountId:'fixture-only',resetsAt:Date.now()+86400000,remaining:20,updatedAt:Date.now()});
   await requestWorker(dir,'toggle',{feature:'refresh',enabled:true});
@@ -55,9 +59,10 @@ try{
   assert.notEqual(pid,oldPid);assert.equal(status.refresh.enabled,true);assert.equal(status.completion.enabled,true);
   assert.equal(status.refresh.alarm.due,due,'Reload preserves scheduled alarm');
   assert.equal((await requestWorker(dir,'player-status')).language,'ja','Last Codex locale survives a restart without Codex');
+  assert.equal((await requestWorker(dir,'player-status')).codexConfigured,true,'Reload must retain Codex mouse-stop detection without requiring a button click');
   assert.equal(status.send.id,sendId,'Language changes preserve an armed sending round');
   assert.equal(status.ringing,null);passed=true;
-  console.log(JSON.stringify({passed,transientFeatureStateLock:true,transientLanguageStateLock:true,threeTrayLanguages:true,liveLanguageWithoutRestart:true,cachedLanguageSurvivesRestart:true,ignoresLegacyOverrides:true,unchangedConfigNoRestart:true,preservesSwitches:true,preservesSchedule:true,preservesArmedSend:true,audioPlayed:false}));
+  console.log(JSON.stringify({passed,transientFeatureStateLock:true,transientLanguageStateLock:true,threeTrayLanguages:true,liveLanguageWithoutRestart:true,cachedLanguageSurvivesRestart:true,mouseStopConfigSurvivesRestart:true,invalidCodexPathsRejected:true,ignoresLegacyOverrides:true,unchangedConfigNoRestart:true,preservesSwitches:true,preservesSchedule:true,preservesArmedSend:true,audioPlayed:false}));
 }finally{
   await requestWorker(dir,'shutdown').catch(()=>{});
   let stopped=!pid;

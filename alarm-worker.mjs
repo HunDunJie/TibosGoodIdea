@@ -19,6 +19,10 @@ let config = {}, initial = {};
 config = await readConfig(path.resolve(option('--config',path.join(here,'config.local.json'))),stateDir);
 let reportedLanguage = null;
 try { initial = JSON.parse(await fs.readFile(stateFile,'utf8')); } catch {}
+const validCodexPath=value=>typeof value==='string'&&path.isAbsolute(value)&&path.basename(value).toLowerCase()==='chatgpt.exe';
+// The audio helper must retain mouse-stop detection after settings reloads or a service restart.
+if(validCodexPath(initial.codexPath))config.codexPath=initial.codexPath;
+else delete config.codexPath;
 let queue = Promise.resolve(), closing = false, timer = null, updateCommitted=false;
 const serial = action => { const result = queue.then(action); queue = result.catch(() => {}); return result; };
 let engine;
@@ -30,7 +34,7 @@ const audio = new WindowsAudioClient(config,event => {
     if (event.event === 'disable-refresh') await engine.toggle('refresh',false);
     if (event.event === 'disable-completion') await engine.toggle('completion',false);
     if (event.event === 'shutdown') await shutdown(true);
-    if (event.event === 'player-exited' && engine.state.ringing) { engine.state.ringing = null; engine.state.refreshError = '播放器意外退出，可重新开关提醒'; await engine.commit(); }
+    if (event.event === 'player-exited' && engine.state.ringing) { const kind=engine.state.ringing.kind; engine.state.ringing = null; engine.state[`${kind}Error`] = '播放器意外退出，可重新开关提醒'; await engine.commit(); }
   });
 });
 engine = new FeatureEngine({state:initial,audio,save:state=>saveStateJson(stateFile,state)});
@@ -49,7 +53,7 @@ async function dispatch(method,payload = {}) {
       updateCommitted=true;clearInterval(timer);
       setTimeout(() => void serial(() => shutdown(false)),100);
       return {restarting:true};
-    case 'status': return {...engine.status(),workerPid:process.pid,workerVersion,workerRoot:here,configStamp:configFingerprint(config)};
+    case 'status': return {...engine.status(),workerPid:process.pid,workerVersion,workerRoot:here,updateCommitted,configStamp:configFingerprint(config)};
     case 'player-status': return audio.call('status');
     case 'ui-language': {
       if (!['zh-CN','en','ja'].includes(payload.language)) throw new Error('Invalid Codex language');
@@ -73,8 +77,10 @@ async function dispatch(method,payload = {}) {
     case 'disable-refresh': return engine.toggle('refresh',false);
     case 'sound-settings': await audio.call('sound-settings'); return engine.status();
     case 'codex-path':
-      if (typeof payload.path !== 'string' || !path.isAbsolute(payload.path) || path.basename(payload.path).toLowerCase() !== 'chatgpt.exe') throw new Error('无效客户端路径');
-      await audio.call('codex',{path:payload.path}); return engine.status();
+      if (!validCodexPath(payload.path)) throw new Error('无效客户端路径');
+      await audio.call('codex',{path:payload.path});config.codexPath=payload.path;
+      if(engine.state.codexPath!==payload.path){engine.state.codexPath=payload.path;await engine.commit();}
+      return engine.status();
     case 'shutdown': await engine.disableAll(); setTimeout(() => void shutdown(false),100); return {stopped:true};
     default: throw new Error('未知后台命令');
   }

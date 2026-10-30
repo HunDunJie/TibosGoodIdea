@@ -70,6 +70,7 @@ namespace CodexBottomBar {
     public static int NotificationsShown { get { return Interlocked.CompareExchange(ref notificationsShown, 0, 0); } }
     public static string PlayingKind { get { lock (Gate) return kind; } }
     private static string codexExecutable;
+    public static bool CodexConfigured { get { lock (Gate) return !String.IsNullOrEmpty(codexExecutable); } }
     private static Point lastMouse;
     private static Thread uiThread;
     private static Control uiDispatcher;

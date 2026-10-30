@@ -4,7 +4,7 @@
 
 A Windows Codex desktop skin and single-row quota bottom bar. Original code is open source under **GPL-3.0-only**
 The icon rail moves to the bottom with the profile at the far left, followed by purchased credits, separate five-hour and weekly quota, reset times and available resets
-Repository: TibosGoodIdea · Version: **0.8.0-rc.15**
+Repository: TibosGoodIdea · Version: **0.8.0-rc.16**
 
 An independent project with no affiliation with or endorsement by OpenAI or Tibo
 The source license does not constitute OpenAI approval of this client integration
@@ -19,6 +19,7 @@ Search terms: Codex skin, Codex theme, desktop customization, remaining quota, u
 - Reset reminder: notify and play music one minute after the five-hour reset, for at most 30 minutes; an already scheduled alarm survives closing Codex
 - Mouse movement, clicks or keyboard activity in Codex stop playback; the tray or StopSound.cmd can stop it without opening Codex
 - Click a time to switch between a date and a minute-updated countdown; choices persist; language follows Codex in Chinese, English and Japanese
+- When a Pro account is confirmed to have no five-hour limit, hide that quota and disable scheduled sending and reset reminders, cancelling old schedules; weekly usage, credits, available resets and completion sound remain available; missing data stays unknown
 
 Windows must stay awake and running. There is no wake timer or logon task
 Codex must remain open for scheduled sending. Review all drafts before arming it
@@ -41,7 +42,7 @@ Only fixed signed public indexes and approved project GitHub release packages ar
 
 ## Automatic updates
 
-Install rc.15 manually once to obtain the updater. Compatible fixes download in the background, then activate on a later TiBo launch with Codex and the controller closed
+Install rc.16 manually once to obtain the updater. Compatible fixes download in the background, then activate on a later TiBo launch with Codex and the controller closed
 TiBo fixes can apply even when Codex has not changed. Releases for other client builds are ignored
 Use Update.cmd for optional features. Sending, playback or an alarm due within two minutes postpones activation
 Settings, send batches and alarms are retained, with code rollback on failure; see [update rules](docs/program-updates.md)

@@ -19,7 +19,9 @@ export class WindowsAudioClient {
   constructor(config, onEvent) { this.config = config; this.onEvent = onEvent; this.child = null; this.nextId = 0; this.pending = new Map(); }
   async start() {
     if (this.child && !this.child.killed) return this.ready;
-    this.child = spawn('powershell.exe',['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(here,'audio-host.ps1'),'-Language',this.config.language ?? 'zh-CN'],{windowsHide:true,stdio:['pipe','pipe','pipe']});
+    const args=['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(here,'audio-host.ps1'),'-Language',this.config.language ?? 'zh-CN'];
+    if(this.config.codexPath)args.push('-CodexPath',this.config.codexPath);
+    this.child = spawn('powershell.exe',args,{windowsHide:true,stdio:['pipe','pipe','pipe']});
     this.ready = new Promise((resolve,reject) => {
       const timeout = setTimeout(() => reject(new Error('托盘播放器启动超时')),12000);
       this.child.once('error',() => { clearTimeout(timeout); reject(new Error('无法启动 Windows 播放器')); });

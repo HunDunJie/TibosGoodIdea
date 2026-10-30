@@ -22,12 +22,15 @@ try{
  assert.equal((await fs.readFile(marker,'utf8')).trim().split('\n').length,1);
  await run(path.join(root,'runtime/node.exe'),[path.join(root,'update-cli.mjs'),'stop','--root',root]);assert.equal(await checking,0);
  await fs.unlink(path.join(root,'program-update-state.json'));
- const version='0.8.0-rc.16',zipPath=path.join(temp,'candidate.zip');
+ const baseVersion=JSON.parse(await fs.readFile(path.join(source,'product.json'),'utf8')).version;
+ const [major,minor,patch]=baseVersion.split('-')[0].split('.').map(Number);
+ const version=`${major}.${minor}.${patch+1}`,zipPath=path.join(temp,'candidate.zip');
  await run('python',['-X','utf8','-c',`import json,hashlib,zipfile,sys\nfrom pathlib import Path\nr=Path(sys.argv[1]); names=json.loads((r/'release-files.json').read_text('utf-8')); data={n:(r/n).read_bytes() for n in names}\nfor n in ['product.json','package.json']:\n d=json.loads(data[n]);d['version']=sys.argv[3];data[n]=(json.dumps(d,ensure_ascii=False,indent=2)+'\\n').encode()\nmanifest={n:hashlib.sha256(b).hexdigest() for n,b in data.items()}\nwith zipfile.ZipFile(sys.argv[2],'w',zipfile.ZIP_DEFLATED,compresslevel=1) as z:\n for n,b in data.items():z.writestr('TibosGoodIdea/'+n,b)\n z.writestr('TibosGoodIdea/SHA256-MANIFEST.json',json.dumps(manifest))`,root,zipPath,version]);
- const bytes=await fs.readFile(zipPath),pkg=readPackage(bytes),client='c'.repeat(64),release={version,channel:'preview',kind:'fix',platform:'win32-x64',minimumUpdater:1,stateSchema:1,clients:[client],url:`https://github.com/HunDunJie/TibosGoodIdea/releases/download/v${version}/TibosGoodIdea-${version}-Windows-x64.zip`,bytes:bytes.length,sha256:sha256(bytes),manifestSha256:pkg.manifestSha256};
+ const bytes=await fs.readFile(zipPath),pkg=readPackage(bytes),client='c'.repeat(64),release={version,channel:'stable',kind:'fix',platform:'win32-x64',minimumUpdater:1,stateSchema:1,clients:[client],url:`https://github.com/HunDunJie/TibosGoodIdea/releases/download/v${version}/TibosGoodIdea-${version}-Windows-x64.zip`,bytes:bytes.length,sha256:sha256(bytes),manifestSha256:pkg.manifestSha256};
  const payload=Buffer.from(JSON.stringify({schema:1,productId:'bottom-bar-companion',revision:2,releases:[release]})),envelope={payload:payload.toString('base64'),signature:sign(null,payload,pair.privateKey).toString('base64')};
  await fs.mkdir(state);const configPath=path.join(root,'config.local.json');await fs.writeFile(configPath,JSON.stringify({language:'auto',timeZone:'UTC',extra:'preserve'}));
  const initial=await launchWorker(root,state,configPath);livePid=initial.workerPid;
+ await requestWorker(state,'codex-path',{path:path.join(temp,'Codex with spaces','ChatGPT.exe')});
  await requestWorker(state,'observe',{accountId:'isolated',resetsAt:Date.now()+3600000,remaining:0,updatedAt:Date.now()});
  await requestWorker(state,'toggle',{feature:'refresh',enabled:true});await requestWorker(state,'toggle',{feature:'completion',enabled:true});await requestWorker(state,'toggle',{feature:'send',enabled:true});
  let status=await requestWorker(state,'status'),alarmId=status.refresh.alarm.id,batchId=status.send.id,oldPid=livePid;
@@ -36,8 +39,23 @@ try{
  assert.equal((await activatePending(root,{client,key,stateDir:state})).status,'activated');
  status=await requestWorker(state,'status');livePid=status.workerPid;
  assert.notEqual(livePid,oldPid);assert.equal(status.workerVersion,version);assert.equal(status.workerRoot,await resolveActive(root,{key}));
+ assert.equal((await requestWorker(state,'player-status')).codexConfigured,true,'Updating the service retains native mouse-stop detection');
  assert.equal(status.refresh.enabled,true);assert.equal(status.completion.enabled,true);assert.equal(status.refresh.alarm.id,alarmId);assert.equal(status.send.id,batchId);assert.equal(status.send.phase,'armed');assert.equal(status.ringing,null);
  assert.equal(JSON.parse(await fs.readFile(configPath)).extra,'preserve');assert.equal((await requestWorker(state,'player-status')).notificationsShown,0);
+ // A real candidate starts successfully, then fails its final handoff. Restore the verified version and business state.
+ const failedVersion=`${major}.${minor}.${patch+2}`,failedZip=path.join(temp,'failed-candidate.zip'),previousDirectory=status.workerRoot;
+ await run('python',['-X','utf8','-c',`import json,hashlib,zipfile,sys\nwith zipfile.ZipFile(sys.argv[1]) as z:data={n:z.read(n) for n in z.namelist() if n!='TibosGoodIdea/SHA256-MANIFEST.json'}\nfor n in ['product.json','package.json']:\n k='TibosGoodIdea/'+n;d=json.loads(data[k]);d['version']=sys.argv[3];data[k]=json.dumps(d).encode()\nmanifest={n.removeprefix('TibosGoodIdea/'):hashlib.sha256(b).hexdigest() for n,b in data.items()}\nwith zipfile.ZipFile(sys.argv[2],'w',zipfile.ZIP_DEFLATED,compresslevel=1) as z:\n for n,b in data.items():z.writestr(n,b)\n z.writestr('TibosGoodIdea/SHA256-MANIFEST.json',json.dumps(manifest))`,zipPath,failedZip,failedVersion]);
+ const failedBytes=await fs.readFile(failedZip),failedRelease={...release,version:failedVersion,url:release.url.replaceAll(version,failedVersion),bytes:failedBytes.length,sha256:sha256(failedBytes),manifestSha256:readPackage(failedBytes).manifestSha256};
+ const failedPayload=Buffer.from(JSON.stringify({schema:1,productId:'bottom-bar-companion',revision:3,releases:[failedRelease]})),failedEnvelope={payload:failedPayload.toString('base64'),signature:sign(null,failedPayload,pair.privateKey).toString('base64')};
+ calls=0;assert.equal((await checkProgramUpdates(root,{client,key,manual:true,fetchImpl:async()=>new Response(++calls===1?JSON.stringify(failedEnvelope):failedBytes)})).status,'ready');
+ let failedPid=null;
+ assert.equal((await activatePending(root,{client,key,stateDir:state,launch:async(directory,...args)=>{const ready=await launchWorker(directory,...args);livePid=ready.workerPid;if(directory!==previousDirectory){failedPid=ready.workerPid;throw Error('Injected final handshake failure');}return ready;}})).status,'rolled-back');
+ assert.ok(failedPid);assert.throws(()=>process.kill(failedPid,0));
+ status=await requestWorker(state,'status');assert.equal(status.workerPid,livePid);assert.equal(status.workerRoot,previousDirectory);assert.equal(status.workerVersion,version);assert.equal(await resolveActive(root,{key}),previousDirectory);
+ assert.equal((await requestWorker(state,'player-status')).codexConfigured,true,'Rolling back the service retains native mouse-stop detection');
+ assert.equal(status.refresh.enabled,true);assert.equal(status.completion.enabled,true);assert.equal(status.refresh.alarm.id,alarmId);assert.equal(status.send.id,batchId);assert.equal(status.send.phase,'armed');assert.equal(status.ringing,null);
+ assert.equal(JSON.parse(await fs.readFile(path.join(root,'program-update-state.json'))).quarantine.at(-1).sha256,failedRelease.sha256);
+ assert.equal(JSON.parse(await fs.readFile(path.join(root,'update-transaction.json'))).phase,'rolled-back');
  // Actual bootstrap routes settings into the new version while retaining root configuration.
  await run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(root,'bootstrap.ps1'),'-Script','settings.ps1','-NoUi','-TimeZone','UTC','-StateDir',state]);
  assert.equal(JSON.parse(await fs.readFile(configPath)).extra,'preserve');
@@ -47,7 +65,7 @@ try{
  await run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(root,'bootstrap.ps1'),'-Script','uninstall.ps1','-NoShortcut','-StateDir',state,'-BackupDir',path.join(temp,'backup')],{cwd:temp});
  assert.equal(await downloading,0);await delay(200);
  assert.equal(await fs.stat(root).catch(()=>null),null);
- passed=true;console.log(JSON.stringify({passed,realSignedPackage:true,files:files.length,offlineNodeChecks:true,realWorkerHandoff:true,rootConfigPreserved:true,alarmsAndBatchPreserved:true,leaseBlocksNewWork:true,bootstrapRoutesSettings:true,concurrentChecksSerialized:true,uninstallCancelsDownload:true,allVersionsUninstalled:true,realCodexChanged:false,audibleSound:false}));
+ passed=true;console.log(JSON.stringify({passed,realSignedPackage:true,files:files.length,offlineNodeChecks:true,realWorkerHandoff:true,realWorkerRollback:true,rollbackPreservesAlarmsAndBatch:true,failedCandidateExited:true,rootConfigPreserved:true,alarmsAndBatchPreserved:true,leaseBlocksNewWork:true,bootstrapRoutesSettings:true,concurrentChecksSerialized:true,uninstallCancelsDownload:true,allVersionsUninstalled:true,realCodexChanged:false,audibleSound:false}));
 }finally{
  for(const {child,exited} of checkers){if(child.exitCode===null){child.kill();await exited.catch(()=>{});}}
  if(livePid){await requestWorker(state,'shutdown').catch(()=>{});for(let i=0;i<100;i++){try{process.kill(livePid,0);await delay(100);}catch{livePid=null;break;}}}

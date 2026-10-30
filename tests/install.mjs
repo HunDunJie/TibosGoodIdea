@@ -19,7 +19,7 @@ async function run(exe,args,{cwd=root,expected=0,verbatim=false}={}){
   const timer=setTimeout(()=>child.kill(),45000);
   const code=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',resolve);});
   clearTimeout(timer);
-  if(expected===0)assert.equal(code,0,`${path.basename(exe)}: ${(err||out).slice(-1800)}`);else assert.notEqual(code,0,'Invalid operation must fail');
+  if(expected===0)assert.equal(code,0,`${path.basename(exe)}: ${(err||out).slice(-1800)}`);else assert.notEqual(code,0,`Invalid operation must fail: ${(err||out).slice(-1800)}`);
   return out;
 }
 const ps=(script,args=[],expected=0)=>run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.resolve(root,script),...args],{expected});
@@ -56,7 +56,7 @@ try{
   // Force a late copy error after the first file was overwritten, then inspect every byte.
   const failing=path.join(temp,'fail-copy.ps1');
   const quote=value=>`([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${Buffer.from(value,'utf8').toString('base64')}')))`;
-  const failingScript=(folder,relative)=>'\ufeff'+`$global:TiboCopyFailed=$false\nfunction Copy-Item {\n[CmdletBinding()]param([string]$LiteralPath,[string]$Destination,[switch]$Force)\nif($Destination -eq ${quote(path.join(folder,relative))} -and -not $global:TiboCopyFailed){$global:TiboCopyFailed=$true;throw 'Injected late copy failure'}\nMicrosoft.PowerShell.Management\\Copy-Item @PSBoundParameters\n}\n& ${quote(path.join(root,'install.ps1'))} -TargetDir ${quote(folder)} -NoShortcut\n`;
+  const failingScript=(folder,relative)=>'\ufeff'+`$ErrorActionPreference='Stop'\n$global:TiboCopyFailed=$false\nfunction Copy-Item {\n[CmdletBinding()]param([string]$LiteralPath,[string]$Destination,[switch]$Force)\nif($Destination -eq ${quote(path.join(folder,relative))} -and -not $global:TiboCopyFailed){$global:TiboCopyFailed=$true;throw 'Injected late copy failure'}\nMicrosoft.PowerShell.Management\\Copy-Item @PSBoundParameters\n}\n& ${quote(path.join(root,'install.ps1'))} -TargetDir ${quote(folder)} -NoShortcut\n`;
   await fs.writeFile(failing,failingScript(target,'Settings.cmd'));
   await ps(failing,[],1);
   check(JSON.stringify(await snapshot(Object.keys(before)))===JSON.stringify(before),'Failed upgrade rolls back every installed byte and marker');

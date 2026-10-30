@@ -58,6 +58,16 @@ if(-not $NoServiceChanges){
     if($reply.ExitCode -ne 0){throw 'Could not stop the managed reminder service; uninstall stopped'}
     if($workerProcess){try {if(-not $workerProcess.WaitForExit(15000)){throw 'The reminder service has not exited; uninstall stopped'}} finally {$workerProcess.Dispose()}}
   }
+  $shutdownState=Join-Path $StateDir 'shutdown-state.json'
+  if((-not $worker -or $ownsWorker) -and (Test-Path -LiteralPath $shutdownState) -and (Test-Path -LiteralPath (Join-Path $target 'shutdown-task.ps1'))){
+    $plan=[IO.File]::ReadAllText($shutdownState)|ConvertFrom-Json
+    if($plan.ownerRoot -and ([IO.Path]::GetFullPath($plan.ownerRoot).TrimEnd('\') -eq $target -or [IO.Path]::GetFullPath($plan.ownerRoot).StartsWith($target+'\versions\',[StringComparison]::OrdinalIgnoreCase))){
+      $needsCleanup=$plan.plan -or $plan.cleanupPending
+      $plan.enabled=$false;$plan.plan=$null;$plan.request=$null;$plan.phase='off'
+      [IO.File]::WriteAllText($shutdownState,($plan|ConvertTo-Json -Depth 8),(New-Object Text.UTF8Encoding($false)))
+      if($needsCleanup){& (Join-Path $target 'shutdown-task.ps1') -Action cancel -StateDir $StateDir}
+    }
+  }
 }
 $configPath=Join-Path $target 'config.local.json'
 if(Test-Path -LiteralPath $configPath){$backup=if($BackupDir){$BackupDir}else{Join-Path $env:LOCALAPPDATA ('TibosGoodIdeaBackup\'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))};New-Item -ItemType Directory -Path $backup -Force|Out-Null;Copy-Item -LiteralPath $configPath -Destination (Join-Path $backup 'config.local.json')}

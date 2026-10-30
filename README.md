@@ -4,7 +4,7 @@
 
 Windows Codex 的单行底栏附加工具，自有代码按 **GPL-3.0-only** 开源
 将最左侧图标导航移至底部，头像在最左边；同一行显示点数、5 小时额度、每周额度、刷新时间和可用重置
-项目目录和 GitHub 仓库名为 TibosGoodIdea，当前版本 **0.8.0-rc.17**
+项目目录和 GitHub 仓库名为 TibosGoodIdea，当前版本 **0.8.0-rc.18**
 
 **English:** A Windows Codex desktop skin and quota bottom bar showing remaining usage, five-hour and weekly limits, reset times, reset countdowns and available resets, with scheduled draft sending and music reminders
 
@@ -15,6 +15,7 @@ Windows Codex 的单行底栏附加工具，自有代码按 **GPL-3.0-only** 开
 
 ## 功能
 
+- 定时关闭：手动开启后每 3 分钟检查所有聊天，全部完成后安排 5 分钟关机；定时发送开启时暂停检查，按钮或托盘可撤销计划，持续断网需确认无本地工具仍执行；关机会强制关闭应用，未保存内容会丢失
 - 定时发送：手动开启后，在下一次确认的 5 小时额度刷新后，通过原有提交入口发送各聊天已有的非空草稿，只执行一轮
 - 完成提醒：任意已连接聊天回答结束时播放音乐，最多 30 分钟，不额外弹出完成通知
 - 刷新提醒：5 小时额度刷新后一分钟弹出通知并播放音乐，最多 30 分钟；已安排的提醒在退出 Codex 后仍有效
@@ -40,7 +41,7 @@ Windows 须保持开机且未睡眠，不会唤醒电脑，也不会安装登录
 详见 [兼容性与适配](COMPATIBILITY.md)
 
 实现使用本机调试连接，不修改 Codex 安装文件或原生启动入口；从原生入口完全冷启动仍使用原界面
-远端仅请求固定的公开签名索引，以及索引认可的本项目 GitHub 版本包；不上传账号、额度、草稿、客户端代码或个人配置
+更新只请求固定的公开签名索引和索引认可的本项目 GitHub 版本包；定时关闭判断网络异常时，使用客户端代理设置，对 OpenAI 静态资源站点作无账号的 HTTPS 连通性探测；不上传账号、额度、草稿、客户端代码或个人配置
 完整程序更新有独立签名和逐文件校验，不能通过适配表注入 JavaScript
 
 ## 自动更新

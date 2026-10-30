@@ -1,6 +1,6 @@
 # Compatibility / 兼容性
 
-Version 0.8.0-rc.17 · Windows 11 x64 · Microsoft Store Codex
+Version 0.8.0-rc.18 · Windows 11 x64 · Microsoft Store Codex
 
 ## Current evidence / 当前证据
 

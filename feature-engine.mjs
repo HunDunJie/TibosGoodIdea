@@ -21,7 +21,7 @@ export class FeatureEngine {
       completion:{enabled:s.completionEnabled, phase:s.ringing?.kind === 'completion' ? 'ringing' : s.completionEnabled ? 'listening' : 'off', error:s.completionError ?? null},
       send:{...s.send}, ringing:s.ringing?.kind ?? null,
       ringingUntil:s.ringing && Number.isFinite(s.ringing.startedAt) ? s.ringing.startedAt + MAX_PLAYBACK_MS : null,
-      maxPlaybackMs:MAX_PLAYBACK_MS};
+      maxPlaybackMs:MAX_PLAYBACK_MS,...(this.shutdown?{shutdown:this.shutdown.status()}:{})};
   }
   async expirePlayback() {
     const ringing = this.state.ringing;

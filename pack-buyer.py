@@ -14,6 +14,7 @@ LICENSE LICENSE.zh-CN.md LICENSE.en.md THIRD-PARTY-NOTICES.md QUICKSTART.zh-CN.m
 sounds/completion.wav sounds/refresh.wav sounds/README.md runtime/node.exe runtime/LICENSE-Node.txt runtime/NOTICE.md
 release-files.json
 Update.cmd 检查更新.cmd bootstrap.ps1 update.ps1 update-cli.mjs program-updates.mjs update-files.mjs update-lease.mjs
+shutdown-engine.mjs shutdown-system.mjs shutdown-guard.mjs shutdown-task.ps1
 updates/program-catalog.json updates/program-public-key.pem
 '''.split()
 (root/'release-files.json').write_text(json.dumps(names,ensure_ascii=False,indent=2)+'\n',encoding='utf-8',newline='\n')

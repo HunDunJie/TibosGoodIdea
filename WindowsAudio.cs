@@ -78,6 +78,7 @@ namespace CodexBottomBar {
     private static string startupError;
     [StructLayout(LayoutKind.Sequential)] private struct POINT { public int X; public int Y; }
     [DllImport("user32.dll")] private static extern bool GetCursorPos(out POINT point);
+    [DllImport("kernel32.dll")] private static extern uint SetThreadExecutionState(uint flags);
     [DllImport("user32.dll")] private static extern IntPtr WindowFromPoint(POINT point);
     [DllImport("user32.dll")] private static extern IntPtr GetAncestor(IntPtr window, uint flag);
     [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint pid);
@@ -102,6 +103,7 @@ namespace CodexBottomBar {
       items[2].Text = T("关闭完成提醒", "Disable completion sound", "完了通知をオフにする");
       items[4].Text = T("声音设置", "Sound settings", "サウンド設定");
       items[5].Text = T("退出提醒服务（取消所有提醒）", "Exit service (cancel all reminders)", "通知サービスを終了（すべて解除）");
+      items[6].Text = T("取消定时关闭", "Cancel scheduled shutdown", "シャットダウン予約を解除");
       tray.Text = T("Tibo’s Good Idea：左键停止响铃，右键管理", "Tibo’s Good Idea: click to stop, right-click to manage", "Tibo’s Good Idea：クリックで停止、右クリックで管理");
     }
     public static string[] ReadTrayLabels() {
@@ -125,6 +127,7 @@ namespace CodexBottomBar {
           menu.Items.Add(new ToolStripSeparator());
           menu.Items.Add("", null, delegate { SoundSettings(); });
           menu.Items.Add("", null, delegate { Stop(); Emit("shutdown", "tray"); });
+          menu.Items.Add("", null, delegate { Emit("disable-shutdown", "tray"); });
           tray = new NotifyIcon { Icon = SystemIcons.Information, ContextMenuStrip = menu, Visible = true };
           UpdateTrayLanguage();
           tray.MouseClick += delegate(object sender, MouseEventArgs e) { if (e.Button == MouseButtons.Left) { Stop(); Emit("stop", "tray"); } };
@@ -139,6 +142,18 @@ namespace CodexBottomBar {
       if (startupError != null) throw new Exception(startupError);
     }
     public static void SetCodex(string executable) { lock (Gate) codexExecutable = executable; }
+    public static void ShutdownNotice(string time) {
+      uiDispatcher.Invoke(new Action(delegate {
+        tray.BalloonTipTitle = T("定时关闭", "Scheduled shutdown", "シャットダウン予約");
+        tray.BalloonTipText = T("将于 "+time+" 关闭电脑，未保存内容会丢失，可右键托盘取消", "Shutdown at "+time+"; unsaved work will be lost. Right-click the tray icon to cancel.", time+" にシャットダウンします 未保存の内容は失われます トレイの右クリックで解除できます");
+        tray.ShowBalloonTip(10000);
+      }));
+    }
+    public static void ShutdownAwake(bool enabled) {
+      uiDispatcher.Invoke(new Action(delegate {
+        if (SetThreadExecutionState(enabled ? 0x80000001u : 0x80000000u) == 0) throw new Exception("Cannot update the system sleep request");
+      }));
+    }
     public static void CheckFile(string file) {
       if (!Path.IsPathRooted(file) || !String.Equals(Path.GetExtension(file), ".wav", StringComparison.OrdinalIgnoreCase) || !File.Exists(file))
         throw new Exception(T("请先配置可读取的 WAV 音乐文件", "Choose a readable WAV file in Settings", "設定で読み取り可能な WAV ファイルを選択してください"));

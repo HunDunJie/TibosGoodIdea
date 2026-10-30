@@ -25,7 +25,7 @@
     const item = pending.get(reply.id); if (!item) return;
     pending.delete(reply.id); clearTimeout(item.timer); reply.ok ? item.resolve(reply.result) : item.reject(new Error(reply.error));
   };
-  const nameKeys = {send:'定时发送',completion:'完成提醒',refresh:'刷新提醒'};
+  const nameKeys = {shutdown:'定时关闭',send:'定时发送',completion:'完成提醒',refresh:'刷新提醒'};
   let reportedLocale = null, reportingLocale = false;
   async function reportLanguage() {
     if (reportedLocale === locale || reportingLocale || !active) return;
@@ -41,6 +41,7 @@
     void reportLanguage();
   }
   const iconShapes = {
+    shutdown:[['path',{d:'M12 2v9M6.3 5.6a8 8 0 1 0 11.4 0'}],['path',{d:'M17 17v-3m0 3h2'}]],
     send:[['path',{d:'M10 18.5 7.8 13.4 2.5 11.2 20 3l-3.1 7.2M7.8 13.4 20 3'}],['circle',{cx:17,cy:17,r:4.5}],['path',{d:'M17 14.5v2.7l1.8 1.1'}]],
     completion:[['path',{d:'M18 10V9A6 6 0 0 0 6 9c0 6-3 7-3 9h8m-1 3h3m1-4 2.5 2.5L22 14'}]],
     refresh:[['path',{d:'M13 6.8A5 5 0 0 0 5 11c0 5-2 5.5-2 7h14c0-1.5-2-2-2-7M8 21h4M14 5a4 4 0 1 1 4 4M14 2v3h3'}]]
@@ -54,12 +55,13 @@
     return svg;
   }
   function description(feature) {
-    if (feature !== 'completion' && win.__codexBottomBar?.status?.().fiveHourLimit === 'none')
+    if (['send','refresh'].includes(feature) && win.__codexBottomBar?.status?.().fiveHourLimit === 'none')
       return {text:t('不适用'),enabled:false,inapplicable:true};
     if (!connected) return {text:t('未连接'),enabled:false,error:t('点击按钮重新启动提醒服务')};
     const item = state?.[feature] ?? {};
     let text;
-    if (feature === 'send') text = ({off:t('已关闭'),armed:t('等待刷新'),running:t('发送中'),done:t('完成 {sent} / 跳过 {skipped}',{sent:item.sent ?? 0,skipped:(item.failed ?? 0)+(item.skipped ?? 0)}),interrupted:t('发送中断'),cancelled:t('已取消'),expired:t('已过期')})[item.phase] ?? t('已关闭');
+    if(feature==='shutdown')text=t(({off:'已关闭',paused:'等待定时发送关闭',waiting:'等待任务完成',countdown:'关机倒计时',executing:'正在关机',failed:'需处理'})[item.phase]??'已关闭');
+    else if (feature === 'send') text = ({off:t('已关闭'),armed:t('等待刷新'),running:t('发送中'),done:t('完成 {sent} / 跳过 {skipped}',{sent:item.sent ?? 0,skipped:(item.failed ?? 0)+(item.skipped ?? 0)}),interrupted:t('发送中断'),cancelled:t('已取消'),expired:t('已过期')})[item.phase] ?? t('已关闭');
     else if (feature === 'completion') text = item.phase === 'ringing' ? t('播放中') : item.enabled ? capabilities.completion ? t('监听中') : t('等待连接') : t('已关闭');
     else text = item.phase === 'ringing' ? t('响铃中') : !item.enabled ? t('已关闭') : item.alarm ? t('已安排') : t('等刷新时间');
     if (item.error) text = feature === 'send' ? text : t('需处理');
@@ -80,7 +82,11 @@
       button.setAttribute('aria-busy',String(busy));
       const formatTime = value => Number.isFinite(value) ? new Intl.DateTimeFormat(locale,{timeZone,month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(value) : null;
       let detail;
-      if (feature === 'send') {
+      if(feature==='shutdown'){
+        const time=formatTime(state?.shutdown?.plan?.due);
+        detail=item.enabled ? time?t('将于{time}关闭电脑，可点击关闭或从托盘取消',{time}):t('每3分钟检查所有聊天，全部完成后5分钟关机，定时发送开启时暂停检查') : t('可开启，任务全部完成或确认网络持续异常后关机，未保存内容会丢失');
+      }
+      else if (feature === 'send') {
         const time = formatTime(state?.send?.target);
         detail = item.enabled ? time ? t('将于{time}发送所有聊天中的草稿，全部发送后将关闭定时发送',{time}) : t('暂未取得刷新时间')
           : t('可开启，用于在额度刷新时自动发送所有聊天中的草稿，所有草稿发送后将关闭定时发送');
@@ -95,7 +101,7 @@
       }
       if (item.inapplicable) detail=t('当前账户没有五小时额度限制，定时发送和刷新提醒不适用');
       const phase = state?.[feature]?.phase;
-      const special = !connected || item.error || ['running','done','interrupted','cancelled','expired','ringing'].includes(phase) || item.enabled && (feature === 'completion' && !capabilities.completion || feature === 'refresh' && !state?.refresh?.alarm);
+      const special = feature==='shutdown'&&item.enabled || !connected || item.error || ['running','done','interrupted','cancelled','expired','ringing'].includes(phase) || item.enabled && (feature === 'completion' && !capabilities.completion || feature === 'refresh' && !state?.refresh?.alarm);
       const status = special ? ` · ${item.text}${item.error ? `：${item.error}` : ''}` : '';
       const stateLine = item.inapplicable ? t('不适用') : connected ? t(item.enabled ? '已开启' : '已关闭') : t('未连接');
       const tooltip = `${t(nameKeys[feature])}\n${stateLine}${item.inapplicable ? '' : status}\n${detail}`.replace(/。|\.(?=\s|$)/g,'');
@@ -167,7 +173,7 @@
     if (!metrics || controls?.isConnected && controls.parentElement === metrics) return;
     controls?.remove(); controls = doc.createElement('div'); controls.id = 'codex-bottom-bar-features';
     controls.setAttribute('aria-label',t('聊天与额度提醒'));
-    for (const feature of ['send','completion','refresh']) {
+    for (const feature of ['shutdown','send','completion','refresh']) {
       const group = doc.createElement('div'); group.className = 'cqb-feature'; group.dataset.cqbFeature = feature;
       const button = doc.createElement('button'); button.className = 'cqb-feature-button'; button.type = 'button'; button.setAttribute('aria-label',t(nameKeys[feature])); button.append(createIcon(feature));
       button.addEventListener('click',() => void toggle(feature)); group.append(button); controls.append(group);

@@ -52,14 +52,15 @@ document.querySelectorAll('nav button').forEach(button=>button.addEventListener(
 <script src="bottom-bar.js"></script>
 <script>
 // Preview controls use an in-page mock. They never create a real reminder or send a message.
-window.__previewState={send:{phase:'off'},completion:{enabled:false,phase:'off'},refresh:{enabled:false,phase:'off'},ringing:null};
-window.__cqbNativeFeatures={connect:async callback=>{window.__previewComplete=callback;return{completion:true,send:true}},dispose(){}};
+window.__previewState={shutdown:{enabled:false,phase:'off'},send:{phase:'off'},completion:{enabled:false,phase:'off'},refresh:{enabled:false,phase:'off'},ringing:null};
+window.__cqbNativeFeatures={connect:async callback=>{window.__previewComplete=callback;return{completion:true,send:true,shutdown:true}},dispose(){}};
 window.__previewCalls=[];
 window.__previewVolume={percent:50,muted:false};
 window.__cqbPreviewHost=(method,payload={})=>{
  window.__previewCalls.push({method,payload});const s=window.__previewState;
  if(method==='volume-status')return structuredClone(window.__previewVolume);
  if(method==='toggle'){
+  if(payload.feature==='shutdown'){s.shutdown={enabled:payload.enabled,phase:payload.enabled?['armed','running'].includes(s.send.phase)?'paused':'waiting':'off'};return s;}
   if(payload.feature==='send')s.send={phase:payload.enabled?'armed':'off',target:Date.now()+3600000};
   else s[payload.feature]={enabled:payload.enabled,phase:payload.enabled?(payload.feature==='refresh'?'scheduled':'listening'):'off',...(payload.feature==='refresh'&&payload.enabled?{alarm:{reset:Date.now()+3600000,due:Date.now()+3660000}}:{})};
  }

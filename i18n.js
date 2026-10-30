@@ -6,6 +6,13 @@
 })(function () {
   'use strict';
   const english = {
+    '无法访问 Windows 任务计划服务':'Cannot access Windows Task Scheduler',
+    '定时关闭':'Scheduled shutdown','等待定时发送关闭':'Waiting for scheduled sending to turn off','等待任务完成':'Waiting for tasks to finish','关机倒计时':'Shutdown countdown','正在关机':'Shutting down',
+    '每3分钟检查所有聊天，全部完成后5分钟关机，定时发送开启时暂停检查':'Check all chats every 3 minutes and shut down 5 minutes after they finish; paused while scheduled sending is on',
+    '将于{time}关闭电脑，可点击关闭或从托盘取消':'Shutdown at {time}; turn this off or cancel from the tray',
+    '可开启，任务全部完成或确认网络持续异常后关机，未保存内容会丢失':'Enable to shut down after all tasks finish or a sustained network outage is confirmed; unsaved work will be lost',
+    '等待 Codex 连接后重新检查':'Waiting for the Codex connection before checking again','任务状态检查超时':'Task status check timed out','无法确认所有聊天状态，暂不关机':'Cannot confirm all chat states; shutdown postponed',
+    '关机计划清理失败，旧计划已作废':'Could not remove the Windows task; the old plan is invalidated','Windows 未能执行关机，请检查系统权限或其他关机计划':'Windows could not shut down; check permissions or another shutdown plan','无法创建 Windows 关机计划，请检查任务计划服务':'Could not schedule shutdown; check Windows Task Scheduler','客户端任务检查接口不可用':'Task monitoring is unavailable for this client',
     '不限':'Unlimited', '暂不可用':'Unavailable', '时间暂不可用':'Time unavailable', '等待刷新':'Awaiting reset',
     '5小时':'5h', '每周':'Weekly', '额度 ':'Credits ', '可用重置':'Available resets',
     '-- 次':'--', '{count} 次':'{count}', '次数未知':'Unknown count',
@@ -66,6 +73,13 @@
     '暂时无法读取系统音量':'System volume could not be read.', '未知后台命令':'Unknown service command.', '无效客户端路径':'Invalid Codex executable path.'
   };
   const japanese = {
+    '无法访问 Windows 任务计划服务':'Windows タスクスケジューラにアクセスできません',
+    '定时关闭':'シャットダウン予約','等待定时发送关闭':'予約送信の終了待ち','等待任务完成':'タスクの完了待ち','关机倒计时':'シャットダウン待機中','正在关机':'シャットダウン中',
+    '每3分钟检查所有聊天，全部完成后5分钟关机，定时发送开启时暂停检查':'3分ごとに全チャットを確認し、完了5分後にシャットダウン 予約送信がオンの間は確認を停止',
+    '将于{time}关闭电脑，可点击关闭或从托盘取消':'{time} にシャットダウン ボタンまたはトレイから解除できます',
+    '可开启，任务全部完成或确认网络持续异常后关机，未保存内容会丢失':'全タスク完了または継続的な通信障害の確認後にシャットダウン 未保存の内容は失われます',
+    '等待 Codex 连接后重新检查':'Codex の接続後に再確認','任务状态检查超时':'タスク状態の確認がタイムアウトしました','无法确认所有聊天状态，暂不关机':'全チャットの状態を確認できないためシャットダウンを延期',
+    '关机计划清理失败，旧计划已作废':'Windows タスクを削除できませんでしたが旧予約は無効です','Windows 未能执行关机，请检查系统权限或其他关机计划':'シャットダウンに失敗しました 権限や他の予約を確認してください','无法创建 Windows 关机计划，请检查任务计划服务':'予約を作成できません Windows タスクスケジューラを確認してください','客户端任务检查接口不可用':'このクライアントではタスク確認を利用できません',
   "不限": "無制限",
   "暂不可用": "取得できません",
   "时间暂不可用": "時刻を取得できません",

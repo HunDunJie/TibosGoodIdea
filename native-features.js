@@ -26,7 +26,7 @@
       const entry = [...doc.scripts].find(s => /\/index-[^/]+\.js(?:\?|$)/.test(s.src));
       if (!entry) throw new Error(t('找不到客户端模块入口'));
       const base = new URL('.',entry.src), [initial,shared] = await Promise.all([import(new URL(p.initial,base).href),import(new URL(p.shared,base).href)]);
-      const result = {p,initial,shared,scope:shared[p.scope],support:{completion:false,send:false},reasons:{}};
+      const result = {p,initial,shared,scope:shared[p.scope],support:{completion:false,send:false,shutdown:false},reasons:{}};
       if (!result.scope) throw new Error(t('客户端功能接口不可用'));
       for (const feature of ['completion','send']) {
         if (p.capabilities?.[feature] === false) { result.reasons[feature]=t('客户端功能接口不可用'); continue; }
@@ -42,6 +42,11 @@
         } catch (error) { result.reasons[feature]=error.message; }
       }
       result.composerScope=initial[p.composerScope];
+      if(p.monitor)try{
+        for(const name of p.monitor.init)initial[name]();
+        if(!initial[p.monitor.hosts]||!initial[p.monitor.clients])throw Error();
+        result.support.shutdown=true;
+      }catch{result.reasons.shutdown=t('客户端任务检查接口不可用');}
       api = result; return result;
     })().catch(error => { loading = null; throw error; });
     return loading;
@@ -133,6 +138,59 @@
       return capabilities;
     },
     identity,
+    async taskSnapshot() {
+      try{
+        await init();const store=rootStore(),account=identity(store)?.accountId,p=api.p.monitor;
+        if(!api.support.shutdown||!store||!account||!p)return {known:false,busy:false,localSafe:false};
+        const hosts=store.get(api.initial[p.hosts]);
+        if(!Array.isArray(hosts)||!hosts.includes('local')||new Set(hosts).size!==hosts.length||hosts.length>32)throw Error();
+        let busy=false,localSafe=true;
+        for(const host of hosts){
+          const state=store.get(api.initial[p.clients],host);
+          // The built-in durable host exists even when no cloud client has been initialized.
+          if(host==='durable'&&state?.status==='unavailable'&&!state.client)continue;
+          if(state?.status!=='ready'||!state.client?.rpc)throw Error();
+          const rpc=state.client.rpc,work=await rpc.getWorkInProgress();
+          if(!Array.isArray(work))throw Error();
+          if(work.length)busy=true;
+          if(work.some(w=>!['active-runtime','active-turn'].includes(w.kind)))localSafe=false;
+          const active=new Set(work.map(w=>w.conversationId).filter(Boolean));
+          for(const archived of [false,true]){
+            let cursor=null;const seen=new Set();let done=false;
+            for(let page=0;page<100;page++){
+              const response=await rpc.sendRequest('thread/list',{limit:100,cursor,archived,modelProviders:null,sourceKinds:null});
+              if(!Array.isArray(response?.data))throw Error();
+              for(const thread of response.data){
+                const type=thread.status?.type;
+                if(type==='active'){busy=true;active.add(thread.id);}
+                else if(!['idle','notLoaded'].includes(type))throw Error();
+              }
+              if(response.nextCursor===null){done=true;break;}
+              if(typeof response.nextCursor!=='string'||seen.has(response.nextCursor))throw Error();
+              seen.add(response.nextCursor);cursor=response.nextCursor;
+            }
+            if(!done)throw Error();
+          }
+          // Offline model calls may be stalled while shell/tool work still legitimately progresses.
+          for(const id of active){
+            if(host!=='local'){localSafe=false;continue;}
+            const history=await rpc.getLoadedConversationHistory(id);
+            if(!Array.isArray(history?.turns)){localSafe=false;continue;}
+            if(!history.turns.some(t=>t.status==='inProgress'))localSafe=false;
+            for(const turn of history.turns.filter(t=>t.status==='inProgress')){
+              if(!Array.isArray(turn.items)){localSafe=false;continue;}
+              for(const item of turn.items)if(!['agentMessage','reasoning','userMessage'].includes(item.type)&&!['completed','failed','declined','cancelled','interrupted'].includes(item.status))localSafe=false;
+            }
+          }
+          const fresh=await rpc.getWorkInProgress();
+          if(!Array.isArray(fresh))throw Error();
+          if(fresh.length){busy=true;if(fresh.some(w=>!['active-runtime','active-turn'].includes(w.kind)||w.conversationId&&!active.has(w.conversationId)))localSafe=false;}
+          if(store.get(api.initial[p.clients],host).client!==state.client)throw Error();
+        }
+        if(identity(store)?.accountId!==account||JSON.stringify(store.get(api.initial[p.hosts]))!==JSON.stringify(hosts))throw Error();
+        return {known:true,busy,localSafe};
+      }catch{return {known:false,busy:false,localSafe:false};}
+    },
     async refreshQuota() { const value = identity(); if (value) await value.client.refetchQueries({queryKey:['rate-limit-status'],exact:true,type:'all'}); },
     async sendRound({isCurrent = () => true} = {}) {
       await init(); const store = rootStore(), account = identity(store)?.accountId;

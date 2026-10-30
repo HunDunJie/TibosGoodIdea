@@ -43,7 +43,7 @@ async function archive(files){
 }
 test('missing composer asset still permits verified completion events',async()=>{
   const {temp,file}=await archive({[names.initial]:source,[names.shared]:shared});
-  try{assert.deepEqual((await readFeatureBindings(file)).capabilities,{completion:true,send:false});}finally{await fs.rm(temp,{recursive:true,force:true});}
+  try{assert.deepEqual((await readFeatureBindings(file)).capabilities,{completion:true,send:false,shutdown:false});}finally{await fs.rm(temp,{recursive:true,force:true});}
 });
 test('signed catalog mapping is used only for the exact renderer fingerprints',async()=>{
   const {temp,file}=await archive({[names.initial]:source,[names.shared]:shared});

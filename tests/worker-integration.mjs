@@ -37,7 +37,12 @@ try {
   const result = JSON.parse(output.trim()); assert.equal(parent.exitCode,0);
   let status;
   for (let i = 0; i < 40; i++) { status = await requestWorker(stateDir,'status'); if (status.ringing === 'refresh') break; await wait(100); }
-  workerPid = status.workerPid; assert.notEqual(workerPid,result.parentPid); assert.equal(status.ringing,'refresh','detached worker must fire after parent exits');
+  workerPid = status.workerPid; assert.notEqual(workerPid,result.parentPid);
+  if(status.ringing!=='refresh'){
+    const persisted=JSON.parse(await fs.readFile(path.join(stateDir,'features.json'),'utf8'));
+    console.error(JSON.stringify({stage:'detached-refresh',status,lastStop:persisted.lastStop,fired:persisted.fired,player:await requestWorker(stateDir,'player-status')}));
+  }
+  assert.equal(status.ringing,'refresh','detached worker must fire after parent exits');
   let player = await requestWorker(stateDir,'player-status'); assert.equal(player.notificationsShown,1,'refresh requests a Windows notification');
   const languageDeadline=status.ringingUntil;
   await requestWorker(stateDir,'ui-language',{language:'ja'});
@@ -83,6 +88,14 @@ try {
   const quotaTime=Date.now();
   await requestWorker(stateDir,'observe',{accountId:'pro-transition-test',resetsAt:quotaTime+600000,remaining:0,updatedAt:quotaTime});
   await requestWorker(stateDir,'toggle',{feature:'send',enabled:true});
+  status=await requestWorker(stateDir,'toggle',{feature:'shutdown',enabled:true});
+  assert.equal(status.shutdown.phase,'paused');assert.equal(status.shutdown.plan,null);
+  assert.equal((await requestWorker(stateDir,'shutdown-heartbeat')).request,null,'No task checks while send is armed');
+  const duplicate=spawn(process.execPath,[path.join(root,'alarm-worker.mjs'),'--state-dir',stateDir,'--config',configPath],{windowsHide:true,stdio:'ignore'});
+  const duplicateCode=await new Promise((resolve,reject)=>{duplicate.once('exit',resolve);duplicate.once('error',reject)});
+  assert.notEqual(duplicateCode,0);assert.equal((await requestWorker(stateDir,'status')).shutdown.enabled,true,'A duplicate worker cannot invalidate the active owner');
+  await requestWorker(stateDir,'toggle',{feature:'shutdown',enabled:false});
+  assert.equal((await requestWorker(stateDir,'status')).shutdown.enabled,false);
   status=await requestWorker(stateDir,'observe',{accountId:'pro-transition-test',fiveHourLimit:'none',resetsAt:null,remaining:null,updatedAt:quotaTime+1});
   assert.equal(status.fiveHourLimit,'none'); assert.equal(status.refresh.alarm,null); assert.equal(status.refresh.enabled,false);
   assert.equal(status.send.phase,'cancelled'); assert.equal(status.completion.enabled,true);
@@ -97,6 +110,6 @@ try {
   assert.equal(workerPid,null);
   passed = true; console.log(JSON.stringify({passed:true,independentProcess:true,parentExitedBeforeAlarm:true,realWindowsPlayer:true,audibleSound:false,stopWithoutCodex:true,cancelWithoutCodex:true,completion:true,playerFailureAttributedToCompletion:true,mouseStopConfigSurvivesPlayerRestart:true,thirtyMinuteExpiry:true,restartPreservesDeadline:true,refreshNotification:true,completionNotification:false,proCancelsOldSchedules:true,proApplicabilitySurvivesRestart:true,cleanShutdown:true}));
 } finally {
-  if (workerPid) await requestWorker(stateDir,'shutdown').catch(() => {});
+  await requestWorker(stateDir,'shutdown').catch(() => {});
   if (passed && path.dirname(stateDir) === path.resolve(os.tmpdir()) && path.basename(stateDir).startsWith('cqb-worker-test-')) await fs.rm(stateDir,{recursive:true,force:true});
 }

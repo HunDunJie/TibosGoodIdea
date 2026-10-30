@@ -4,7 +4,7 @@
 
 A Windows Codex desktop skin and single-row quota bottom bar. Original code is open source under **GPL-3.0-only**
 The icon rail moves to the bottom with the profile at the far left, followed by purchased credits, separate five-hour and weekly quota, reset times and available resets
-Repository: TibosGoodIdea · Version: **0.8.0-rc.17**
+Repository: TibosGoodIdea · Version: **0.8.0-rc.18**
 
 An independent project with no affiliation with or endorsement by OpenAI or Tibo
 The source license does not constitute OpenAI approval of this client integration
@@ -14,6 +14,7 @@ Search terms: Codex skin, Codex theme, desktop customization, remaining quota, u
 
 ## Features
 
+- Scheduled shutdown: checks all chats every 3 minutes and shuts down 5 minutes after they finish; paused while scheduled sending is on. Cancel from its button or the tray. Confirmed sustained outages qualify only when no local tools are still running. Shutdown forces apps to close, so unsaved work will be lost
 - Send on reset: manually arm one round of existing, non-empty chat drafts after the next confirmed five-hour reset, using native submission, then turn off
 - Completion sound: play music when a connected chat finishes, for at most 30 minutes, without an additional completion notification
 - Reset reminder: notify and play music one minute after the five-hour reset, for at most 30 minutes; an already scheduled alarm survives closing Codex
@@ -38,7 +39,7 @@ Offline startup uses bundled entries, verified cache or local discovery. Changed
 Major structural changes may still require maintenance. Future compatibility is not guaranteed; see [COMPATIBILITY.md](COMPATIBILITY.md)
 
 This uses a local debugging connection, leaves Codex installation files and native launch entries unchanged, and uses the original layout after a full native cold start
-Only fixed signed public indexes and approved project GitHub release packages are requested. Account data, quota, drafts, client code and personal settings are not uploaded. Full programs require a separate signature and verified inventory; adapter data cannot inject JavaScript
+Updates request fixed signed public indexes and approved project GitHub releases. When scheduled shutdown assesses a network outage, it sends unauthenticated HTTPS connectivity probes to OpenAI static asset hosts using the client's proxy settings. Account data, quota, drafts, client code and personal settings are not uploaded. Full programs require a separate signature and verified inventory; adapter data cannot inject JavaScript
 
 ## Automatic updates
 

@@ -9,6 +9,7 @@ Implemented in 0.8.0-rc.15. Older rc.14 installations need one manual upgrade wi
 - Only compatible `fix` releases are automatically downloaded. Update.cmd / 检查更新.cmd also allows compatible feature releases. Stable installations stay on the stable channel; preview installations accept newer preview or stable versions.
 - Activation happens on a later Start.cmd launch with Codex and its controller closed. Downloads never reload a live chat. A prepared update older than 12 hours gets a bounded, small-index revalidation first; failure retains the current version.
 - Sending, playback, a reminder due within two minutes, an unavailable worker, or a worker owned by another installation postpones activation. An exited reminder worker is not restarted just to install an update.
+- Scheduled shutdown monitoring also postpones activation, including while it is paused by scheduled sending; turn it off before manually applying an update.
 - Uninstall.cmd removes owned root and version files. Unknown personal files are retained. Manual Install.cmd resets the active pointer transactionally and preserves user settings.
 
 ## Trust and rollback

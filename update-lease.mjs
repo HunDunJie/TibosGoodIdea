@@ -1,6 +1,7 @@
 import {randomUUID} from 'node:crypto';
 export function updateBusy(state,now=Date.now()) {
   if(state.send?.phase==='running')return 'sending';
+  if(state.shutdownEnabled||state.shutdown?.enabled)return 'shutdown-monitor';
   if(state.ringing)return 'ringing';
   if([state.alarm,state.nextAlarm,state.refresh?.alarm].some(a=>a && a.due<=now+120000))return 'alarm-near';
   return null;

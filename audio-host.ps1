@@ -24,6 +24,8 @@ try {
         'status' { $result = @{playing=[CodexBottomBar.WindowsAudio]::PlayingKind;notificationsShown=[CodexBottomBar.WindowsAudio]::NotificationsShown;language=[CodexBottomBar.WindowsAudio]::Language;trayLabels=[CodexBottomBar.WindowsAudio]::ReadTrayLabels();codexConfigured=[CodexBottomBar.WindowsAudio]::CodexConfigured} }
         'language' { [CodexBottomBar.WindowsAudio]::SetLanguage([string]$command.language); $result=@{language=[CodexBottomBar.WindowsAudio]::Language} }
         'stop' { [CodexBottomBar.WindowsAudio]::Stop() }
+        'shutdown-notice' { [CodexBottomBar.WindowsAudio]::ShutdownNotice([string]$command.time) }
+        'shutdown-awake' { [CodexBottomBar.WindowsAudio]::ShutdownAwake([bool]$command.enabled) }
         'codex' { [CodexBottomBar.WindowsAudio]::SetCodex([string]$command.path) }
         'sound-settings' { [CodexBottomBar.WindowsAudio]::SoundSettings() }
         'exit' { break }

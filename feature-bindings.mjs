@@ -44,8 +44,8 @@ function indexModule(source) {
   return {exports, imports, defs, functions};
 }
 
-export function discoverFeatureBindings(initialSource, sharedSource, composerSource, names) {
-  const m = indexModule(initialSource), shared = indexModule(sharedSource);
+export function discoverFeatureBindings(initialSource, sharedSource, composerSource, names, initialIndex=null) {
+  const m = initialIndex??indexModule(initialSource), shared = indexModule(sharedSource);
   const exported = d => d && m.exports.get(d.name), initializer = d => d?.owner && m.exports.get(d.owner.id.name);
   const calls = m.defs.filter(d => d.expr.type === 'CallExpression');
   const event = one(calls.filter(d => exported(d) && d.expr.arguments[2]?.type === 'ObjectExpression'
@@ -99,6 +99,32 @@ export async function readRendererModules(asarPath) {
 export async function readFeatureBindings(asarPath, {catalog = []} = {}) {
   const {modules:m, fingerprints} = await readRendererModules(asarPath);
   const patch = catalog.find(entry => Object.keys(entry.fingerprints).length === Object.keys(fingerprints).length && Object.entries(fingerprints).every(([name,hash]) => entry.fingerprints[name] === hash));
-  if (patch) return {...patch.bindings, discovery:'signed-catalog', fingerprints};
-  return {...discoverFeatureBindings(m.initial.bytes.toString('utf8'),m.shared.bytes.toString('utf8'),m.composer.bytes.toString('utf8'),{initial:m.initial.name,shared:m.shared.name}),fingerprints};
+  const source=m.initial.bytes.toString('utf8'),parsed=indexModule(source);
+  const bindings=patch ? {...patch.bindings, discovery:'signed-catalog'} : discoverFeatureBindings(source,m.shared.bytes.toString('utf8'),m.composer.bytes.toString('utf8'),{initial:m.initial.name,shared:m.shared.name},parsed);
+  const monitor=discoverShutdownBindings(source,parsed);
+  return {...bindings,monitor,capabilities:{...bindings.capabilities,shutdown:!!monitor},fingerprints};
+}
+
+export function discoverShutdownBindings(source,parsed=null) {
+  const m=parsed??indexModule(source), exported=d=>d&&m.exports.get(d.name), init=d=>d?.owner&&m.exports.get(d.owner.id.name);
+  const calls=m.defs.filter(d=>d.expr.type==='CallExpression'&&exported(d));
+  const clients=one(calls.filter(d=>{
+    const body=d.expr.arguments[1]?.body;
+    return body?.type==='ObjectExpression'&&body.properties.some(p=>property(p)==='status'&&literal(p.value)==='unavailable')&&body.properties.some(p=>property(p)==='client'&&literal(p.value)===null);
+  }));
+  const connected=one(calls.filter(d=>d.expr.arguments[1]?.type==='ArrowFunctionExpression'&&hasText(d.expr,'ready')&&hasText(d.expr,'connected')&&hasText(d.expr,'loading')&&has(d.expr,n=>n.type==='Identifier'&&n.name===clients?.name)));
+  const references=new Set();if(connected)visit(connected.expr,n=>{if(n.type==='Identifier')references.add(n.name);});
+  const hostNames=new Set();
+  for(const d of calls.filter(d=>references.has(d.name)))visit(d.expr,n=>{
+    if(n.type==='CallExpression'&&n.callee.type==='MemberExpression'&&property(n.callee)==='includes'){
+      const name=n.callee.object?.arguments?.[0]?.name;
+      const candidate=m.defs.find(d=>d.name===name);
+      if(candidate?.expr.arguments?.[1]?.body?.type==='ArrayExpression'&&exported(candidate))hostNames.add(name);
+    }
+  });
+  const hosts=m.defs.find(d=>d.name===one([...hostNames]));
+  // A changed native method contract disables this capability rather than guessing an empty list.
+  const methods=['getWorkInProgress','getCachedThreadIds','getLoadedConversationHistory','sendRequest'];
+  if(!clients||!hosts||!init(clients)||!init(hosts)||!methods.every(name=>source.includes(name+'(')||source.includes('get '+name+'(')))return null;
+  return {clients:exported(clients),hosts:exported(hosts),init:[...new Set([init(clients),init(hosts)])]};
 }

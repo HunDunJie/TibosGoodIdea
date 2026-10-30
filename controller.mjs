@@ -12,6 +12,7 @@ import { ensureWorker, requestWorker } from './worker-client.mjs';
 import { defaultStateDir, controllerPipePath } from './runtime-paths.mjs';
 import { readSystemVolume } from './audio-client.mjs';
 import {saveStateJson} from './state-file.mjs';
+import {checkShutdownNetwork} from './shutdown-engine.mjs';
 
 const packageDir = path.dirname(fileURLToPath(import.meta.url));
 const packageVersion=JSON.parse(await fs.readFile(path.join(packageDir,'package.json'),'utf8')).version;
@@ -219,6 +220,15 @@ try {
         if (info?.attached) installed++;
         if (info?.dataAvailable) available++;
       }
+      if(!workerDisabled){
+        const shutdown=await requestWorker(runtimeDir,'shutdown-heartbeat').catch(()=>null);
+        if(shutdown?.request){
+          const snapshots=await Promise.all([...connections.values()].map(entry=>entry.cdp.evaluate('window.__cqbNativeFeatures?.taskSnapshot?.() ?? {known:false}').catch(()=>({known:false}))));
+          const snapshot={known:snapshots.length>0&&snapshots.every(s=>s?.known===true),busy:snapshots.some(s=>s?.busy===true),localSafe:snapshots.length>0&&snapshots.every(s=>s?.localSafe===true)};
+          const network=snapshot.known&&snapshot.busy&&snapshot.localSafe?await checkShutdownNetwork({cdp:connections.values().next().value?.cdp}):{available:true};
+          await requestWorker(runtimeDir,'shutdown-report',{id:shutdown.request.id,snapshot,network}).catch(()=>{});
+        }
+      }
       await state();
     } catch {
       // Once the client exits, /json/list fails too; closed sockets still need pruning.
@@ -229,6 +239,7 @@ try {
     await delay(3000);
   }
 } finally {
+  if(!workerDisabled)await requestWorker(runtimeDir,'disable-shutdown').catch(()=>{});
   for (const entry of connections.values()) {
     await entry.cdp.call('Page.removeScriptToEvaluateOnNewDocument', {identifier:entry.scriptId}).catch(() => {});
     await entry.cdp.evaluate(disposeExpression).catch(() => {});

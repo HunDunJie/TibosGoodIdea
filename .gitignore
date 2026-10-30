@@ -2,6 +2,7 @@
 config.local.json*
 controller.json
 features.json
+shutdown-state.json
 reminder-worker.json
 codex-language.json*
 .env

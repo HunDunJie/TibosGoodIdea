@@ -80,6 +80,10 @@
   "program-updates.mjs",
   "update-files.mjs",
   "update-lease.mjs",
+  "shutdown-engine.mjs",
+  "shutdown-system.mjs",
+  "shutdown-guard.mjs",
+  "shutdown-task.ps1",
   "updates/program-catalog.json",
   "updates/program-public-key.pem"
 ]

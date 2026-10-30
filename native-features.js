@@ -105,6 +105,13 @@
     }
     return null;
   }
+  function chatRoute(navigation) {
+    // Electron keeps /index.html in window.location while Codex navigates internally.
+    const current = typeof navigation?.pathname === 'string' ? navigation : win.location;
+    const pathname = current?.pathname;
+    if (typeof pathname !== 'string' || !pathname.startsWith('/') || pathname.startsWith('//') || /^\/(?:index|detached-window)\.html$/i.test(pathname)) return null;
+    return pathname + (typeof current.search === 'string' ? current.search : '') + (typeof current.hash === 'string' ? current.hash : '');
+  }
   win.__cqbNativeFeatures?.dispose?.();
   win.__cqbNativeFeatures = {
     async connect(onCompletion) {
@@ -131,15 +138,18 @@
       await init(); const store = rootStore(), account = identity(store)?.accountId;
       if (!api.support.send) throw new Error(t('客户端功能接口不可用'));
       if (!account) throw new Error(t('当前账户和额度数据不一致'));
-      const all = drafts(store,account), original = `${location.pathname}${location.search}${location.hash}`;
+      const all = drafts(store,account);
       const nav = store.get(api.initial[api.p.navigation]);
+      const original = chatRoute(nav);
       const results = {sent:0,failed:0,skipped:0};
+      let navigationAttempted = false;
       try {
         for (const draft of all) {
           if (disposed || !isCurrent() || identity(store)?.accountId !== account) { results.skipped += all.length-results.sent-results.failed-results.skipped; break; }
           const fresh = drafts(store,account).find(d => d.kind === draft.kind && d.id === draft.id);
           if (!fresh || fresh.stamp !== draft.stamp) { results.skipped++; continue; }
           try {
+            navigationAttempted = true;
             if (draft.kind === 'local') {
               const host=store.get(api.initial[api.p.host],draft.id);
               const navigated=api.p.navigationMode==='native-method'
@@ -169,7 +179,9 @@
           } catch { results.failed++; }
         }
       } finally {
-        if (!disposed && isCurrent() && identity(store)?.accountId === account) await Promise.resolve(nav.navigate(original,{replace:true})).catch(() => {});
+        if (navigationAttempted && original && !disposed && isCurrent() && identity(store)?.accountId === account) {
+          try { await nav.navigate(original,{replace:true}); } catch { /* Restoration must not discard the send results. */ }
+        }
       }
       return results;
     },

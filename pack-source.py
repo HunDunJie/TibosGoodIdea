@@ -26,6 +26,12 @@ tests/pro.cjs docs/pro-quota-support.md docs/release-notes-rc16.md docs/release-
 docs/review-2026-10-30.md docs/review-2026-10-30-verification.json
 docs/review-2026-10-30-round2.md docs/review-2026-10-30-round2-verification.json
 '''.split()
+names += '''
+AGENTS.md scripts/test.mjs scripts/test-plan.json scripts/release.py
+tests/release_workflow_test.py docs/release-workflow.md docs/fix-2026-10-30-send-route.md
+skills/tibo-release/SKILL.md skills/tibo-release/agents/openai.yaml
+'''.split()
+names += [str(p.relative_to(root)).replace('\\','/') for p in sorted((root/'docs').glob('release-notes-*.md'))]
 sales_names = json.loads((root/'sales/source-files.json').read_text(encoding='utf-8'))
 names += ['sales/'+name for name in sales_names]
 names += ['sales/source-files.json']

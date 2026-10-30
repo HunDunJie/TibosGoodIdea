@@ -1,0 +1,4 @@
+interface:
+  display_name: "TiBo 测试与发布"
+  short_description: "Run the reusable TiBo Windows validation and release workflow"
+  default_prompt: "Use $tibo-release to test, package and publish TibosGoodIdea using its checked-in workflow."

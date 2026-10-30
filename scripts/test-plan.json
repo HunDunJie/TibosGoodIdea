@@ -1,0 +1,20 @@
+{
+  "integration": [
+    "tests/ui.cjs",
+    "tests/language.cjs",
+    "tests/display.cjs",
+    "tests/volume.cjs",
+    "tests/native-adapter.cjs",
+    "tests/send-reset.cjs",
+    "tests/pro.cjs",
+    "tests/controller.cjs",
+    "tests/worker-integration.mjs",
+    "tests/update-integration.mjs",
+    "tests/install.mjs",
+    "tests/lifecycle.cjs",
+    "tests/launcher-arguments.cjs",
+    "tests/settings-worker.mjs"
+  ],
+  "quickIntegration": ["tests/native-adapter.cjs", "tests/send-reset.cjs"],
+  "generatedImages": ["preview-wide.png", "preview-narrow.png", "preview-countdown.png", "preview-tooltips.png", "preview-volume-warning.png"]
+}

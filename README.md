@@ -4,7 +4,7 @@
 
 Windows Codex 的单行底栏附加工具，自有代码按 **GPL-3.0-only** 开源
 将最左侧图标导航移至底部，头像在最左边；同一行显示点数、5 小时额度、每周额度、刷新时间和可用重置
-项目目录和 GitHub 仓库名为 TibosGoodIdea，当前版本 **0.8.0-rc.16**
+项目目录和 GitHub 仓库名为 TibosGoodIdea，当前版本 **0.8.0-rc.17**
 
 **English:** A Windows Codex desktop skin and quota bottom bar showing remaining usage, five-hour and weekly limits, reset times, reset countdowns and available resets, with scheduled draft sending and music reminders
 

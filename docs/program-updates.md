@@ -37,7 +37,7 @@ Incompatible state migrations or updater protocols require manual installation. 
 
 The initially bundled signed program index has no release candidates. It provides the trust root; a future compatible release becomes downloadable only after the maintainer publishes and signs it. Adapter-only changes continue to use the existing declarative adapter index.
 
-The public index now offers the rc.16 fix for the verified Codex 26.1027.3384.0 fingerprint. Its Windows ZIP retains the previous seed index, avoiding a self-referential archive checksum; do not rebuild or replace published assets after signing the public index. Release evidence is recorded in [release-rc16-publication.json](release-rc16-publication.json).
+Each Windows ZIP retains the previously signed index, avoiding a self-referential archive checksum; do not rebuild or replace published assets after signing the new public index. Use the [maintainer workflow](release-workflow.md) to publish and verify a new version. Historical rc.16 release evidence is recorded in [release-rc16-publication.json](release-rc16-publication.json).
 
 ## Verification boundary
 

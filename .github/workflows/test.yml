@@ -13,20 +13,10 @@ jobs:
           node-version: 22
       - run: npm install --ignore-scripts
       - run: npx playwright install msedge
-      - run: npm test
-      - run: npm run test:ui
-      - run: npm run test:language
-      - run: npm run test:display
-      - run: npm run test:volume
-      - run: npm run test:adapter
-      - run: npm run test:send-reset
-      - run: npm run test:pro
-      - run: npm run test:controller
-      - run: npm run test:worker
       - run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File download-runtime.ps1
-      - run: python pack-buyer.py --manifest-only
-      - run: npm run test:update-integration
-      - run: npm run test:install
-      - run: npm run test:lifecycle
-      - run: npm run test:launcher
-      - run: npm run test:settings
+      - run: node scripts/test.mjs full --force
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-validation-${{ github.run_attempt }}
+          path: work/validation/

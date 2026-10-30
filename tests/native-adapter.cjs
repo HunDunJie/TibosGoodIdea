@@ -27,9 +27,9 @@ export const turn='turn';
   const browser = await chromium.launch({headless:true,channel:'msedge'});
   try {
     const page = await browser.newPage();
-    async function setup(mode = 'normal',profile = '账户') {
-      await page.goto(`http://127.0.0.1:${server.address().port}/start`);
-      await page.evaluate(({mode,profile}) => {
+    async function setup(mode = 'normal',profile = '账户',routing = 'browser') {
+      await page.goto(`http://127.0.0.1:${server.address().port}/${routing === 'browser' ? 'start' : 'index.html'}`);
+      await page.evaluate(({mode,profile,routing}) => {
         const f = window.fixture = {scopes:{root:{},composer:{}},storage:{},account:'A',events:[],submits:[],visits:[],usageOpens:0,mode};
         f.storage['composer-prompt-drafts-v2'] = {'local:one':{prompt:'fixture one'},'alias-one':{prompt:'fixture one'},'local:two':{prompt:'fixture two'},'local:three':{prompt:'fixture three'},'local:empty':{prompt:'   '}};
         f.storage['client-thread-bindings-v1'] = {'alias-one':'one'};
@@ -47,10 +47,11 @@ export const turn='turn';
         }}}};
         f.navigate = async id => { f.visits.push(id); composerStore.value = {kind:'local',conversationId:id}; if (mode === 'normal' && id === 'one') f.storage['composer-prompt-drafts-v2']['local:two'].prompt = 'edited during the round'; };
         f.navigation = {navigate:async route => { f.visits.push(route); },navigateToLocalConversation:async id=>f.navigate(id)};
+        if (routing === 'memory') Object.assign(f.navigation,{pathname:'/local/start',search:'?tab=activity',hash:'#draft'});
         window.__codexBottomBarFeatureBindings = {initial:'initial.js',shared:'shared.js',scope:'uct',initEvents:'ICn',completionEvent:'ZCn',initComposer:'fpt',composerScope:'MQn',readStorage:'Ntr',navigation:'ZAn',navigateLocal:'tjn',conversationBinding:'b0n',host:'VJn'};
         const initial=key=>({module:'initial.js',export:key});
         window.__codexBottomBarBindings={profileModule:'initial.js',scope:{module:'shared.js',export:'uct'},openModal:initial('openUsage'),usageModal:initial('usageModal'),turn:initial('turn'),recordReset:initial('recordReset'),decodeConversation:initial('decodeConversation')};
-      },{mode,profile});
+      },{mode,profile,routing});
       await page.addScriptTag({url:`http://127.0.0.1:${server.address().port}/adapter.js`});
       await page.evaluate(() => window.__cqbNativeFeatures.connect(event => window.fixture.events.push(event)));
     }
@@ -87,6 +88,26 @@ export const turn='turn';
     await page.evaluate(()=>{window.__codexBottomBarFeatureBindings.navigationMode='native-method';window.__codexBottomBarFeatureBindings.initSend=['fpt'];});
     const nativeMethod=await page.evaluate(()=>window.__cqbNativeFeatures.sendRound());
     assert.deepEqual(nativeMethod,{sent:1,failed:1,skipped:1},'Updated native navigation delegates safely');
-    console.log(JSON.stringify({passed:true,threeNativeProfileLanguages:true,threeDirectUsageLanguages:true,nativeSubmissionDelegation:true,draftAliasDeduplication:true,emptyDraftSkipped:true,changedDraftPreserved:true,failedDraftPreserved:true,accountSwitchStopsRound:true,roundCancellation:true,allHostCompletionSubscription:true,realDraftsSent:false}));
+    for (const navigationMode of ['native-method','legacy']) {
+      await setup('normal','账户','memory');
+      await page.evaluate(mode=>{window.__codexBottomBarFeatureBindings.navigationMode=mode},navigationMode);
+      assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.sendRound()),{sent:1,failed:1,skipped:1});
+      assert.equal(await page.evaluate(()=>fixture.visits.at(-1)),'/local/start?tab=activity#draft','Restore the in-app chat route instead of the Electron shell URL');
+      assert.equal(await page.evaluate(()=>location.pathname),'/index.html','The browser URL is intentionally different from the chat route');
+      await page.evaluate(()=>{fixture.lastEvent={hostId:'local',conversationId:'one',turnId:'scheduled-turn',status:'completed'};fixture.watch({get:()=>fixture.lastEvent})});
+      assert.equal(await page.evaluate(()=>fixture.events.length),1,'Completion events still arrive after a scheduled send');
+      assert.equal(await page.locator('[data-app-shell-frame]').count(),1,'The shell remains mounted after completion');
+    }
+    await setup('normal','账户','memory-no-route');
+    await page.evaluate(()=>window.__cqbNativeFeatures.sendRound());
+    assert.equal(await page.evaluate(()=>fixture.visits.includes('/index.html')),false,'Never restore an HTML shell when the native route is unavailable');
+    await setup('normal','账户','memory');
+    await page.evaluate(()=>{fixture.storage['composer-prompt-drafts-v2']={}});
+    assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.sendRound()),{sent:0,failed:0,skipped:0});
+    assert.deepEqual(await page.evaluate(()=>fixture.visits),[],'A round without drafts does not navigate');
+    await setup('normal','账户','memory');
+    await page.evaluate(()=>{fixture.navigation.navigate=()=>{throw Error('fixture restore failure')}});
+    assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.sendRound()),{sent:1,failed:1,skipped:1},'A synchronous restore failure does not discard submission counts');
+    console.log(JSON.stringify({passed:true,threeNativeProfileLanguages:true,threeDirectUsageLanguages:true,nativeSubmissionDelegation:true,draftAliasDeduplication:true,emptyDraftSkipped:true,changedDraftPreserved:true,failedDraftPreserved:true,accountSwitchStopsRound:true,roundCancellation:true,allHostCompletionSubscription:true,memoryRouterRestored:true,shellRouteRejected:true,emptyRoundDidNotNavigate:true,realDraftsSent:false}));
   } finally { await browser.close(); server.close(); }
 })().catch(error => { console.error(error.stack); process.exitCode=1; });

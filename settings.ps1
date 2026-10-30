@@ -1,6 +1,6 @@
 ﻿param([switch]$NoUi,[string]$TimeZone='',[string]$CompletionAudio='',[string]$RefreshAudio='',[string]$ConfigPath='',[string]$RenderTo='',[string]$StateDir='')
 . (Join-Path $PSScriptRoot 'launcher-common.ps1')
-if (-not $ConfigPath) { $ConfigPath = Join-Path $PSScriptRoot 'config.local.json' }
+if (-not $ConfigPath) { $ConfigPath = Get-CqbConfigPath }
 $config = [ordered]@{language='auto';timeZone='auto';completionAudio='';refreshAudio=''}
 if (Test-Path -LiteralPath $ConfigPath) {
   $oldConfig = [IO.File]::ReadAllText($ConfigPath) | ConvertFrom-Json

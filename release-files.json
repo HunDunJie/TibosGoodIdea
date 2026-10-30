@@ -71,5 +71,15 @@
   "runtime/node.exe",
   "runtime/LICENSE-Node.txt",
   "runtime/NOTICE.md",
-  "release-files.json"
+  "release-files.json",
+  "Update.cmd",
+  "检查更新.cmd",
+  "bootstrap.ps1",
+  "update.ps1",
+  "update-cli.mjs",
+  "program-updates.mjs",
+  "update-files.mjs",
+  "update-lease.mjs",
+  "updates/program-catalog.json",
+  "updates/program-public-key.pem"
 ]

@@ -2,7 +2,7 @@
   "productId": "bottom-bar-companion",
   "name": "Tibo’s Good Idea",
   "seller": "由龙见象",
-  "version": "0.8.0-rc.14",
+  "version": "0.8.0-rc.15",
   "stage": "release-candidate",
   "supportedCodexVersions": [
     "26.1023.6621.0",
@@ -20,5 +20,7 @@
   "commercialPermission": "not-confirmed",
   "languagePolicy": "follow-codex",
   "compatibilityPolicy": "discover-per-capability",
-  "adapterUpdateSource": "https://raw.githubusercontent.com/HunDunJie/TibosGoodIdea/main/updates/catalog.json"
+  "adapterUpdateSource": "https://raw.githubusercontent.com/HunDunJie/TibosGoodIdea/main/updates/catalog.json",
+  "programUpdateSource": "https://raw.githubusercontent.com/HunDunJie/TibosGoodIdea/main/updates/program-catalog.json",
+  "updaterProtocol": 1
 }

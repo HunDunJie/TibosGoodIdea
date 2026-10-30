@@ -8,6 +8,7 @@ import {FeatureEngine} from './feature-engine.mjs';
 import {WindowsAudioClient} from './audio-client.mjs';
 import {defaultStateDir,pipePath} from './runtime-paths.mjs';
 import {saveStateJson} from './state-file.mjs';
+import {UpdateLease} from './update-lease.mjs';
 const here = path.dirname(fileURLToPath(import.meta.url)), args = process.argv.slice(2);
 const option = (name,fallback) => args.includes(name) ? args[args.indexOf(name)+1] : fallback;
 const stateDir = path.resolve(option('--state-dir',defaultStateDir()));
@@ -18,9 +19,10 @@ let config = {}, initial = {};
 config = await readConfig(path.resolve(option('--config',path.join(here,'config.local.json'))),stateDir);
 let reportedLanguage = null;
 try { initial = JSON.parse(await fs.readFile(stateFile,'utf8')); } catch {}
-let queue = Promise.resolve(), closing = false, timer = null;
+let queue = Promise.resolve(), closing = false, timer = null, updateCommitted=false;
 const serial = action => { const result = queue.then(action); queue = result.catch(() => {}); return result; };
 let engine;
+const updateLease = new UpdateLease();
 const audio = new WindowsAudioClient(config,event => {
   if (closing) return;
   void serial(async () => {
@@ -33,7 +35,20 @@ const audio = new WindowsAudioClient(config,event => {
 });
 engine = new FeatureEngine({state:initial,audio,save:state=>saveStateJson(stateFile,state)});
 async function dispatch(method,payload = {}) {
+  if(updateCommitted&&method!=='status')throw Error('Reminder service is switching versions');
   switch (method) {
+    case 'prepare-update': {
+      const root=path.resolve(payload.root??'');
+      if (here!==root && !here.startsWith(path.join(root,'versions')+path.sep)) throw Error('Update installation mismatch');
+      return updateLease.prepare(engine.state);
+    }
+    case 'cancel-update': updateLease.cancel(payload.token); return {cancelled:true};
+    case 'commit-update':
+      updateLease.confirm(payload.token,engine.state);
+      await engine.commit();
+      updateCommitted=true;clearInterval(timer);
+      setTimeout(() => void serial(() => shutdown(false)),100);
+      return {restarting:true};
     case 'status': return {...engine.status(),workerPid:process.pid,workerVersion,workerRoot:here,configStamp:configFingerprint(config)};
     case 'player-status': return audio.call('status');
     case 'ui-language': {
@@ -47,10 +62,10 @@ async function dispatch(method,payload = {}) {
       }
       return {language:config.language};
     }
-    case 'restart': setTimeout(() => void serial(() => shutdown(false)),100); return {restarting:true};
-    case 'toggle': return engine.toggle(payload.feature,payload.enabled);
+    case 'restart': if(updateLease.current())throw Error('Update handoff in progress'); setTimeout(() => void serial(() => shutdown(false)),100); return {restarting:true};
+    case 'toggle': if(payload.enabled&&updateLease.current())throw Error('Update handoff in progress'); return engine.toggle(payload.feature,payload.enabled);
     case 'observe': return engine.observe(payload);
-    case 'claim-send': return engine.claimSend();
+    case 'claim-send': if(updateLease.current())return null; return engine.claimSend();
     case 'finish-send': return engine.finishSend(payload.id,payload.result);
     case 'completion': await engine.completion(payload); return engine.status();
     case 'interaction': if (engine.state.ringing) await engine.stop('codex-interaction'); return engine.status();

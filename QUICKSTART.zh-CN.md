@@ -38,3 +38,5 @@
 运行 `Check.cmd` 核对各项接口。启动时会检查签名适配表，大幅结构变化仍可能需要新版工具，没有永久兼容承诺。问题可在 GitHub Issues 反馈，勿公开账号信息、私人路径或聊天内容
 
 自有代码、原创图标和说明按 GPL-3.0-only 开源，分发修改版须提供相应源码，详见 LICENSE 与 LICENSE.zh-CN.md。Node.js、Acorn 和录音分别保留原有权利，详见 THIRD-PARTY-NOTICES.md
+
+Full program updater / 完整程序更新: [docs/program-updates.md](docs/program-updates.md)

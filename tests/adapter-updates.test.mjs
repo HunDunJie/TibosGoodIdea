@@ -29,3 +29,14 @@ test('updates silently, caches, rejects rollback and survives offline or corrupt
     assert.equal((await getAdapterCatalog(dir,{...opts,fetchImpl:async()=>{throw Error('offline')}})).revision,1);
   }finally{await fs.rm(dir,{recursive:true,force:true});}
 });
+test('local startup never waits for fetch and a changed client bypasses the old twelve-hour cache after throttle',async()=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'tibo-adapter-priority-'));let calls=0;
+  const options={key,bundledEnvelope:envelope(1),now:1700000000000,client:'build-a:send-ok',fetchImpl:async()=>{calls++;return new Response(JSON.stringify(envelope(2)));}};
+  try{
+    assert.equal((await getAdapterCatalog(dir,{...options,localOnly:true})).revision,1);assert.equal(calls,0);
+    await getAdapterCatalog(dir,options);assert.equal(calls,1);
+    await getAdapterCatalog(dir,{...options,client:'build-b:send-missing',now:options.now+1000});assert.equal(calls,1);
+    await getAdapterCatalog(dir,{...options,client:'build-b:send-missing',now:options.now+300001});assert.equal(calls,2);
+    await getAdapterCatalog(dir,{...options,client:'build-b:send-missing',now:options.now+310000,fetchImpl:async()=>{throw Error('must remain cached')}});assert.equal(calls,2);
+  }finally{await fs.rm(dir,{recursive:true,force:true});}
+});

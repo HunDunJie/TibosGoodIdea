@@ -20,9 +20,13 @@ foreach($name in $files){
 $installLock=Enter-CqbLifecycleLock $target 'install'
 $staging='';$keepStaging=$false
 try {
+  if(Test-Path -LiteralPath (Join-Path $target 'update-cli.mjs')){
+    & (Join-Path $target 'runtime\node.exe') (Join-Path $target 'update-cli.mjs') stop --root $target
+    if($LASTEXITCODE -ne 0){throw 'Cannot stop the update check'}
+  }
   Assert-CqbInstallIdle $target
   $configPath=Join-Path $target 'config.local.json'
-  $transactionFiles=@($files)+@('install-info.json')
+  $transactionFiles=@($files)+@('install-info.json','active-release.json','pending-release.json','update-transaction.json')
   if(-not(Test-Path -LiteralPath $configPath)){$transactionFiles+=@('config.local.json')}
   # Reject existing locks and linked paths before changing any installed file.
   foreach($name in $transactionFiles){
@@ -42,6 +46,9 @@ try {
   $product=[IO.File]::ReadAllText((Join-Path $staging 'new\product.json'))|ConvertFrom-Json
   Save-CqbJson (Join-Path $staging 'new\install-info.json') ([ordered]@{productId='bottom-bar-companion';version=$product.version;files=$files;shortcutRoot=$ShortcutRoot;installedAt=(Get-Date).ToUniversalTime().ToString('o')})
   if($transactionFiles -contains 'config.local.json'){Save-CqbJson (Join-Path $staging 'new\config.local.json') ([ordered]@{language='auto';timeZone='auto';completionAudio='';refreshAudio=''})}
+  Save-CqbJson (Join-Path $staging 'new\active-release.json') ([ordered]@{active='.'})
+  Save-CqbJson (Join-Path $staging 'new\pending-release.json') $null
+  Save-CqbJson (Join-Path $staging 'new\update-transaction.json') ([ordered]@{phase='manual-install'})
   Assert-CqbInstallIdle $target
   $changed=New-Object 'Collections.Generic.List[string]'
   $createdDirectories=New-Object 'Collections.Generic.List[string]'

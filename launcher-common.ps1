@@ -32,4 +32,8 @@ function Save-CqbJson([string]$Path,$Value) {
   $json = $Value | ConvertTo-Json -Depth 8
   [IO.File]::WriteAllText($Path,$json,(New-Object Text.UTF8Encoding($false)))
 }
-if(-not(Test-Path -LiteralPath (Join-Path $PSScriptRoot 'config.local.json'))){Save-CqbJson (Join-Path $PSScriptRoot 'config.local.json') ([ordered]@{language='auto';timeZone='auto';completionAudio='';refreshAudio=''})}
+function Get-CqbConfigPath {
+  $directory=if($env:TIBO_INSTALL_ROOT){$env:TIBO_INSTALL_ROOT}else{$PSScriptRoot}
+  Join-Path $directory 'config.local.json'
+}
+if(-not(Test-Path -LiteralPath (Get-CqbConfigPath))){Save-CqbJson (Get-CqbConfigPath) ([ordered]@{language='auto';timeZone='auto';completionAudio='';refreshAudio=''})}

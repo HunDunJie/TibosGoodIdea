@@ -14,8 +14,8 @@ const temp=await fs.mkdtemp(path.join(tempRoot,'cqb-install-test-'));
 const target=path.join(temp,'installed'), config=path.join(target,'config.local.json');
 let checks=0,passed=false;
 const check=(value,message)=>{assert.ok(value,message);checks++;};
-async function run(exe,args,{cwd=root,expected=0,verbatim=false}={}){
-  const child=spawn(exe,args,{cwd,windowsHide:true,windowsVerbatimArguments:verbatim,stdio:['ignore','pipe','pipe']});
+async function run(exe,args,{cwd=root,expected=0,verbatim=false,env=process.env}={}){
+  const child=spawn(exe,args,{cwd,env,windowsHide:true,windowsVerbatimArguments:verbatim,stdio:['ignore','pipe','pipe']});
   let out='',err='';child.stdout.on('data',c=>out+=c);child.stderr.on('data',c=>err+=c);
   const timer=setTimeout(()=>child.kill(),45000);
   const code=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',resolve);});
@@ -23,7 +23,7 @@ async function run(exe,args,{cwd=root,expected=0,verbatim=false}={}){
   if(expected===0)assert.equal(code,0,`${path.basename(exe)}: ${(err||out).slice(-1800)}`);else assert.notEqual(code,0,`Invalid operation must fail: ${(err||out).slice(-1800)}`);
   return expected===0 ? out : out+err;
 }
-const ps=(script,args=[],expected=0)=>run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.resolve(root,script),...args],{expected});
+const ps=(script,args=[],expected=0,env=process.env)=>run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.resolve(root,script),...args],{expected,env});
 async function snapshot(names,folder=target){return Object.fromEntries(await Promise.all(names.map(async name=>[name,createHash('sha256').update(await fs.readFile(path.join(folder,name))).digest('hex')])));}
 try{
   await ps('install.ps1',['-TargetDir',target,'-NoShortcut']);
@@ -103,6 +103,28 @@ try{
   await ps('install.ps1',['-TargetDir',chinese,'-NoShortcut']);
   await run('cmd.exe',['/d','/s','/c',`""${path.join(chinese,'卸载.cmd')}" -NoShortcut -StateDir "${path.join(temp,'absent-worker')}" -BackupDir "${path.join(temp,'chinese-backup')}""`],{cwd:chinese,verbatim:true});
   check(!await fs.stat(chinese).catch(()=>null),'Chinese uninstall launcher also exits cleanly after removing itself');
+  // Users can also click Uninstall in the extracted download after installing it.
+  // Redirect LOCALAPPDATA so discovery can never touch the real installed copy.
+  const fakeLocal=path.join(temp,'discovery-local'),discovered=path.join(fakeLocal,'Programs','TibosGoodIdea');
+  const discoveryEnv={...process.env,LOCALAPPDATA:fakeLocal};
+  await ps('install.ps1',['-TargetDir',discovered,'-NoShortcut']);
+  const discoveredMarker=await fs.readFile(path.join(discovered,'install-info.json'),'utf8');
+  await ps('uninstall.ps1',['-TargetDir',unmanaged,'-NoShortcut','-NoServiceChanges'],1,discoveryEnv);
+  check(await fs.readFile(path.join(discovered,'install-info.json'),'utf8')===discoveredMarker,'An explicit unmanaged target never falls back to the default install');
+  const discoveredConfig=await fs.readFile(path.join(discovered,'config.local.json'),'utf8');
+  const packageBefore=await snapshot(['uninstall.ps1','Uninstall.cmd','卸载.cmd'],root);
+  const discoveryBackup=path.join(temp,'discovery-backup');
+  await run('cmd.exe',['/d','/s','/c',`""${path.join(root,'卸载.cmd')}" -NoShortcut -NoServiceChanges -BackupDir "${discoveryBackup}""`],{cwd:root,verbatim:true,env:discoveryEnv});
+  check(!await fs.stat(discovered).catch(()=>null),'Extracted Chinese launcher discovers and removes only the installed copy');
+  check(await fs.readFile(path.join(discoveryBackup,'config.local.json'),'utf8')===discoveredConfig,'Discovered uninstall forwards the chosen settings backup location');
+  check(JSON.stringify(await snapshot(Object.keys(packageBefore),root))===JSON.stringify(packageBefore),'Discovered uninstall preserves the extracted package');
+  await ps('uninstall.ps1',['-NoShortcut','-NoServiceChanges'],0,discoveryEnv);
+  check(!await fs.stat(discovered).catch(()=>null),'Repeated extracted uninstall succeeds without recreating an install folder');
+  await fs.mkdir(discovered,{recursive:true});
+  await fs.writeFile(path.join(discovered,'install-info.json'),JSON.stringify({productId:'someone-else',files:['mine.txt']}));
+  await fs.writeFile(path.join(discovered,'mine.txt'),'mine');
+  await ps('uninstall.ps1',['-NoShortcut','-NoServiceChanges'],1,discoveryEnv);
+  check(await fs.readFile(path.join(discovered,'mine.txt'),'utf8')==='mine','Discovery refuses a default folder owned by another product');
   const reserve=net.createServer();await new Promise(resolve=>reserve.listen(0,'127.0.0.1',resolve));
   const closedPort=reserve.address().port;await new Promise(resolve=>reserve.close(resolve));
   // Reboot/crash leftovers must not require launching Codex just to uninstall.

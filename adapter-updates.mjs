@@ -37,25 +37,29 @@ async function boundedResponse(response) {
   for await (const chunk of response.body) {size+=chunk.byteLength;if(size>MAX_BYTES)throw Error('Adapter catalog too large');chunks.push(Buffer.from(chunk));}
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
-export async function getAdapterCatalog(stateDir,{fetchImpl=fetch,now=Date.now(),force=false,bundledEnvelope=null,key=publicKey}={}) {
+export async function getAdapterCatalog(stateDir,{fetchImpl=fetch,now=Date.now(),force=false,client=null,localOnly=false,bundledEnvelope=null,key=publicKey}={}) {
   const bundled=bundledEnvelope ?? JSON.parse(await fs.readFile(new URL('./updates/catalog.json',import.meta.url),'utf8'));
-  let envelope=bundled,data=verifyCatalog(bundled,key),checkedAt=0;
+  let envelope=bundled,data=verifyCatalog(bundled,key),checkedAt=0,prior={};
   const cachePath=path.join(stateDir,'adapter-catalog.json');
   try {
     const stat=await fs.stat(cachePath); if(stat.size>MAX_BYTES*2)throw Error('Cache too large');
-    const cached=JSON.parse(await fs.readFile(cachePath,'utf8')), candidate=verifyCatalog(cached.envelope,key);
+    const cached=JSON.parse(await fs.readFile(cachePath,'utf8')), candidate=verifyCatalog(cached.envelope,key);prior=cached;
     if(candidate.revision>=data.revision){data=candidate;envelope=cached.envelope;}
     if(Number.isFinite(cached.checkedAt)&&cached.checkedAt<=now)checkedAt=cached.checkedAt;
   }catch{}
-  if(!force && checkedAt && now-checkedAt<INTERVAL)return {entries:data.entries,revision:data.revision,status:'cached'};
+  const priority=client&&prior.client!==client,wait=priority?Math.min(prior.retryAfter??300000,300000):(prior.retryAfter??INTERVAL);
+  if(localOnly || !force && checkedAt && now-checkedAt>=0 && now-checkedAt<wait)return {entries:data.entries,revision:data.revision,status:'cached'};
   let status='current';
   try {
     const response=await fetchImpl(UPDATE_URL,{signal:AbortSignal.timeout(3500),redirect:'error',headers:{Accept:'application/json'}});
     const remote=await boundedResponse(response),candidate=verifyCatalog(remote,key);
-    if(candidate.revision<data.revision)throw Error('Adapter catalog rollback rejected');
+    let floor=0;try{floor=JSON.parse(await fs.readFile(path.join(stateDir,'adapter-revision.json'),'utf8')).revision;}catch(e){if(e.code!=='ENOENT')throw e;}
+    if(candidate.revision<Math.max(data.revision,floor))throw Error('Adapter catalog rollback rejected');
+    await fs.mkdir(stateDir,{recursive:true});await saveStateJson(path.join(stateDir,'adapter-revision.json'),{revision:candidate.revision});
     if(candidate.revision>data.revision){envelope=remote;data=candidate;status='updated';}
   }catch{status='offline';}
   await fs.mkdir(stateDir,{recursive:true});
-  await saveStateJson(cachePath,{checkedAt:now,envelope}).catch(()=>{});
+  const failures=status==='offline'?(prior.failures??0)+1:0;
+  await saveStateJson(cachePath,{checkedAt:now,envelope,client,failures,retryAfter:failures?Math.min(INTERVAL,300000*2**Math.min(7,failures-1)):null}).catch(()=>{});
   return {entries:data.entries,revision:data.revision,status};
 }

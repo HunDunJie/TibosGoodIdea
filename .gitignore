@@ -8,6 +8,7 @@ codex-language.json*
 .env.*
 *.pem
 !updates/public-key.pem
+!updates/program-public-key.pem
 *.key
 *.pfx
 
@@ -23,6 +24,12 @@ node_modules/
 work/
 .runtime/
 test-results/
+versions/
+active-release.json
+pending-release.json
+update-transaction.json
+program-update-state.json*
+program-update-floor.json*
 __pycache__/
 *.pyc
 

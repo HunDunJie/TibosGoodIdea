@@ -1,10 +1,37 @@
-﻿param([string]$TargetDir=$PSScriptRoot,[switch]$NoServiceChanges,[switch]$NoShortcut,[string]$BackupDir='',[string]$StateDir='',[string]$ShortcutRoot='')
+﻿param([string]$TargetDir='',[switch]$NoServiceChanges,[switch]$NoShortcut,[string]$BackupDir='',[string]$StateDir='',[string]$ShortcutRoot='')
 . (Join-Path $PSScriptRoot 'launcher-common.ps1')
 . (Join-Path $PSScriptRoot 'lifecycle-common.ps1')
+if(-not $PSBoundParameters.ContainsKey('TargetDir')){
+  $TargetDir=$PSScriptRoot
+  if(-not(Test-Path -LiteralPath (Join-Path $TargetDir 'install-info.json') -PathType Leaf)){
+    $TargetDir=Join-Path $env:LOCALAPPDATA 'Programs\TibosGoodIdea'
+    if(-not(Test-Path -LiteralPath (Join-Path $TargetDir 'install-info.json') -PathType Leaf)){
+      Write-Host (L '未找到本工具的安装记录，未删除任何文件；如安装在自定义位置，请从开始菜单的 Uninstall 入口卸载' 'No installed copy was found. No files were removed. For a custom install location, use Uninstall in the Start menu.' 'インストール記録が見つかりません ファイルは削除していません カスタム場所にインストールした場合はスタートメニューの Uninstall を使用してください')
+      exit 0
+    }
+  }
+}
 $target=[IO.Path]::GetFullPath($TargetDir).TrimEnd('\');$marker=Join-Path $target 'install-info.json'
 if(-not(Test-Path -LiteralPath $marker)){throw 'Managed installation marker not found'}
 $installation=[IO.File]::ReadAllText($marker)|ConvertFrom-Json
 if($installation.productId -ne 'bottom-bar-companion'){throw 'Unexpected installation owner'}
+# A downloaded package must use the installed copy's own removal procedure.
+# Explicit targets remain strict and never fall back to another installation.
+if(-not $PSBoundParameters.ContainsKey('TargetDir') -and $target -ine [IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\')){
+  $managedUninstaller=Join-Path $target 'uninstall.ps1'
+  if(-not(Test-Path -LiteralPath $managedUninstaller -PathType Leaf)){throw (L '已找到安装记录，但卸载文件缺失，请重新安装后再卸载' 'The installed copy is missing its uninstaller. Reinstall it before uninstalling.' 'インストール記録はありますがアンインストーラーがありません 再インストールしてからアンインストールしてください')}
+  $forward=@{TargetDir=$target}
+  foreach($key in $PSBoundParameters.Keys){$forward[$key]=$PSBoundParameters[$key]}
+  Write-Host (L "正在卸载已安装的副本：$target" "Uninstalling the installed copy: $target" "インストール済みのコピーをアンインストールします：$target")
+  & $managedUninstaller @forward
+  exit 0
+}
+$removeLock=Enter-CqbLifecycleLock $target 'install'
+try {
+if(Test-Path -LiteralPath (Join-Path $target 'update-cli.mjs')){
+  & (Join-Path $target 'runtime\node.exe') (Join-Path $target 'update-cli.mjs') stop --root $target
+  if($LASTEXITCODE -ne 0){throw 'Cannot stop the update check'}
+}
 if(-not $ShortcutRoot -and $installation.shortcutRoot){$ShortcutRoot=$installation.shortcutRoot}
 $owned=@($installation.files)+@('config.local.json','config.local.json.bak','config.local.json.pending','install-info.json')
 foreach($name in $owned){
@@ -18,10 +45,10 @@ if(-not $NoServiceChanges){
   if(-not $StateDir){$StateDir=Join-Path $env:LOCALAPPDATA 'CodexBottomBar'}
   $reply=Invoke-CqbWorker $nodeExe $target $StateDir
   $worker=if($reply.ExitCode -eq 0){$reply.Output|ConvertFrom-Json}else{$null}
-  $ownsWorker=$worker -and $worker.workerRoot -and [IO.Path]::GetFullPath($worker.workerRoot).TrimEnd('\') -eq $target
+  $ownsWorker=$worker -and $worker.workerRoot -and ([IO.Path]::GetFullPath($worker.workerRoot).TrimEnd('\') -eq $target -or [IO.Path]::GetFullPath($worker.workerRoot).StartsWith($target+'\versions\',[StringComparison]::OrdinalIgnoreCase))
   if($ownsWorker -and $worker.send.phase -eq 'running'){throw 'Drafts are being sent. Wait for this round before uninstalling.'}
   $statePath=Join-Path $StateDir 'controller.json'
-  if(Test-Path -LiteralPath $statePath){$controller=[IO.File]::ReadAllText($statePath)|ConvertFrom-Json;if($controller.packageRoot -and [IO.Path]::GetFullPath($controller.packageRoot).TrimEnd('\') -eq $target){
+  if(Test-Path -LiteralPath $statePath){$controller=[IO.File]::ReadAllText($statePath)|ConvertFrom-Json;if($controller.packageRoot -and ([IO.Path]::GetFullPath($controller.packageRoot).TrimEnd('\') -eq $target -or [IO.Path]::GetFullPath($controller.packageRoot).StartsWith($target+'\versions\',[StringComparison]::OrdinalIgnoreCase))){
     $child=Start-Process powershell.exe -ArgumentList @('-NoProfile','-ExecutionPolicy','Bypass','-File',('"'+(Join-Path $target 'restore.ps1')+'"'),'-StateDir',('"'+$StateDir+'"'),'-Port',([string]$controller.port)) -WindowStyle Hidden -Wait -PassThru
     if($child.ExitCode -ne 0){throw 'Could not restore the managed interface; uninstall stopped'}
   }}
@@ -34,6 +61,10 @@ if(-not $NoServiceChanges){
 }
 $configPath=Join-Path $target 'config.local.json'
 if(Test-Path -LiteralPath $configPath){$backup=if($BackupDir){$BackupDir}else{Join-Path $env:LOCALAPPDATA ('TibosGoodIdeaBackup\'+(Get-Date -Format 'yyyyMMdd-HHmmss-fff'))};New-Item -ItemType Directory -Path $backup -Force|Out-Null;Copy-Item -LiteralPath $configPath -Destination (Join-Path $backup 'config.local.json')}
+if(Test-Path -LiteralPath (Join-Path $target 'update-cli.mjs')){
+  & (Join-Path $target 'runtime\node.exe') (Join-Path $target 'update-cli.mjs') clean --root $target
+  if($LASTEXITCODE -ne 0){throw 'Cannot safely remove updated program files'}
+}
 foreach($name in $owned){$file=Join-Path $target $name;if(Test-Path -LiteralPath $file -PathType Leaf){Remove-Item -LiteralPath $file -Force}}
 $directories=@($owned|ForEach-Object{
   $directory=Split-Path -Parent (Join-Path $target $_)
@@ -56,3 +87,5 @@ if((Test-Path -LiteralPath $target) -and -not(Get-ChildItem -LiteralPath $target
   try {Remove-Item -LiteralPath $target -Force} catch {Write-Warning (L '文件和快捷方式已卸载；空目录仍被其他程序占用，关闭该程序后可删除' 'Files and owned shortcuts were removed. Another program is holding the empty folder open; it can be removed after that program exits.' 'ファイルと本製品のショートカットを削除しました 空のフォルダーは別のプログラムが使用中です そのプログラムの終了後に削除できます')}
 }
 Write-Host (L '本工具文件已卸载，未知或自行添加的文件会保留，设置备份在 LocalAppData\TibosGoodIdeaBackup' 'Managed files removed. Your own files are preserved. Settings backup: LocalAppData\TibosGoodIdeaBackup.' '管理対象のファイルを削除しました 追加されたファイルは保持します 設定は LocalAppData\TibosGoodIdeaBackup にバックアップしました')
+
+} finally {$removeLock.ReleaseMutex();$removeLock.Dispose()}

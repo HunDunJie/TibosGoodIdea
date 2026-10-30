@@ -1,0 +1,42 @@
+{
+  "date": "2026-10-30",
+  "version": "0.8.0-rc.15",
+  "unitTests": {"passed": 74, "failed": 0},
+  "windowsInstaller": {"passed": true, "checks": 126, "isolated": true},
+  "ui": {"passed": true, "checks": 79},
+  "display": {"passed": true, "checks": 25},
+  "language": {"passed": true, "checks": 33},
+  "volume": {"passed": true, "checks": 20, "volumeChanged": false},
+  "nativeAdapter": {"passed": true, "realDraftsSent": false},
+  "sendReset": {"passed": true, "realDraftsSent": false},
+  "controller": {"passed": true, "isolated": true},
+  "lifecycle": {"passed": true, "isolated": true},
+  "launcherArguments": {"passed": true, "spaceAndUnicodePaths": true},
+  "settingsWorker": {"passed": true, "audioPlayed": false},
+  "workerIntegration": {"passed": true, "audibleSound": false},
+  "updateIntegration": {
+    "passed": true,
+    "realSignedPackageFiles": 83,
+    "bundledNodeAndPowerShellOfflineChecks": true,
+    "realIsolatedWorkerHandoff": true,
+    "rootConfigPreserved": true,
+    "originalAlarmAndSendBatchIdsPreserved": true,
+    "leaseBlocksNewWork": true,
+    "bootstrapRoutesSettings": true,
+    "concurrentChecksSerialized": true,
+    "uninstallCancelsDownloadAndWaitsForProcessExit": true,
+    "bothPayloadsRemoved": true
+  },
+  "readOnlyClientFingerprint": {
+    "codex": "26.1027.3384.0",
+    "sha256": "f971028af3cb424351c9f473cfb766a40211406a71ffcddae1b7670b7b29dcd3"
+  },
+  "realCodexRestartedOrReplaced": false,
+  "realDraftsSent": false,
+  "audibleMusicPlayed": false,
+  "limits": [
+    "No future public program release was downloaded; integration uses a complete signed fixture package",
+    "Full live Codex cold-start, native notification activation and actual multi-chat sending remain manual acceptance",
+    "Published rc.14 assets are unchanged; rc.14 needs one manual upgrade to obtain the full updater"
+  ]
+}

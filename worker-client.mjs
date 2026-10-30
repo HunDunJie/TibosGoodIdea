@@ -13,7 +13,7 @@ export function requestWorker(stateDir, method, payload = {}, timeout = 5000) {
     const socket = net.createConnection(pipePath(stateDir)); let data = '', done = false;
     const finish = (error,value) => { if (done) return; done = true; clearTimeout(timer); socket.destroy(); error ? reject(error) : resolve(value); };
     const timer = setTimeout(() => finish(new Error('提醒后台连接超时')), timeout);
-    socket.on('error', () => finish(new Error('提醒后台未运行')));
+    socket.on('error', error => finish(Object.assign(new Error('提醒后台未运行'),{code:error.code})));
     socket.on('connect', () => socket.write(JSON.stringify({method,payload}) + '\n'));
     socket.on('data', chunk => {
       data += chunk; if (data.length > 65536) return finish(new Error('无效后台响应'));

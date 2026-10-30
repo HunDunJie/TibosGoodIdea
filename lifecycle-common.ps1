@@ -4,7 +4,7 @@ function Invoke-CqbWorker([string]$NodeExe,[string]$PackageRoot,[string]$StateDi
   $priorErrorAction=$ErrorActionPreference
   try {
     $ErrorActionPreference='Continue'
-    $output=& $NodeExe (Join-Path $PackageRoot 'worker-client.mjs') $Action --state-dir $StateDir 2>$null
+    $output=& $NodeExe (Join-Path $PackageRoot 'worker-client.mjs') $Action --state-dir $StateDir --config (Get-CqbConfigPath) 2>$null
     $code=$LASTEXITCODE
   } finally { $ErrorActionPreference=$priorErrorAction }
   [pscustomobject]@{ExitCode=$code;Output=$output}
@@ -67,6 +67,7 @@ function Start-CqbController([string]$NodeExe,[string]$PackageRoot,[string]$Stat
     if($reuse){Write-Host (L '底栏控制器已在运行。' 'The add-on is already running. Use Reload.cmd to apply new settings.' 'ボトムバーはすでに動作中です 新しい設定は Reload.cmd で反映してください');return}
     $controllerPath=Join-Path $PackageRoot 'controller.mjs'
     $arguments=@(('"'+$controllerPath+'"'),'--port',([string]$Port),'--state-dir',('"'+$StateDir+'"'))
+    if($env:TIBO_INSTALL_ROOT){$arguments+=@('--config',('"'+(Get-CqbConfigPath)+'"'))}
     if($AppAsar){$arguments+=@('--app-asar',('"'+$AppAsar+'"'))}
     $child=Start-Process -FilePath $NodeExe -ArgumentList $arguments -WorkingDirectory $PackageRoot -WindowStyle Hidden -RedirectStandardOutput (Join-Path $StateDir 'controller.stdout.log') -RedirectStandardError (Join-Path $StateDir 'controller.stderr.log') -PassThru
     $deadline=(Get-Date).AddSeconds(20);$ready=$false

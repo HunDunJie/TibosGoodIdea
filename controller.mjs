@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { readNativeBindings } from './native-bindings.mjs';
 import { readFeatureBindings } from './feature-bindings.mjs';
 import {getAdapterCatalog} from './adapter-updates.mjs';
+import {clientFingerprint} from './program-updates.mjs';
 import { ensureWorker, requestWorker } from './worker-client.mjs';
 import { defaultStateDir, controllerPipePath } from './runtime-paths.mjs';
 import { readSystemVolume } from './audio-client.mjs';
@@ -132,10 +133,12 @@ if (appAsar) {
   try { nativeBindings = await readNativeBindings(appAsar); }
   catch { console.log('Native usage binding unavailable; protected menu fallback enabled.'); }
   let catalog=[];
-  try { const result=await getAdapterCatalog(runtimeDir); catalog=result.entries; adapterUpdates={status:result.status,revision:result.revision}; }
+  try { const result=await getAdapterCatalog(runtimeDir,{localOnly:true}); catalog=result.entries; adapterUpdates={status:result.status,revision:result.revision}; }
   catch { adapterUpdates={status:'unavailable',revision:null}; }
   try { featureBindings = await readFeatureBindings(appAsar,{catalog}); }
   catch { console.log('Native feature discovery unavailable; layout and independent reminders remain available.'); }
+  // Network refresh never delays injection or changes draft interfaces during a live session.
+  void (async()=>{const fingerprint=await clientFingerprint(appAsar),client=fingerprint+':'+JSON.stringify(featureBindings?.capabilities??null);const result=await getAdapterCatalog(runtimeDir,{client});adapterUpdates={status:result.status,revision:result.revision};})().catch(()=>{});
 }
 let wakingWorker=null;
 async function wakeWorker() {

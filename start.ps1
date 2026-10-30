@@ -11,6 +11,11 @@ $appPackage = Get-AppxPackage -Name 'OpenAI.Codex' | Sort-Object Version -Descen
 if (-not $appPackage) { throw (L '未找到当前用户安装的 Codex 商店版。' 'Codex from the Microsoft Store is not installed for this Windows user.' 'この Windows ユーザーの Microsoft Store 版 Codex が見つかりません') }
 # Renderer interfaces are discovered per capability by the controller; no blanket version gate.
 $appExe = Join-Path $appPackage.InstallLocation 'app\ChatGPT.exe'
+if($env:TIBO_INSTALL_ROOT){
+  $updateRoot=$env:TIBO_INSTALL_ROOT
+  $updateArgs=@(('"'+(Join-Path $updateRoot 'update-cli.mjs')+'"'),'check','--root',('"'+$updateRoot+'"'),'--asar',('"'+(Join-Path $appPackage.InstallLocation 'app\resources\app.asar')+'"'))
+  Start-Process -FilePath (Join-Path $updateRoot 'runtime\node.exe') -ArgumentList $updateArgs -WindowStyle Hidden|Out-Null
+}
 if (-not (Test-Path -LiteralPath $appExe -PathType Leaf)) { throw (L 'Codex 可执行文件不存在。' 'The Codex executable was not found.' 'Codex の実行ファイルが見つかりません') }
 $manifest = Get-AppxPackageManifest -Package $appPackage.PackageFullName
 $application = @($manifest.Package.Applications.Application) | Where-Object {

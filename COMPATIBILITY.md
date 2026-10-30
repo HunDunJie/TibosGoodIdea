@@ -1,6 +1,6 @@
 # Compatibility / 兼容性
 
-Version 0.8.0-rc.14 · Windows 11 x64 · Microsoft Store Codex
+Version 0.8.0-rc.15 · Windows 11 x64 · Microsoft Store Codex
 
 ## Current evidence / 当前证据
 
@@ -22,7 +22,7 @@ Unverified submission never falls back to guessed network requests or simulated 
 
 ## Adapter updates / 适配更新
 
-At startup the controller checks the fixed public catalog at most once per 12 hours, with a 3.5-second network timeout and bounded download size
+The controller checks the fixed public catalog in the background, normally every 12 hours (priority checks after client/capability changes), with a 3.5-second network timeout and bounded download size
 Ed25519 signatures are verified with the bundled public key, revisions cannot replace a newer verified catalog with an older one, and all local module hashes must match an entry
 Only declarative export mappings are accepted. No remote scripts are evaluated
 Offline, invalid or unavailable updates retain bundled/verified local data; the local syntax recognizer remains available
@@ -30,3 +30,5 @@ Offline, invalid or unavailable updates retain bundled/verified local data; the 
 自动适配表用于解决可用接口的命名变化，不保证任意结构变更都能自行修复
 维护者需验证新版本后发布新的签名表；更大的变化可能需要新版程序
 Windows notifications, real Codex cold start, actual completed tasks and real multi-chat sending require manual acceptance separately
+
+Full program updater / 完整程序更新: [docs/program-updates.md](docs/program-updates.md)

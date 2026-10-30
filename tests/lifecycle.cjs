@@ -17,7 +17,8 @@ async function run(exe,args){
 }
 (async()=>{
   if(process.platform!=='win32'){console.log('Windows lifecycle test skipped');return;}
-  const root=path.resolve(__dirname,'..'),temp=await fs.mkdtemp(path.join(os.tmpdir(),'cqb-lifecycle-test-'));
+  const tempRoot=await fs.realpath(os.tmpdir());
+  const root=path.resolve(__dirname,'..'),temp=await fs.mkdtemp(path.join(tempRoot,'cqb-lifecycle-test-'));
   const stateDir=path.join(temp,'state'),first=path.join(temp,'first install'),second=path.join(temp,'second install');
   const {requestWorker}=await import(pathToFileURL(path.join(root,'worker-client.mjs')).href);
   const quote=value=>`([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${Buffer.from(value,'utf8').toString('base64')}')))`;
@@ -107,6 +108,6 @@ async function run(exe,args){
     const worker=await requestWorker(stateDir,'status').catch(()=>null);
     if(worker){await requestWorker(stateDir,'shutdown').catch(()=>{});for(let i=0;i<100&&alive(worker.workerPid);i++)await sleep(100);assert.equal(alive(worker.workerPid),false,'Test worker must exit');}
     if(browser)await browser.close();if(server)await new Promise(resolve=>server.close(resolve));
-    if(passed&&path.dirname(temp)===path.resolve(os.tmpdir())&&path.basename(temp).startsWith('cqb-lifecycle-test-'))await fs.rm(temp,{recursive:true,force:true});
+    if(passed&&path.dirname(temp)===tempRoot&&path.basename(temp).startsWith('cqb-lifecycle-test-'))await fs.rm(temp,{recursive:true,force:true});
   }
 })().catch(error=>{console.error(error.stack);process.exitCode=1});

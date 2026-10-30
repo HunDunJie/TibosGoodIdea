@@ -14,7 +14,8 @@ async function run(args){
 }
 (async()=>{
   if(process.platform!=='win32'){console.log('Windows launcher argument test skipped');return;}
-  const root=path.resolve(__dirname,'..'),temp=await fs.mkdtemp(path.join(os.tmpdir(),'cqb-launcher-test-'));
+  const tempRoot=await fs.realpath(os.tmpdir());
+  const root=path.resolve(__dirname,'..'),temp=await fs.mkdtemp(path.join(tempRoot,'cqb-launcher-test-'));
   const packageRoot=path.join(temp,'安装目录 with spaces'),stateDir=path.join(temp,'状态目录 with spaces');
   const appAsar=path.join(temp,'Program Files','客户端','app','resources','app.asar');
   const driver=path.join(temp,'driver.ps1');
@@ -50,6 +51,6 @@ setInterval(()=>{if(fs.existsSync(path.join(state,'stop.flag'))){fs.rmSync(path.
     passed=true;console.log(JSON.stringify({passed:true,realWindowsProcess:true,spaceAndUnicodePaths:true,archivePathExact:true,archiveVisibleToChild:true,noArchiveArgument:true,installedArchiveBindings:!!process.env.CQB_TEST_INSTALLED_ASAR,realCodexChanged:false,realWorkerStarted:false}));
   } finally {
     await run(['-File',driver,'-Stop']).catch(()=>{});
-    if(passed&&path.dirname(temp)===path.resolve(os.tmpdir())&&/^cqb-launcher-test-[A-Za-z0-9]+$/.test(path.basename(temp))){await sleep(100);await fs.rm(temp,{recursive:true,force:true});}
+    if(passed&&path.dirname(temp)===tempRoot&&/^cqb-launcher-test-[A-Za-z0-9]+$/.test(path.basename(temp))){await sleep(100);await fs.rm(temp,{recursive:true,force:true});}
   }
 })().catch(error=>{console.error(error.stack);process.exitCode=1});

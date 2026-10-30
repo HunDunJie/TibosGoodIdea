@@ -9,7 +9,8 @@ import net from 'node:net';
 import http from 'node:http';
 const root=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 if(process.platform!=='win32'){console.log('Windows installer test skipped');process.exit(0);}
-const temp=await fs.mkdtemp(path.join(os.tmpdir(),'cqb-install-test-'));
+const tempRoot=await fs.realpath(os.tmpdir());
+const temp=await fs.mkdtemp(path.join(tempRoot,'cqb-install-test-'));
 const target=path.join(temp,'installed'), config=path.join(target,'config.local.json');
 let checks=0,passed=false;
 const check=(value,message)=>{assert.ok(value,message);checks++;};
@@ -20,7 +21,7 @@ async function run(exe,args,{cwd=root,expected=0,verbatim=false}={}){
   const code=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',resolve);});
   clearTimeout(timer);
   if(expected===0)assert.equal(code,0,`${path.basename(exe)}: ${(err||out).slice(-1800)}`);else assert.notEqual(code,0,`Invalid operation must fail: ${(err||out).slice(-1800)}`);
-  return out;
+  return expected===0 ? out : out+err;
 }
 const ps=(script,args=[],expected=0)=>run('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.resolve(root,script),...args],{expected});
 async function snapshot(names,folder=target){return Object.fromEntries(await Promise.all(names.map(async name=>[name,createHash('sha256').update(await fs.readFile(path.join(folder,name))).digest('hex')])));}
@@ -56,15 +57,15 @@ try{
   // Force a late copy error after the first file was overwritten, then inspect every byte.
   const failing=path.join(temp,'fail-copy.ps1');
   const quote=value=>`([Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${Buffer.from(value,'utf8').toString('base64')}')))`;
-  const failingScript=(folder,relative)=>'\ufeff'+`$ErrorActionPreference='Stop'\n$global:TiboCopyFailed=$false\nfunction Copy-Item {\n[CmdletBinding()]param([string]$LiteralPath,[string]$Destination,[switch]$Force)\nif($Destination -eq ${quote(path.join(folder,relative))} -and -not $global:TiboCopyFailed){$global:TiboCopyFailed=$true;throw 'Injected late copy failure'}\nMicrosoft.PowerShell.Management\\Copy-Item @PSBoundParameters\n}\n& ${quote(path.join(root,'install.ps1'))} -TargetDir ${quote(folder)} -NoShortcut\n`;
+  const failingScript=(folder,relative)=>'\ufeff'+`$ErrorActionPreference='Stop'\n$global:TiboCopyFailed=$false\n$global:TiboFaultTarget=[IO.Path]::GetFullPath(${quote(path.join(folder,relative))})\nfunction Copy-Item {\n[CmdletBinding()]param([string]$LiteralPath,[string]$Destination,[switch]$Force)\nif([IO.Path]::GetFullPath($Destination) -eq $global:TiboFaultTarget -and -not $global:TiboCopyFailed){$global:TiboCopyFailed=$true;throw 'Injected late copy failure'}\nMicrosoft.PowerShell.Management\\Copy-Item @PSBoundParameters\n}\n& ${quote(path.join(root,'install.ps1'))} -TargetDir ${quote(folder)} -NoShortcut\n`;
   await fs.writeFile(failing,failingScript(target,'Settings.cmd'));
-  await ps(failing,[],1);
+  check(/Injected\s+late\s+copy\s+failure/.test(await ps(failing,[],1)),'Late copy failure was actually injected');
   check(JSON.stringify(await snapshot(Object.keys(before)))===JSON.stringify(before),'Failed upgrade rolls back every installed byte and marker');
   await ps('install.ps1',['-TargetDir',target,'-NoShortcut']);
   check(await fs.readFile(config,'utf8')===saved,'Upgrade still succeeds after rollback');
   const freshFailure=path.join(temp,'fresh failure');
   await fs.writeFile(failing,failingScript(freshFailure,'sounds/completion.wav'));
-  await ps(failing,[],1);
+  check(/Injected\s+late\s+copy\s+failure/.test(await ps(failing,[],1)),'Fresh install copy failure was actually injected');
   check(!await fs.stat(freshFailure).catch(()=>null),'Failed first install removes only its newly created files and empty folders');
   const unmanaged=path.join(temp,'unmanaged');await fs.mkdir(unmanaged);await fs.writeFile(path.join(unmanaged,'mine.txt'),'mine');
   await ps('install.ps1',['-TargetDir',unmanaged,'-NoShortcut'],1);
@@ -140,5 +141,5 @@ try{
   check(!await fs.stat(broken).catch(()=>null),'Uninstall can retry after the unavailable endpoint is closed');
   passed=true;console.log(JSON.stringify({passed,checks,isolatedDirectory:true,realShortcutsChanged:false,liveServicesChanged:false,absentWorkerUninstall:true,selfDirectoryUninstall:true,upgradeBusyRejected:true,upgradeRollback:true,shortcutOwnership:true,staleControllerUninstall:true,reusedPidUninstall:true,liveEndpointErrorsPreserved:true}));
 }finally{
-  if(passed&&path.dirname(temp)===path.resolve(os.tmpdir())&&path.basename(temp).startsWith('cqb-install-test-'))await fs.rm(temp,{recursive:true,force:true});
+  if(passed&&path.dirname(temp)===tempRoot&&path.basename(temp).startsWith('cqb-install-test-'))await fs.rm(temp,{recursive:true,force:true});
 }

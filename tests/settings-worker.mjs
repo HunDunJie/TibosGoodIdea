@@ -6,7 +6,8 @@ import {setTimeout as wait} from 'node:timers/promises';
 import {ensureConfiguredWorker,requestWorker} from '../worker-client.mjs';
 import {spawn} from 'node:child_process';
 if(process.platform!=='win32'){console.log('Windows settings reload test skipped');process.exit(0);}
-const dir=await fs.mkdtemp(path.join(os.tmpdir(),'cqb-settings-test-')),configFile=path.join(dir,'settings.json');
+const tempRoot=await fs.realpath(os.tmpdir());
+const dir=await fs.mkdtemp(path.join(tempRoot,'cqb-settings-test-')),configFile=path.join(dir,'settings.json');
 let pid,passed=false;
 async function withReadLock(name,action) {
   const file=path.join(dir,name),script=path.join(dir,'lock-state.ps1');
@@ -62,5 +63,5 @@ try{
   let stopped=!pid;
   for(let i=0;pid&&i<60;i++){try{process.kill(pid,0);await wait(100);}catch(e){if(e.code==='ESRCH'){stopped=true;break;}throw e;}}
   assert.ok(stopped,'Isolated worker clean shutdown');
-  if(passed&&path.dirname(dir)===path.resolve(os.tmpdir())&&path.basename(dir).startsWith('cqb-settings-test-'))await fs.rm(dir,{recursive:true,force:true});
+  if(passed&&path.dirname(dir)===tempRoot&&path.basename(dir).startsWith('cqb-settings-test-'))await fs.rm(dir,{recursive:true,force:true});
 }

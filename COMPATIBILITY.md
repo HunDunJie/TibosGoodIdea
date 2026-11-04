@@ -1,8 +1,12 @@
 # Compatibility / 兼容性
 
-Version 0.8.0-rc.19 · Windows 11 x64 · Microsoft Store Codex
+Version 0.8.0-rc.20 · Windows 11 x64 · Microsoft Store Codex
 
 ## Current evidence / 当前证据
+
+- Codex 26.1027.6604.0: the installed client uses user/account-scoped quota queries. Read-only live cache checks confirmed the response format; regression tests cover quota display, reset inventory, refresh queries, native sending and account isolation with both current and legacy cache keys
+- System volume appears in completion/reset reminder tooltips and is checked after startup display and when either reminder is enabled; notices never change volume or take focus
+- Update connections prefer a configured HTTP/HTTPS environment or Windows manual proxy, fall back to direct on transport failure, and use direct connections when no proxy is configured. Existing signature, host, size and rollback checks remain in place
 
 - Codex 26.1027.3384.0: read-only syntax discovery found both completion and draft interfaces, plus the native usage-page opener
 - Codex 26.1023.6621.0: the previously verified exact-hash mapping remains in the bundled signed catalog

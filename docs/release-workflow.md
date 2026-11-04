@@ -51,6 +51,14 @@ runtime/node.exe scripts/test.mjs quick
 
    再次核对公开 Release、四项资产的服务端摘要、精确提交的 CI、实际下载的公开小索引、签名及 ZIP 对应关系。该检查不下载完整大资产，结果明确标为 `fullPublicAssetDownloadVerified=false`，不能描述成完整下载重哈希通过。需要验证完整下载时另行执行并单独记录
 
+7. 发布包只保留最新 3 个版本。签名工具生成新索引时默认只保留最新 3 个版本；先推送并核验公开索引，再执行：
+
+   ```powershell
+   python scripts/release.py prune --keep 3
+   ```
+
+   仅删除更旧版本的 Windows ZIP、源码 ZIP 及对应校验文件，保留 Release 说明、标签和 Git 历史。清理计划与结果保存在本次版本的 `retention.json`；索引仍引用待删除版本时拒绝清理。网络中断后原命令续跑会重新查询当前资产，不删除保留版本的包
+
 ## 固定完成标准与恢复
 
 - `work/release/<version>/publication.json` 是机器记录，包含代码提交、资产、CI 和公开索引验证结果，可按需复制为公开发布证据；日志不用逐条粘贴进聊天

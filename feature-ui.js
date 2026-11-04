@@ -2,12 +2,13 @@
   'use strict';
   const win = window, doc = document;
   let {t,locale,timeZone,zone} = win.__cqbI18n ?? {t:(key,values={})=>key.replace(/\{(\w+)\}/g,(m,k)=>values[k] ?? m),locale:'zh-CN',timeZone:'Asia/Shanghai',zone:'北京时间'};
+  const previousVolume = win.__cqbFeatures?.status?.().volume;
   win.__cqbFeatures?.dispose?.();
   const nativeAdapter = win.__cqbNativeFeatures;
   const session = win.crypto.randomUUID();
   let active = true, state = null, connected = false, busy = false, syncing = false, operation = 0, nextId = 0, lastInteraction = 0, lastRefetch = 0;
   let controls = null, connectedNative = false, nativeError = '', capabilities = {completion:false,send:false};
-  let volumeGeneration = 0, volumeNoticeTimer = null, volumeCheck = {phase:'idle'};
+  let volumeGeneration = 0, volumeNoticeTimer = null, volumeCheck = previousVolume?.phase === 'checked' ? previousVolume : {phase:'idle'};
   const localErrors = {};
   const pending = new Map();
   function setTooltip(element,text) { win.__codexBottomBar?.setTooltip(element,text); }
@@ -37,7 +38,7 @@
     ({t,locale,timeZone,zone} = win.__cqbI18n);
     render();
     const note = doc.getElementById('cqb-volume-notice');
-    if(note && volumeNoticeKey)note.textContent=t(volumeNoticeKey);
+    if(note && volumeNoticeKey)note.textContent=t(volumeNoticeKey,volumeNoticeValues);
     void reportLanguage();
   }
   const iconShapes = {
@@ -104,7 +105,8 @@
       const special = feature==='shutdown'&&item.enabled || !connected || item.error || ['running','done','interrupted','cancelled','expired','ringing'].includes(phase) || item.enabled && (feature === 'completion' && !capabilities.completion || feature === 'refresh' && !state?.refresh?.alarm);
       const status = special ? ` · ${item.text}${item.error ? `：${item.error}` : ''}` : '';
       const stateLine = item.inapplicable ? t('不适用') : connected ? t(item.enabled ? '已开启' : '已关闭') : t('未连接');
-      const tooltip = `${t(nameKeys[feature])}\n${stateLine}${item.inapplicable ? '' : status}\n${detail}`.replace(/。|\.(?=\s|$)/g,'');
+      const volume = ['completion','refresh'].includes(feature) ? `\n${volumeText()}` : '';
+      const tooltip = `${t(nameKeys[feature])}\n${stateLine}${item.inapplicable ? '' : status}\n${detail}${volume}`.replace(/。|\.(?=\s|$)/g,'');
       setTooltip(group,tooltip); setTooltip(button,tooltip);
       button.setAttribute('aria-description',tooltip.split('\n').slice(1).join('\n'));
       group.dataset.enabled = String(item.enabled);
@@ -114,28 +116,44 @@
     localErrors[feature] = error.message;
     render();
   }
-  let volumeNoticeKey = null;
+  let volumeNoticeKey = null, volumeNoticeValues = {}, volumeNoticeContext = null, startupVolumeScheduled = win.__cqbStartupVolumeChecked === win.performance.timeOrigin, startupVolumeTimer = null;
+  function volumeText() {
+    if (volumeCheck.phase === 'checked') return t(volumeCheck.muted ? '系统音量：{percent}%（已静音）' : '系统音量：{percent}%',{percent:volumeCheck.percent});
+    return t(volumeCheck.phase === 'unavailable' ? '暂时无法读取系统音量' : '正在检查系统音量');
+  }
   function clearVolumeNotice() {
-    volumeNoticeKey = null;
+    volumeNoticeKey = null; volumeNoticeValues = {}; volumeNoticeContext = null;
     clearTimeout(volumeNoticeTimer); volumeNoticeTimer = null; doc.getElementById('cqb-volume-notice')?.remove();
   }
-  async function checkRefreshVolume(generation) {
-    volumeCheck = {phase:'checking'};
+  async function checkVolume(context) {
+    const generation = ++volumeGeneration;
+    volumeCheck = {phase:'checking',context}; render();
     try {
       const value = await call('volume-status');
-      if (!active || generation !== volumeGeneration || !state?.refresh?.enabled) return;
+      if (!active || generation !== volumeGeneration || context !== 'startup' && !state?.[context]?.enabled) return;
       if (!Number.isFinite(value?.percent) || value.percent < 0 || value.percent > 100 || typeof value.muted !== 'boolean') throw new Error();
-      volumeCheck = {phase:'checked',...value};
-      const message = value.muted ? '当前系统已静音，可能听不到刷新提醒'
-        : value.percent < 1 ? '当前音量低于 1%，可能听不到刷新提醒' : null;
-      if (!message) return;
+      volumeCheck = {phase:'checked',context,percent:Number(value.percent.toFixed(2)),muted:value.muted}; render();
+      const message = value.muted ? '当前系统音量 {percent}%，已静音，可能听不到提醒'
+        : value.percent < 1 ? '当前系统音量低于 1%（{percent}%），可能听不到提醒' : '当前系统音量：{percent}%';
       clearVolumeNotice();
       const note = doc.createElement('div'); note.id = 'cqb-volume-notice'; note.setAttribute('role','status'); note.setAttribute('aria-live','polite');
-      volumeNoticeKey = message; note.textContent = t(message); doc.body.append(note); volumeNoticeTimer = setTimeout(clearVolumeNotice,6000);
+      volumeNoticeKey = message; volumeNoticeValues = {percent:volumeCheck.percent}; volumeNoticeContext = context;
+      note.textContent = t(message,volumeNoticeValues); doc.body.append(note); volumeNoticeTimer = setTimeout(clearVolumeNotice,6000);
     } catch {
       // An unavailable endpoint/query must not turn off an already-enabled reminder or invent a 0% volume.
-      if (active && generation === volumeGeneration) volumeCheck = {phase:'unavailable'};
+      if (active && generation === volumeGeneration) {volumeCheck = {phase:'unavailable',context}; render();}
     }
+  }
+  function scheduleStartupVolume() {
+    if (startupVolumeScheduled || !active || !connected || doc.readyState !== 'complete' || doc.visibilityState !== 'visible' || !controls?.isConnected) return;
+    startupVolumeScheduled = true;
+    win.requestAnimationFrame(() => win.requestAnimationFrame(() => {
+      startupVolumeTimer = setTimeout(() => {
+        if(!active)return;
+        win.__cqbStartupVolumeChecked=win.performance.timeOrigin;
+        if(volumeGeneration===0)void checkVolume('startup');
+      },500);
+    }));
   }
   async function toggle(feature) {
     if (!active || busy) return; busy = true; operation++; render();
@@ -155,9 +173,12 @@
       if (enabled && feature !== 'refresh' && !capabilities[feature]) throw new Error(capabilities.reasons?.[feature] || nativeError || '尚未连接到当前客户端的任务与草稿接口，请稍后重试');
       state = await call('toggle',{feature,enabled}); connected = true;
       delete localErrors[feature];
-      if (feature === 'refresh') {
-        clearVolumeNotice(); volumeGeneration++; volumeCheck = {phase:'idle'};
-        if (enabled) void checkRefreshVolume(volumeGeneration);
+      if (['completion','refresh'].includes(feature)) {
+        if (enabled) void checkVolume(feature);
+        else {
+          if(volumeNoticeContext === feature)clearVolumeNotice();
+          if(volumeCheck.context === feature && volumeCheck.phase === 'checking'){volumeGeneration++;volumeCheck={phase:'idle'};}
+        }
       }
     } catch (e) { announce(e,feature); }
     finally { busy = false; render(); }
@@ -208,7 +229,7 @@
           })().catch(() => {});
         }
       }
-      attach(); render(); void reportLanguage();
+      attach(); render(); scheduleStartupVolume(); void reportLanguage();
     } catch { if(active && generation===operation){connected=false;reportedLocale=null;render();} }
     finally { syncing = false; }
   }
@@ -221,7 +242,7 @@
   const observer = new MutationObserver(attach); observer.observe(doc.documentElement,{childList:true,subtree:true});
   const timer = setInterval(() => void sync(),2000);
   win.__cqbFeatures = {status:() => ({connected,capabilities,state,volume:volumeCheck}),dispose() {
-    active = false; win.removeEventListener('cqb-languagechange',languageChanged); volumeGeneration++; clearVolumeNotice(); clearInterval(timer); observer.disconnect(); controls?.remove(); doc.getElementById('cqb-feature-message')?.remove();
+    active = false; win.removeEventListener('cqb-languagechange',languageChanged); volumeGeneration++; clearVolumeNotice(); clearTimeout(startupVolumeTimer); clearInterval(timer); observer.disconnect(); controls?.remove(); doc.getElementById('cqb-feature-message')?.remove();
     nativeAdapter?.dispose?.(); for (const name of events) doc.removeEventListener(name,interaction,true);
     for (const item of pending.values()) { clearTimeout(item.timer); item.reject(new Error(t('底栏已恢复'))); } pending.clear(); delete win.__cqbBridgeReply;
   }};

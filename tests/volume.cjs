@@ -11,7 +11,7 @@ const root = path.resolve(__dirname,'..');
     const page = await browser.newPage({viewport:{width:1440,height:900}});
     await page.goto(pathToFileURL(path.join(root,'preview.html')).href);
     await page.waitForFunction(() => window.__cqbFeatures?.status().connected);
-    const refresh = page.getByRole('button',{name:'刷新提醒',exact:true}), notice = page.locator('#cqb-volume-notice');
+    const refresh = page.getByRole('button',{name:'刷新提醒',exact:true}), completion = page.getByRole('button',{name:'完成提醒',exact:true}), notice = page.locator('#cqb-volume-notice');
     const queries = () => page.evaluate(() => window.__previewCalls.filter(c => c.method === 'volume-status').length);
     async function enable(volume) {
       if (await refresh.getAttribute('aria-pressed') === 'true') await refresh.click();
@@ -19,11 +19,13 @@ const root = path.resolve(__dirname,'..');
       await refresh.click();
       await page.waitForFunction(() => ['checked','unavailable'].includes(window.__cqbFeatures.status().volume.phase));
     }
-    check(await queries() === 0,'Startup does not prompt or query volume');
+    await page.waitForFunction(()=>window.__cqbFeatures.status().volume.phase==='checked');
+    check(await queries() === 1 && (await notice.innerText()).includes('50%'),'Startup checks volume after the shell is fully displayed');
+    for(const feature of ['completion','refresh'])check((await page.locator(`[data-cqb-feature="${feature}"]`).getAttribute('data-cqb-tooltip')).includes('50%'),'Both reminder tooltips show current volume: '+feature);
     await enable({percent:50,muted:false});
-    check(await notice.count() === 0 && await page.locator('dialog').count() === 0,'Normal volume is silent');
+    check((await notice.innerText()).includes('50%') && await page.locator('dialog').count() === 0,'Normal volume appears as a nonmodal reminder');
     check(await page.evaluate(() => document.activeElement?.getAttribute('aria-label') === '刷新提醒'),'Checking volume does not move keyboard focus');
-    await enable({percent:1,muted:false}); check(await notice.count() === 0,'Exactly 1% is not below the threshold');
+    await enable({percent:1,muted:false}); check(!(await notice.innerText()).includes('低于'),'Exactly 1% is not below the threshold');
     await enable({percent:0.99,muted:false});
     check((await notice.innerText()).includes('低于 1%'),'Below 1% warns');
     check(await notice.locator('button,input,a').count() === 0 && await notice.getAttribute('role') === 'status','Notice has no required controls or modal role');
@@ -36,16 +38,28 @@ const root = path.resolve(__dirname,'..');
     check(await refresh.getAttribute('aria-pressed') === 'true','Automatic dismissal keeps reminder enabled');
     await enable({percent:75,muted:true}); check((await notice.innerText()).includes('已静音'),'Mute warns even at high slider volume');
     await page.screenshot({path:path.join(root,'preview-volume-warning.png')});
+    if(process.env.TIBO_VOLUME_QA_IMAGE)await page.screenshot({path:process.env.TIBO_VOLUME_QA_IMAGE});
     await refresh.click(); check(await notice.count() === 0,'Disabling removes the notice immediately');
     check(await queries() === count+1,'Disabling does not query volume');
     await enable({percent:0,muted:false}); check((await notice.innerText()).includes('低于 1%'),'Zero volume warns');
     await refresh.click();
+    await page.evaluate(()=>{window.__previewVolume={percent:37,muted:false}});await completion.click();
+    await page.waitForFunction(()=>window.__cqbFeatures.status().volume.context==='completion'&&window.__cqbFeatures.status().volume.phase==='checked');
+    check((await notice.innerText()).includes('37%'),'Completion reminders also check and show volume');
+    for(const feature of ['completion','refresh'])check((await page.locator(`[data-cqb-feature="${feature}"]`).getAttribute('data-cqb-tooltip')).includes('37%'),'Latest volume is shared by both reminder tooltips: '+feature);
+    await completion.click();
+    await page.evaluate(()=>{window.__previewVolume={percent:80,muted:true}});await completion.click();
+    await page.waitForFunction(()=>window.__cqbFeatures.status().volume.muted===true);
+    check((await notice.innerText()).includes('已静音'),'Completion reminders warn when audio is muted');await completion.click();
+    const beforeReattach=await queries();await page.addScriptTag({path:path.join(root,'feature-ui.js')});
+    await page.waitForFunction(()=>window.__cqbFeatures?.status().connected);await page.waitForTimeout(700);
+    check(await queries()===beforeReattach,'Reattaching the toolbar does not repeat the startup volume notice');
     await page.evaluate(() => {
       const original = window.__cqbPreviewHost;
       window.__cqbPreviewHost = (method,payload) => method === 'volume-status' ? Promise.reject(new Error('device unavailable')) : original(method,payload);
     });
     await refresh.click(); await page.waitForFunction(() => window.__cqbFeatures.status().volume.phase === 'unavailable');
-    check(await refresh.getAttribute('aria-pressed') === 'true' && await page.locator('#cqb-volume-notice,dialog').count() === 0,'Read failure neither disables nor invents a zero-volume warning');
+    check(await refresh.getAttribute('aria-pressed') === 'true' && await page.locator('#cqb-volume-notice,dialog').count() === 0 && (await refresh.getAttribute('data-cqb-tooltip')).includes('无法读取'),'Read failure neither disables nor invents a zero-volume warning');
     await refresh.click();
     await page.evaluate(() => {
       const original = window.__cqbPreviewHost;
@@ -65,6 +79,17 @@ const root = path.resolve(__dirname,'..');
     }
     await page.evaluate(() => window.__codexBottomBar.dispose());
     check(await page.locator('#cqb-volume-notice').count() === 0,'Restore removes volume UI');
+    const startupPage=await browser.newPage();await startupPage.goto(pathToFileURL(path.join(root,'preview.html')).href);
+    await startupPage.evaluate(()=>{window.__previewVolume={percent:0.5,muted:true}});
+    await startupPage.waitForFunction(()=>window.__cqbFeatures.status().volume.phase==='checked');
+    check(await startupPage.evaluate(()=>document.readyState==='complete'&&window.__cqbFeatures.status().volume.context==='startup'),'Startup check waits for the complete document');
+    check((await startupPage.locator('#cqb-volume-notice').innerText()).includes('已静音')&&(await startupPage.locator('#cqb-volume-notice').innerText()).includes('0.5%'),'A new startup warns about muted audio and displays its level');
+    for(const [language,expected] of [['en','muted'],['ja','ミュート']]){
+      await startupPage.evaluate(value=>document.documentElement.lang=value,language);
+      await startupPage.waitForFunction(value=>window.__codexBottomBar.status().language===value,language);
+      check((await startupPage.locator('#cqb-volume-notice').innerText()).includes(expected)&&(await startupPage.locator('#cqb-volume-notice').innerText()).includes('0.5%'),'Volume notices translate without losing values: '+language);
+    }
+    await startupPage.close();
     console.log(JSON.stringify({passed:true,checks,realVolumeRead,volumeChanged:false,audioPlayed:false}));
   } finally { await browser.close(); }
 })().catch(error => { console.error(error.stack); process.exitCode=1; });

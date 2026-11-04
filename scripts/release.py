@@ -310,6 +310,54 @@ def verify():
     print(json.dumps({'verified': True, 'url': receipt['releaseUrl'], 'record': str(state_dir()/'publication.json'), 'fullAssetRedownload': False}))
 
 
+def retention_plan(releases, indexed_versions, keep=3):
+    if not isinstance(keep, int) or keep < 1 or keep > 20:
+        raise RuntimeError('Retention count must be between 1 and 20')
+    published = [r for r in releases if not r.get('draft') and VERSION_RE.fullmatch(r.get('tag_name', '').removeprefix('v'))]
+    def order(r):
+        return tuple(int(x) if x is not None else float('inf') for x in VERSION_RE.fullmatch(r['tag_name'].removeprefix('v')).groups())
+    published.sort(key=order, reverse=True)
+    retained = [r['tag_name'].removeprefix('v') for r in published[:keep]]
+    if any(v not in retained for v in indexed_versions):
+        raise RuntimeError('Publish the pruned signed update index before removing historical assets')
+    removed = []
+    for r in published[keep:]:
+        prefix = 'TibosGoodIdea-'+r['tag_name'].removeprefix('v')+'-'
+        for asset in r.get('assets', []):
+            if asset['name'].startswith(prefix) and asset['name'].endswith(('.zip', '.zip.sha256')):
+                removed.append({'id': asset['id'], 'name': asset['name'], 'bytes': asset['size'], 'tag': r['tag_name']})
+    return {'keep': keep, 'retainedVersions': retained, 'remove': removed}
+
+
+def prune(keep=3):
+    receipt = read_json(state_dir()/'publication.json')
+    if receipt.get('draft') or not receipt.get('verifiedAt'):
+        raise RuntimeError('Verify the public release and update index before pruning assets')
+    gh = GitHub()
+    public_index = gh.request(f'https://raw.githubusercontent.com/{REPOSITORY}/main/updates/program-catalog.json', raw=True)
+    if public_index.encode('utf-8') != (ROOT/'updates/program-catalog.json').read_bytes():
+        raise RuntimeError('Public update index differs from local file')
+    code = "import fs from 'node:fs';import {verifyProgramCatalog} from './program-updates.mjs';const c=verifyProgramCatalog(JSON.parse(fs.readFileSync('updates/program-catalog.json','utf8')),fs.readFileSync('updates/program-public-key.pem','utf8'));console.log(JSON.stringify(c.releases.map(r=>r.version)));"
+    indexed = json.loads(run([node(), '--input-type=module', '-e', code]))
+    releases = []
+    for page in range(1, 11):
+        batch = gh.request(f'/releases?per_page=100&page={page}')
+        releases.extend(batch)
+        if len(batch) < 100:break
+    else:raise RuntimeError('Release history exceeds the bounded retention scan')
+    plan = retention_plan(releases, indexed, keep)
+    if version() not in plan['retainedVersions']:
+        raise RuntimeError('The current verified version must be retained')
+    plan['deleted'] = []
+    file = state_dir()/'retention.json'
+    write_json(file, plan)
+    for asset in plan['remove']:
+        gh.request(f'/releases/assets/{asset["id"]}', 'DELETE')
+        plan['deleted'].append(asset['name']);write_json(file, plan)
+    plan['completedAt'] = dt.datetime.now(dt.timezone.utc).isoformat();write_json(file, plan)
+    print(json.dumps({'retainedVersions': plan['retainedVersions'], 'deletedAssets': len(plan['deleted']), 'releaseNotesAndTagsPreserved': True}))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
@@ -319,6 +367,7 @@ def main():
     sub.add_parser('publish').add_argument('--notes', required=True)
     p = sub.add_parser('index');p.add_argument('--asar', required=True);p.add_argument('--kind', choices=['fix', 'feature'], default='fix')
     sub.add_parser('verify')
+    sub.add_parser('prune').add_argument('--keep', type=int, default=3)
     args = parser.parse_args()
     if args.command == 'fingerprint':print(json.dumps(snapshot()))
     elif args.command == 'prepare':prepare(args.version)
@@ -326,6 +375,7 @@ def main():
     elif args.command == 'publish':return publish(args.notes)
     elif args.command == 'index':index(args.asar, args.kind)
     elif args.command == 'verify':verify()
+    elif args.command == 'prune':prune(args.keep)
     return 0
 
 

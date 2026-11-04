@@ -5,7 +5,7 @@
   else api.install(window);
 })(function () {
   'use strict';
-  const VERSION = '0.8.0-rc.19';
+  const VERSION = '0.8.0-rc.20';
   const localeAPI = typeof module === 'object' && module.exports ? require('./i18n.js') : null;
   const TIME_MODES_KEY = 'codex-bottom-bar.time-modes.v1';
   const NUMBER = value => typeof value === 'number' && Number.isFinite(value);
@@ -321,7 +321,7 @@
         }
       }
       if (!store) return false;
-      const raw = store.queryClient.getQueryData(['rate-limit-status']);
+      const raw = win.__cqbQuotaCache.read(store.queryClient)?.raw;
       const accountId = raw?.account_id ?? null;
       const match = win.location.pathname.match(/\/(?:local|remote|hotkey-window\/thread)\/([^/]+)\/?$/);
       const conversationId = match ? api.decodeConversation(decodeURIComponent(match[1])) : null;
@@ -437,11 +437,8 @@
     function scan() {
       if (!active || reading || !rail) return;
       function cachedUsage(client) {
-        if (typeof client?.getQueryData !== 'function') return undefined;
-        const account = client.getQueryData(['vscode', 'account-info']);
-        if (!account?.accountId) return undefined;
-        const raw = client.getQueryData(['rate-limit-status']);
-        return raw?.account_id === account.accountId ? normalize(raw) : null;
+        const usage = win.__cqbQuotaCache.read(client);
+        return usage === undefined ? undefined : normalize(usage.raw);
       }
       // These two named cache entries are current independently of chat rendering.
       // Avoid a full React scan on every streamed token or unrelated page update.
@@ -469,10 +466,8 @@
         // Read only the named usage query; never fetch, enumerate messages, or inspect auth tokens.
         for (const client of queryClients) {
           try {
-            for (const query of client.getQueryCache().getAll()) {
-              if (query.queryKey?.[0] === 'rate-limit-status' && !query.queryKey.includes('image-generation'))
-                consider(query.state?.data, query.state?.dataUpdatedAt ?? 0);
-            }
+            const usage = win.__cqbQuotaCache.read(client);
+            if (usage?.raw) consider(usage.raw, usage.updatedAt);
           } catch { render(null); return; }
         }
         // Never combine values from separate signed-in accounts or an incomplete scan.
@@ -527,19 +522,18 @@
       status() { return {version: VERSION, attached: !!rail?.isConnected, layout: doc.documentElement.getAttribute('data-cqb'), dataAvailable: lastSnapshot !== null, fiveHourLimit:lastSnapshot?.fiveHourLimit ?? 'unknown', lastUsagePath,timeModes:{...timeModes},language:locale,timeZone}; },
       refresh: scan,
       quotaSample() {
-        if (!usageClient?.getQueryData) return null;
-        const account = usageClient.getQueryData(['vscode','account-info']);
-        const raw = usageClient.getQueryData(['rate-limit-status']);
-        if (!account?.accountId || raw?.account_id !== account.accountId) return null;
-        const snapshot=normalize(raw),five=snapshot?.fiveHour;
+        const usage = win.__cqbQuotaCache.read(usageClient);
+        if (!usage?.raw) return null;
+        const snapshot=normalize(usage.raw),five=snapshot?.fiveHour;
         if (!five || five.remaining == null) {
           if (snapshot?.fiveHourLimit !== 'none') return null;
         }
-        return {accountId:account.accountId,fiveHourLimit:snapshot.fiveHourLimit,resetsAt:five?.resetsAt ?? null,remaining:five?.remaining ?? null,availableResets:snapshot.resets,updatedAt:usageClient.getQueryState?.(['rate-limit-status'])?.dataUpdatedAt ?? 0};
+        return {accountId:usage.accountId,fiveHourLimit:snapshot.fiveHourLimit,resetsAt:five?.resetsAt ?? null,remaining:five?.remaining ?? null,availableResets:snapshot.resets,updatedAt:usage.updatedAt};
       },
       async refreshQuota() {
-        if (this.quotaSample() && typeof usageClient?.refetchQueries === 'function')
-          await usageClient.refetchQueries({queryKey:['rate-limit-status'],exact:true,type:'all'});
+        const usage = win.__cqbQuotaCache.read(usageClient);
+        if (this.quotaSample() && typeof usage?.client.refetchQueries === 'function')
+          await usage.client.refetchQueries({queryKey:usage.queryKey,exact:true,type:'all'});
       },
       dispose() {
         win.__cqbFeatures?.dispose?.();

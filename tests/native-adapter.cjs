@@ -28,13 +28,13 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
   const browser = await chromium.launch({headless:true,channel:'msedge'});
   try {
     const page = await browser.newPage();
-    async function setup(mode = 'normal',profile = '账户',routing = 'browser') {
+    async function setup(mode = 'normal',profile = '账户',routing = 'browser',cacheMode = 'legacy') {
       await page.goto(`http://127.0.0.1:${server.address().port}/${routing === 'browser' ? 'start' : 'index.html'}`);
-      await page.evaluate(({mode,profile,routing}) => {
+      await page.evaluate(({mode,profile,routing,cacheMode}) => {
         const f = window.fixture = {scopes:{root:{},composer:{}},storage:{},account:'A',events:[],submits:[],visits:[],usageOpens:0,mode};
         f.storage['composer-prompt-drafts-v2'] = {'local:one':{prompt:'fixture one'},'alias-one':{prompt:'fixture one'},'local:two':{prompt:'fixture two'},'local:three':{prompt:'fixture three'},'local:empty':{prompt:'   '}};
         f.storage['client-thread-bindings-v1'] = {'alias-one':'one'};
-        f.quota={rate_limit:{primary_window:{used_percent:25,limit_window_seconds:18000,reset_at:Date.now()/1000+18000}},rate_limit_reset_credits:{available_count:2}};
+        f.quota={credits:{balance:'1234.5'},rate_limit:{primary_window:{used_percent:25,limit_window_seconds:18000,reset_at:Date.now()/1000+18000},secondary_window:{used_percent:50,limit_window_seconds:604800,reset_at:Date.now()/1000+604800}},rate_limit_reset_credits:{available_count:2}};
         const rootStore = {scope:f.scopes.root,set(){},get(atom,key) { if(atom==='hosts')return f.hosts; if(atom==='clients')return f.clients[key]; if (atom === 'navigation') return f.navigation; if (atom === 'binding') return f.storage['client-thread-bindings-v1'][key] ?? null; if (atom === 'host') return 'local'; return f.lastEvent; },watch(callback) { f.watch = callback; callback({get:() => f.lastEvent}); return () => { f.watch = null; }; },queryClient:{getQueryData(key) { return key[0] === 'vscode' ? {accountId:f.account} : {...f.quota,account_id:f.account}; },getQueryState() { return {dataUpdatedAt:Date.now()}; },getQueryCache(){return {getAll:()=>[]}}}};
         f.hosts=['local','durable'];f.work=[];f.threadPages=[{data:[{id:'background',status:{type:'idle'}}],nextCursor:null}];f.threadCalls=[];
         f.clients={local:{status:'ready',client:{rpc:{getWorkInProgress:async()=>f.work,getLoadedConversationHistory:async()=>f.history??{turns:[]},sendRequest:async(method,params)=>{f.threadCalls.push({method,params});if(f.threadError)throw Error('offline');return f.threadPages[params.cursor??0];}}}},durable:{status:'unavailable',client:null}};
@@ -54,10 +54,39 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
         window.__codexBottomBarFeatureBindings = {initial:'initial.js',shared:'shared.js',scope:'uct',initEvents:'ICn',completionEvent:'ZCn',initComposer:'fpt',composerScope:'MQn',readStorage:'Ntr',navigation:'ZAn',navigateLocal:'tjn',conversationBinding:'b0n',host:'VJn',monitor:{hosts:'hs',clients:'hc',init:['monitorInit']}};
         const initial=key=>({module:'initial.js',export:key});
         window.__codexBottomBarBindings={profileModule:'initial.js',scope:{module:'shared.js',export:'uct'},openModal:initial('openUsage'),usageModal:initial('usageModal'),turn:initial('turn'),recordReset:initial('recordReset'),decodeConversation:initial('decodeConversation')};
-      },{mode,profile,routing});
+        f.refetches=[];f.updatedAt=Date.now();
+        const client=rootStore.queryClient;
+        client.getQueryData=key=>{
+          if(key[0]==='vscode')return {accountId:f.account,...(cacheMode==='scoped'?{userId:'user-'+f.account}:{})};
+          const matches=cacheMode==='scoped'?key.length===3&&key[1]==='user-'+f.account&&key[2]===f.account:key.length===1;
+          return matches?{...f.quota,account_id:f.quotaAccount??f.account,...(cacheMode==='scoped'?{user_id:f.quotaUser??'user-'+f.account}:{})}:undefined;
+        };
+        client.getQueryState=key=>client.getQueryData(key)?{dataUpdatedAt:f.updatedAt}:undefined;
+        client.refetchQueries=async options=>{f.refetches.push(options)};
+      },{mode,profile,routing,cacheMode});
+      await page.addScriptTag({path:path.join(root,'quota-cache.js')});
       await page.addScriptTag({url:`http://127.0.0.1:${server.address().port}/adapter.js`});
       await page.evaluate(() => window.__cqbNativeFeatures.connect(event => window.fixture.events.push(event)));
     }
+    await setup('normal','账户','browser','scoped');
+    await page.addScriptTag({path:path.join(root,'bottom-bar.js')});
+    await page.waitForFunction(()=>window.__codexBottomBar.quotaSample()?.availableResets===2);
+    assert.equal(await page.locator('[data-cqb-slot="fiveHour"] .cqb-value').textContent(),'75%');
+    assert.equal(await page.locator('[data-cqb-slot="weekly"] .cqb-value').textContent(),'50%');
+    assert.equal(await page.locator('[data-cqb-slot="credits"] .cqb-value').textContent(),'1234.5');
+    assert.notEqual(await page.locator('[data-cqb-slot="fiveHour"] .cqb-time').textContent(),'时间暂不可用');
+    assert.equal(await page.evaluate(()=>window.__codexBottomBar.quotaSample().updatedAt===fixture.updatedAt),true,'Reminder sample uses the scoped query timestamp');
+    await page.evaluate(async()=>{await window.__codexBottomBar.refreshQuota();await window.__cqbNativeFeatures.refreshQuota()});
+    assert.deepEqual(await page.evaluate(()=>fixture.refetches),[1,2].map(()=>({queryKey:['rate-limit-status','user-A','A'],exact:true,type:'all'})));
+    await page.locator('[data-cqb-slot="resets"]').click();
+    await page.waitForFunction(()=>window.fixture.usageOpens===1);
+    assert.equal(await page.evaluate(()=>fixture.usageOptions.initialAvailableCount),2,'Native usage dialog reads scoped reset inventory');
+    assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.sendRound()),{sent:1,failed:1,skipped:1},'Scoped identity supports native draft delegation');
+    await page.evaluate(()=>{fixture.quotaUser='other-user';window.__codexBottomBar.refresh()});
+    await page.waitForFunction(()=>!window.__codexBottomBar.status().dataAvailable);
+    assert.equal(await page.evaluate(()=>window.__cqbNativeFeatures.identity()),null,'Another user cannot supply quota for sending');
+    await page.evaluate(()=>{delete fixture.quotaUser;fixture.account='B';fixture.quotaAccount='A';window.__codexBottomBar.refresh()});
+    assert.equal(await page.evaluate(()=>window.__codexBottomBar.quotaSample()),null,'Account switching clears previous reminder samples');
     for(const profile of ['账户','Profile','プロフィール']) {
       await setup('cancel',profile);
       assert.equal(await page.evaluate(()=>window.__cqbNativeFeatures.identity()?.accountId),'A','Account bridge connects in '+profile);

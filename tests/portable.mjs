@@ -15,9 +15,13 @@ try{
  assert.deepEqual((await fs.readdir(source)).filter(n=>n.toLowerCase().endsWith('.cmd')),['Start.cmd'],'Source root also exposes one entry only');
  // Stub only the native client launch. The shipping bootstrap and update coordinator run unchanged.
  await fs.writeFile(path.join(root,'start.ps1'),'\ufeff'+`param([switch]$Restart,[int]$Port=9347,[string]$StateDir='')\n. (Join-Path $PSScriptRoot 'launcher-common.ps1')\n@{ready=$env:TIBO_STARTUP_READY;root=$env:TIBO_INSTALL_ROOT;state=(Get-CqbStateDir);portable=$env:TIBO_PORTABLE_ROOT}|ConvertTo-Json|Set-Content -LiteralPath (Join-Path $env:TIBO_INSTALL_ROOT 'started.json') -Encoding utf8\n`);
+ // Isolate the per-user ownership pipe as well as AppData, so a live TiBo cannot be contacted.
+ const pathsFile=path.join(root,'runtime-paths.mjs'),pathsSource=await fs.readFile(pathsFile,'utf8');
+ assert.ok(pathsSource.includes('.update(os.homedir().toLowerCase())'));
+ await fs.writeFile(pathsFile,pathsSource.replace('.update(os.homedir().toLowerCase())',`.update(${JSON.stringify(temp.toLowerCase())})`));
  const inventory={};for(const name of files)inventory[name]=sha256(await fs.readFile(path.join(root,name)));await fs.writeFile(path.join(root,'SHA256-MANIFEST.json'),JSON.stringify(inventory));
  const loader=path.join(temp,'network.mjs'),requests=path.join(temp,'requests.log');
- await fs.writeFile(loader,`import fs from 'node:fs/promises';globalThis.fetch=async url=>{await fs.appendFile(${JSON.stringify(requests)},String(url)+'\\n');if(process.env.TIBO_TEST_OFFLINE)throw Error('offline fixture');return new Response(await fs.readFile(${JSON.stringify(root)}+'/updates/'+(String(url).endsWith('program-catalog.json')?'program-catalog.json':'catalog.json')));};`);
+ await fs.writeFile(loader,`import fs from 'node:fs/promises';import {registerHooks} from 'node:module';registerHooks({load(url,context,next){return url.endsWith('/update-network.mjs')?{format:'module',shortCircuit:true,source:'export const updateFetch=(...args)=>globalThis.fetch(...args);'}:next(url,context)}});globalThis.fetch=async url=>{await fs.appendFile(${JSON.stringify(requests)},String(url)+'\\n');if(process.env.TIBO_TEST_OFFLINE)throw Error('offline fixture');return new Response(await fs.readFile(${JSON.stringify(root)}+'/updates/'+(String(url).endsWith('program-catalog.json')?'program-catalog.json':'catalog.json')));};`);
  const driver=path.join(temp,'start-driver.ps1');await fs.writeFile(driver,'\ufeff'+`function Get-AppxPackage { [pscustomobject]@{Version='1.0';InstallLocation=${quote(path.join(temp,'Fake Codex'))}} }\nfunction Get-CimInstance { return }\n& ${quote(path.join(root,'bootstrap.ps1'))}\n`);
  const env={NODE_OPTIONS:`--import=${pathToFileURL(loader).href}`};
  // Seed a real legacy service in redirected AppData, then verify its complete

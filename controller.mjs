@@ -127,6 +127,7 @@ if (args.includes('--restore-once')) {
 await fs.rm(stopPath, {force:true});
 const preferences = await readConfig(path.resolve(option('--config',path.join(packageDir,'config.local.json'))),runtimeDir);
 const i18nJS = await fs.readFile(path.join(packageDir,'i18n.js'),'utf8');
+const quotaCacheJS = await fs.readFile(path.join(packageDir,'quota-cache.js'),'utf8');
 const css = await fs.readFile(path.join(packageDir, 'bottom-bar.css'), 'utf8');
 const js = await fs.readFile(path.join(packageDir, 'bottom-bar.js'), 'utf8');
 const featureJS = await fs.readFile(path.join(packageDir,'feature-ui.js'),'utf8');
@@ -157,7 +158,7 @@ async function wakeWorker() {
   return wakingWorker;
 }
 if (!workerDisabled) await wakeWorker();
-const injection = `(()=>{const run=()=>{window.__cqbPreferences=${JSON.stringify({timeZone:preferences.uiTimeZone})};${i18nJS}\nwindow.__codexBottomBarBindings=${JSON.stringify(nativeBindings)};window.__codexBottomBarFeatureBindings=${JSON.stringify(featureBindings)};let style=document.getElementById('codex-bottom-bar-style');if(!style){style=document.createElement('style');style.id='codex-bottom-bar-style';(document.head||document.documentElement).append(style)}style.textContent=${JSON.stringify(css)};${js}\n${nativeFeatureJS}\n${featureJS}\n};if(document.documentElement)run();else document.addEventListener('DOMContentLoaded',run,{once:true})})()`;
+const injection = `(()=>{const run=()=>{window.__cqbPreferences=${JSON.stringify({timeZone:preferences.uiTimeZone})};${i18nJS}\n${quotaCacheJS}\nwindow.__codexBottomBarBindings=${JSON.stringify(nativeBindings)};window.__codexBottomBarFeatureBindings=${JSON.stringify(featureBindings)};let style=document.getElementById('codex-bottom-bar-style');if(!style){style=document.createElement('style');style.id='codex-bottom-bar-style';(document.head||document.documentElement).append(style)}style.textContent=${JSON.stringify(css)};${js}\n${nativeFeatureJS}\n${featureJS}\n};if(document.documentElement)run();else document.addEventListener('DOMContentLoaded',run,{once:true})})()`;
 const allowed = new Set(['wake-worker','status','toggle','observe','claim-send','finish-send','completion','interaction','stop','sound-settings','volume-status','ui-language']);
 function installBridge(cdp, mainFrame) {
   cdp.on('Runtime.executionContextCreated',({context}) => {

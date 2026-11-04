@@ -1,6 +1,8 @@
 # Automatic program and compatibility updates
 
-## Current policy (0.8.0-rc.19)
+## Current policy (0.8.0-rc.20)
+
+Update checks and downloads prefer a configured HTTP/HTTPS environment proxy or Windows manual proxy, retry directly on transport failure, and connect directly when no proxy is configured. This applies only to update connections. PAC-only and SOCKS-only configurations are not evaluated by the built-in transport. Package and signed-index retention covers the latest three release versions; older release notes and tags remain available.
 
 The Windows ZIP is portable: extract to a permanent writable folder and use the single Start.cmd. No installer or manual update CMD is shipped. Internal legacy PowerShell scripts remain for compatibility and tests
 

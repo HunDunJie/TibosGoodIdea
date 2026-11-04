@@ -56,11 +56,8 @@
     return api ? findStore(avatar,api.scope) : null;
   }
   function identity(store = rootStore()) {
-    const client = store?.queryClient;
-    const accountId = client?.getQueryData(['vscode','account-info'])?.accountId;
-    const query = client?.getQueryState?.(['rate-limit-status']);
-    const raw = client?.getQueryData(['rate-limit-status']);
-    return accountId && raw?.account_id === accountId ? {accountId,raw,updatedAt:query?.dataUpdatedAt ?? 0,client} : null;
+    const usage = win.__cqbQuotaCache.read(store?.queryClient);
+    return usage?.raw ? usage : null;
   }
   function currentComposer() {
     const elements = [...doc.querySelectorAll('[data-codex-composer-root],.ProseMirror[contenteditable="true"]')];
@@ -191,7 +188,7 @@
         return {known:true,busy,localSafe};
       }catch{return {known:false,busy:false,localSafe:false};}
     },
-    async refreshQuota() { const value = identity(); if (value) await value.client.refetchQueries({queryKey:['rate-limit-status'],exact:true,type:'all'}); },
+    async refreshQuota() { const value = identity(); if (value) await value.client.refetchQueries({queryKey:value.queryKey,exact:true,type:'all'}); },
     async sendRound({isCurrent = () => true} = {}) {
       await init(); const store = rootStore(), account = identity(store)?.accountId;
       if (!api.support.send) throw new Error(t('客户端功能接口不可用'));

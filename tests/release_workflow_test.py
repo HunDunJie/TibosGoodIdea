@@ -16,6 +16,23 @@ spec.loader.exec_module(release)
 
 
 class ReleaseTests(unittest.TestCase):
+    def test_retention_keeps_latest_three_packages_and_preserves_drafts_and_unrelated_assets(self):
+        releases = [{'tag_name': 'v0.8.0-rc.'+str(n), 'draft': False, 'assets': [
+            {'id': n*10, 'name': f'TibosGoodIdea-0.8.0-rc.{n}-Windows-x64.zip', 'size': 100},
+            {'id': n*10+1, 'name': 'release-notes.txt', 'size': 10}]} for n in range(14, 21)]
+        releases.append({'tag_name': 'v0.8.0-rc.21', 'draft': True, 'assets': [{'id': 999, 'name': 'draft.zip', 'size': 1}]})
+        plan = release.retention_plan(releases, ['0.8.0-rc.20', '0.8.0-rc.19', '0.8.0-rc.18'])
+        self.assertEqual(plan['retainedVersions'], ['0.8.0-rc.20', '0.8.0-rc.19', '0.8.0-rc.18'])
+        self.assertEqual(len(plan['remove']), 4)
+        self.assertTrue(all(a['name'].endswith('Windows-x64.zip') for a in plan['remove']))
+        with self.assertRaises(RuntimeError):release.retention_plan(releases, ['0.8.0-rc.17'])
+        with self.assertRaises(RuntimeError):release.retention_plan(releases, [], 0)
+
+    def test_prune_requires_verified_public_index_before_deleting_anything(self):
+        with patch.object(release, 'version', return_value='1.0.0'), patch.object(release, 'read_json', return_value={'draft': False}), patch.object(release, 'GitHub') as github:
+            with self.assertRaises(RuntimeError):release.prune()
+            github.assert_not_called()
+
     def test_deleted_paths_have_same_fingerprint_before_staging_and_after_commit(self):
         with tempfile.TemporaryDirectory(prefix='tibo-release-tree-') as folder, patch.object(release, 'ROOT', Path(folder)), patch.object(release, 'version', return_value='1.0.0'):
             root = Path(folder)

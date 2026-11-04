@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import {verify} from 'node:crypto';
 import {saveStateJson} from './state-file.mjs';
+import {updateFetch} from './update-network.mjs';
 
 export const UPDATE_URL='https://raw.githubusercontent.com/HunDunJie/TibosGoodIdea/main/updates/catalog.json';
 const MAX_BYTES=512*1024, INTERVAL=12*60*60*1000;
@@ -37,7 +38,7 @@ async function boundedResponse(response) {
   for await (const chunk of response.body) {size+=chunk.byteLength;if(size>MAX_BYTES)throw Error('Adapter catalog too large');chunks.push(Buffer.from(chunk));}
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
-export async function getAdapterCatalog(stateDir,{fetchImpl=fetch,now=Date.now(),force=false,client=null,localOnly=false,bundledEnvelope=null,key=publicKey}={}) {
+export async function getAdapterCatalog(stateDir,{fetchImpl=updateFetch,now=Date.now(),force=false,client=null,localOnly=false,bundledEnvelope=null,key=publicKey}={}) {
   const bundled=bundledEnvelope ?? JSON.parse(await fs.readFile(new URL('./updates/catalog.json',import.meta.url),'utf8'));
   let envelope=bundled,data=verifyCatalog(bundled,key),checkedAt=0,prior={};
   const cachePath=path.join(stateDir,'adapter-catalog.json');
@@ -51,7 +52,7 @@ export async function getAdapterCatalog(stateDir,{fetchImpl=fetch,now=Date.now()
   if(localOnly || !force && checkedAt && now-checkedAt>=0 && now-checkedAt<wait)return {entries:data.entries,revision:data.revision,status:'cached'};
   let status='current';
   try {
-    const response=await fetchImpl(UPDATE_URL,{signal:AbortSignal.timeout(3500),redirect:'error',headers:{Accept:'application/json'}});
+    const response=await fetchImpl(UPDATE_URL,{signal:AbortSignal.timeout(10000),redirect:'error',headers:{Accept:'application/json'},maxBytes:MAX_BYTES});
     const remote=await boundedResponse(response),candidate=verifyCatalog(remote,key);
     let floor=0;try{floor=JSON.parse(await fs.readFile(path.join(stateDir,'adapter-revision.json'),'utf8')).revision;}catch(e){if(e.code!=='ENOENT')throw e;}
     if(candidate.revision<Math.max(data.revision,floor))throw Error('Adapter catalog rollback rejected');

@@ -67,7 +67,7 @@ html[data-cqb] #codex-bottom-bar-metrics {
 #codex-bottom-bar-features .cqb-feature-button:disabled { opacity:.5; cursor:default; }
 #codex-bottom-bar-features .cqb-feature-button:focus-visible { outline:2px solid #73a9ff; outline-offset:1px; }
 #cqb-feature-message, #cqb-volume-notice { position:fixed; bottom:48px; left:50%; transform:translateX(-50%); z-index:99999; max-width:min(600px,calc(100vw - 24px)); width:max-content; box-sizing:border-box; padding:12px 18px; color:#eee; background:#303030; border:1px solid #777; border-radius:8px; font-size:13px; }
-#cqb-volume-notice { pointer-events:none; }
+#cqb-volume-notice { top:48px; bottom:auto; pointer-events:none; }
 #codex-bottom-bar-tooltip {
   position:fixed; z-index:99999; margin:0; width:max-content; max-width:min(360px,calc(100vw - 16px)); box-sizing:border-box;
   padding:var(--tooltip-padding-block,5px) var(--tooltip-padding-inline,12px);

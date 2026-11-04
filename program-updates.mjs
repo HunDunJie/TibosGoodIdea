@@ -7,6 +7,7 @@ import {saveStateJson} from './state-file.mjs';
 import {openRendererArchive} from './asar-reader.mjs';
 import {sha256,safeRelative,noLinks,readPackage,removeOwnedDirectory} from './update-files.mjs';
 import {requestWorker} from './worker-client.mjs';
+import {updateFetch} from './update-network.mjs';
 export const PROGRAM_URL='https://raw.githubusercontent.com/HunDunJie/TibosGoodIdea/main/updates/program-catalog.json';
 export const UPDATER_PROTOCOL=1;
 const MAX_INDEX=128*1024,INTERVAL=12*3600000;
@@ -38,9 +39,9 @@ export async function clientFingerprint(asar){
 async function json(file,fallback=null){try{const s=await fs.stat(file);if(s.size>512*1024)throw Error('State too large');return JSON.parse(await fs.readFile(file,'utf8'));}catch(e){if(e.code==='ENOENT')return fallback;throw e;}}
 export async function managedRoot(root){root=path.resolve(root);await noLinks(root);const info=await json(path.join(root,'install-info.json'));if(info?.productId!=='bottom-bar-companion')throw Error('Unmanaged installation');return root;}
 function versionPath(root,relative){safeRelative(relative);if(!/^versions\/[0-9]+\.[0-9]+\.[0-9]+(?:-rc\.[0-9]+)?-[a-f0-9]{12}$/.test(relative))throw Error('Invalid version directory');return path.join(root,relative);}
-async function boundedFetch(url,{fetchImpl=fetch,limit,signal,redirects=0}={}){
+async function boundedFetch(url,{fetchImpl=updateFetch,limit,signal,redirects=0}={}){
   const u=new URL(url);if(u.protocol!=='https:'||!['raw.githubusercontent.com','github.com','release-assets.githubusercontent.com','objects.githubusercontent.com'].includes(u.hostname))throw Error('Untrusted download host');
-  const response=await fetchImpl(url,{redirect:'manual',signal,headers:{Accept:'application/octet-stream'}});
+  const response=await fetchImpl(url,{redirect:'manual',signal,headers:{Accept:'application/octet-stream'},maxBytes:limit});
   if([301,302,303,307,308].includes(response.status)){if(redirects>=4)throw Error('Too many redirects');await response.body?.cancel();return boundedFetch(new URL(response.headers.get('location'),url).href,{fetchImpl,limit,signal,redirects:redirects+1});}
   if(!response.ok||Number(response.headers.get('content-length'))>limit)throw Error('Download rejected');let size=0;const chunks=[];
   for await(const chunk of response.body){size+=chunk.length;if(size>limit)throw Error('Download too large');chunks.push(Buffer.from(chunk));}return Buffer.concat(chunks);
@@ -69,7 +70,7 @@ export async function resolveActive(root,{key}={}){
     return root;
   }
 }
-export async function stageRelease(root,release,envelope,{key,fetchImpl=fetch,signal=AbortSignal.timeout(120000),health=offlineHealth}={}){
+export async function stageRelease(root,release,envelope,{key,fetchImpl=updateFetch,signal=AbortSignal.timeout(120000),health=offlineHealth}={}){
   if(!verifyProgramCatalog(envelope,key).releases.some(r=>JSON.stringify(r)===JSON.stringify(release)))throw Error('Unsigned release');
   root=await managedRoot(root);await noLinks(root,path.join(root,'versions'));await fs.mkdir(path.join(root,'versions'),{recursive:true});
   const relative=`versions/${release.version}-${release.sha256.slice(0,12)}`,directory=versionPath(root,relative);
@@ -102,7 +103,7 @@ export async function offlineHealth(directory){
     child.once('error',e=>{clearTimeout(timer);reject(e)});child.once('exit',code=>{clearTimeout(timer);code===0?resolve():reject(Error('New version PowerShell syntax check failed'));});
   });
 }
-export async function checkProgramUpdates(root,{client,key,fetchImpl=fetch,now=Date.now(),signal,manual=false,automatic=false,force=false,health}={}){
+export async function checkProgramUpdates(root,{client,key,fetchImpl=updateFetch,now=Date.now(),signal,manual=false,automatic=false,force=false,health}={}){
   root=await managedRoot(root);key??=await fs.readFile(path.join(root,'updates/program-public-key.pem'),'utf8');
   const statePath=path.join(root,'program-update-state.json');let state=await json(statePath,{});
   const active=await resolveActive(root,{key}),product=await json(path.join(active,'product.json'));
@@ -110,7 +111,7 @@ export async function checkProgramUpdates(root,{client,key,fetchImpl=fetch,now=D
   if(!force&&!manual&&elapsed>=0&&elapsed<(priority?Math.min(state.retryAfter??300000,300000):(state.retryAfter??INTERVAL)))return {status:'cached'};
   let candidate=null;
   try{
-    const bytes=await boundedFetch(PROGRAM_URL,{fetchImpl,limit:MAX_INDEX*2,signal:signal?AbortSignal.any([signal,AbortSignal.timeout(3500)]):AbortSignal.timeout(3500)}),envelope=JSON.parse(bytes),catalog=verifyProgramCatalog(envelope,key);
+    const bytes=await boundedFetch(PROGRAM_URL,{fetchImpl,limit:MAX_INDEX*2,signal:signal?AbortSignal.any([signal,AbortSignal.timeout(10000)]):AbortSignal.timeout(10000)}),envelope=JSON.parse(bytes),catalog=verifyProgramCatalog(envelope,key);
     const floor=await json(path.join(root,'program-update-floor.json'),{revision:0});if(catalog.revision<Math.max(floor.revision,state.revision??0))throw Error('Program catalog rollback rejected');
     await atomic(root,'program-update-floor.json',{revision:catalog.revision});
     const quarantine=(state.quarantine??[]).filter(v=>v.client===client).map(v=>v.sha256);
@@ -123,7 +124,7 @@ export async function checkProgramUpdates(root,{client,key,fetchImpl=fetch,now=D
     return {status:state.status,available:state.available};
   }catch(error){state={...state,checkedAt:now,client,failures:(state.failures??0)+1,status:'offline',error:String(error.message).slice(0,160)};if(error.rejectCandidate&&candidate)state.quarantine=[...(state.quarantine??[]).slice(-19),{client,sha256:candidate.sha256}];state.retryAfter=Math.min(INTERVAL,300000*2**Math.min(7,state.failures-1));await atomic(root,'program-update-state.json',state);return {status:'offline'};}
 }
-export async function activatePending(root,{client,key,stateDir,codexRunning=false,worker=requestWorker,launch=launchWorker,health=offlineHealth,fetchImpl=fetch,readClient,now=Date.now(),fault=()=>{}}={}){
+export async function activatePending(root,{client,key,stateDir,codexRunning=false,worker=requestWorker,launch=launchWorker,health=offlineHealth,fetchImpl=updateFetch,readClient,now=Date.now(),fault=()=>{}}={}){
   root=await managedRoot(root);key??=await fs.readFile(path.join(root,'updates/program-public-key.pem'),'utf8');
   if(codexRunning)return {status:'deferred',reason:'codex-running'};
   const pending=await json(path.join(root,'pending-release.json'));if(!pending)return {status:'none'};
@@ -132,7 +133,7 @@ export async function activatePending(root,{client,key,stateDir,codexRunning=fal
     // Revalidate only the small index, so daily users can still activate a prepared update.
     // A new download is never performed on the launch path.
     try{
-      const envelope=JSON.parse(await boundedFetch(PROGRAM_URL,{fetchImpl,limit:MAX_INDEX*2,signal:AbortSignal.timeout(3500)})),fresh=verifyProgramCatalog(envelope,key);
+      const envelope=JSON.parse(await boundedFetch(PROGRAM_URL,{fetchImpl,limit:MAX_INDEX*2,signal:AbortSignal.timeout(10000)})),fresh=verifyProgramCatalog(envelope,key);
       const floor=await json(path.join(root,'program-update-floor.json'),{revision:0});if(fresh.revision<floor.revision)throw Error('Catalog rollback');
       await atomic(root,'program-update-floor.json',{revision:fresh.revision});
       if(!fresh.releases.some(r=>r.sha256===pending.sha256&&r.clients.includes(client))){await atomic(root,'pending-release.json',null);return {status:'withdrawn'};}

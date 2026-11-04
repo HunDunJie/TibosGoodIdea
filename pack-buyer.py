@@ -6,13 +6,13 @@ names='''
 Start.cmd
 start.ps1 restore.ps1 control-reminders.ps1 launcher-common.ps1 lifecycle-common.ps1 settings.ps1 install.ps1 uninstall.ps1 reload.ps1 check.ps1
 WindowsActivation.cs WindowsAudio.cs audio-host.ps1 audio-client.mjs alarm-worker.mjs worker-client.mjs runtime-paths.mjs state-file.mjs
-bottom-bar.css bottom-bar.js feature-ui.js native-features.js feature-engine.mjs native-bindings.mjs feature-bindings.mjs controller.mjs
+bottom-bar.css bottom-bar.js quota-cache.js feature-ui.js native-features.js feature-engine.mjs native-bindings.mjs feature-bindings.mjs controller.mjs
 i18n.js locale-config.mjs settings-check.mjs diagnostics.mjs product.json package.json config.example.json
 asar-reader.mjs adapter-updates.mjs updates/catalog.json updates/public-key.pem vendor/acorn/acorn.mjs vendor/acorn/LICENSE
 LICENSE LICENSE.zh-CN.md LICENSE.en.md THIRD-PARTY-NOTICES.md QUICKSTART.zh-CN.md QUICKSTART.en.md QUICKSTART.ja.md COMPATIBILITY.md
 sounds/completion.wav sounds/refresh.wav sounds/README.md runtime/node.exe runtime/LICENSE-Node.txt runtime/NOTICE.md
 release-files.json
-bootstrap.ps1 update.ps1 update-cli.mjs program-updates.mjs update-files.mjs update-lease.mjs
+bootstrap.ps1 update.ps1 update-cli.mjs program-updates.mjs update-network.mjs update-files.mjs update-lease.mjs
 shutdown-engine.mjs shutdown-system.mjs shutdown-guard.mjs shutdown-task.ps1
 updates/program-catalog.json updates/program-public-key.pem
 portable-runtime.mjs startup-updates.mjs manage.ps1

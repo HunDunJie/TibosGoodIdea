@@ -21,6 +21,8 @@ tests/engine.test.mjs tests/display.test.mjs tests/locale.test.mjs tests/ui.cjs 
 tests/controller.cjs tests/lifecycle.cjs tests/launcher-arguments.cjs tests/worker-integration.mjs tests/install.mjs tests/settings-worker.mjs .github/workflows/test.yml
 """.split()
 names += ['tests/fixtures/legacy-launchers.json']
+names += ['tests/quota-cache.test.mjs']
+names += ['tests/update-network.test.mjs']
 names += ['docs/portable-single-entry-design.md','tests/portable.test.mjs','tests/portable.mjs']
 names += ['docs/program-updates-verification.json']
 names += ['docs/scheduled-shutdown-design.md','tests/shutdown.test.mjs','tests/shutdown-system.mjs','tests/shutdown-bindings.test.mjs']

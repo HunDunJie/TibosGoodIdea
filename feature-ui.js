@@ -38,7 +38,7 @@
     ({t,locale,timeZone,zone} = win.__cqbI18n);
     render();
     const note = doc.getElementById('cqb-volume-notice');
-    if(note && volumeNoticeKey)note.textContent=t(volumeNoticeKey,volumeNoticeValues);
+    if(note && volumeNoticeKey){note.textContent=t(volumeNoticeKey,volumeNoticeValues);positionVolumeNotice();}
     void reportLanguage();
   }
   const iconShapes = {
@@ -105,22 +105,34 @@
       const special = feature==='shutdown'&&item.enabled || !connected || item.error || ['running','done','interrupted','cancelled','expired','ringing'].includes(phase) || item.enabled && (feature === 'completion' && !capabilities.completion || feature === 'refresh' && !state?.refresh?.alarm);
       const status = special ? ` · ${item.text}${item.error ? `：${item.error}` : ''}` : '';
       const stateLine = item.inapplicable ? t('不适用') : connected ? t(item.enabled ? '已开启' : '已关闭') : t('未连接');
-      const volume = ['completion','refresh'].includes(feature) ? `\n${volumeText()}` : '';
-      const tooltip = `${t(nameKeys[feature])}\n${stateLine}${item.inapplicable ? '' : status}\n${detail}${volume}`.replace(/。|\.(?=\s|$)/g,'');
+      const tooltip = `${t(nameKeys[feature])}\n${stateLine}${item.inapplicable ? '' : status}\n${detail}`.replace(/。|\.(?=\s|$)/g,'');
       setTooltip(group,tooltip); setTooltip(button,tooltip);
       button.setAttribute('aria-description',tooltip.split('\n').slice(1).join('\n'));
       group.dataset.enabled = String(item.enabled);
     }
+    positionVolumeNotice();
   }
   function announce(error,feature) {
     localErrors[feature] = error.message;
     render();
   }
   let volumeNoticeKey = null, volumeNoticeValues = {}, volumeNoticeContext = null, startupVolumeScheduled = win.__cqbStartupVolumeChecked === win.performance.timeOrigin, startupVolumeTimer = null;
-  function volumeText() {
-    if (volumeCheck.phase === 'checked') return t(volumeCheck.muted ? '系统音量：{percent}%（已静音）' : '系统音量：{percent}%',{percent:volumeCheck.percent});
-    return t(volumeCheck.phase === 'unavailable' ? '暂时无法读取系统音量' : '正在检查系统音量');
+  function positionVolumeNotice() {
+    const note=doc.getElementById('cqb-volume-notice');
+    const feature=volumeNoticeContext==='refresh'?'refresh':'completion';
+    const button=controls?.querySelector(`[data-cqb-feature="${feature}"] button`);
+    if(!note||!button?.isConnected)return;
+    note.style.left='0px';note.style.top='0px';
+    const anchor=button.getBoundingClientRect(),box=note.getBoundingClientRect();
+    const ratio=box.width/(note.offsetWidth||box.width)||1,scale=Math.abs(ratio-1)<.01?1:ratio;
+    const left=Math.max(8,Math.min(anchor.left+(anchor.width-box.width)/2,win.innerWidth-box.width-8));
+    let top=Math.max(8,anchor.top-box.height-8);
+    const tooltip=doc.getElementById('codex-bottom-bar-tooltip')?.getBoundingClientRect();
+    if(tooltip&&left<tooltip.right&&left+box.width>tooltip.left&&top<tooltip.bottom&&top+box.height>tooltip.top)
+      top=Math.max(8,tooltip.top-box.height-8);
+    note.style.left=`${(left-box.left)/scale}px`;note.style.top=`${(top-box.top)/scale}px`;
   }
+  function volumeLayoutChanged() {win.requestAnimationFrame(positionVolumeNotice);}
   function clearVolumeNotice() {
     volumeNoticeKey = null; volumeNoticeValues = {}; volumeNoticeContext = null;
     clearTimeout(volumeNoticeTimer); volumeNoticeTimer = null; doc.getElementById('cqb-volume-notice')?.remove();
@@ -129,7 +141,7 @@
     clearVolumeNotice();
     const note=doc.createElement('div');note.id='cqb-volume-notice';note.setAttribute('role','status');note.setAttribute('aria-live','polite');
     volumeNoticeKey=message;volumeNoticeValues=values;volumeNoticeContext=context;
-    note.textContent=t(message,values);doc.body.append(note);volumeNoticeTimer=setTimeout(clearVolumeNotice,6000);
+    note.textContent=t(message,values);doc.body.append(note);positionVolumeNotice();volumeNoticeTimer=setTimeout(clearVolumeNotice,6000);
     if(context==='startup')win.__cqbStartupVolumeChecked=win.performance.timeOrigin;
   }
   async function checkVolume(context) {
@@ -251,13 +263,14 @@
   }
   const events = ['pointermove','pointerdown','keydown','wheel','input'];
   for (const name of events) doc.addEventListener(name,interaction,{capture:true,passive:true});
-  const observer = new MutationObserver(attach); observer.observe(doc.documentElement,{childList:true,subtree:true});
+  const observer = new MutationObserver(()=>{attach();positionVolumeNotice();}); observer.observe(doc.documentElement,{childList:true,subtree:true});
   const timer = setInterval(() => void sync(),2000);
   win.__cqbFeatures = {status:() => ({connected,capabilities,state,volume:volumeCheck}),dispose() {
-    active = false; win.removeEventListener('cqb-languagechange',languageChanged); volumeGeneration++; clearVolumeNotice(); clearTimeout(startupVolumeTimer); clearInterval(timer); observer.disconnect(); controls?.remove(); doc.getElementById('cqb-feature-message')?.remove();
+    active = false; win.removeEventListener('cqb-languagechange',languageChanged);win.removeEventListener('resize',volumeLayoutChanged);doc.removeEventListener('scroll',volumeLayoutChanged,true); volumeGeneration++; clearVolumeNotice(); clearTimeout(startupVolumeTimer); clearInterval(timer); observer.disconnect(); controls?.remove(); doc.getElementById('cqb-feature-message')?.remove();
     nativeAdapter?.dispose?.(); for (const name of events) doc.removeEventListener(name,interaction,true);
     for (const item of pending.values()) { clearTimeout(item.timer); item.reject(new Error(t('底栏已恢复'))); } pending.clear(); delete win.__cqbBridgeReply;
   }};
   win.addEventListener('cqb-languagechange',languageChanged);
+  win.addEventListener('resize',volumeLayoutChanged);doc.addEventListener('scroll',volumeLayoutChanged,true);
   attach(); void sync();
 })();

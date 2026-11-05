@@ -13,6 +13,11 @@ const root = path.resolve(__dirname,'..');
     await page.waitForFunction(() => window.__cqbFeatures?.status().connected);
     const refresh = page.getByRole('button',{name:'刷新提醒',exact:true}), completion = page.getByRole('button',{name:'完成提醒',exact:true}), notice = page.locator('#cqb-volume-notice');
     const queries = () => page.evaluate(() => window.__previewCalls.filter(c => c.method === 'volume-status').length);
+    async function checkPosition(feature,message) {
+      await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+      const box=await notice.boundingBox(),button=await page.locator(`[data-cqb-feature="${feature}"] button`).boundingBox(),viewport=page.viewportSize();
+      check(box.y>=8&&box.x>=7&&box.x+box.width<=viewport.width-7&&box.y+box.height<=button.y-6&&button.y-box.y-box.height<180&&box.x<button.x+button.width&&box.x+box.width>button.x,message+' '+JSON.stringify({box,button,viewport}));
+    }
     async function enable(volume) {
       if (await refresh.getAttribute('aria-pressed') === 'true') await refresh.click();
       await page.evaluate(value => { window.__previewVolume = value; },volume);
@@ -21,9 +26,11 @@ const root = path.resolve(__dirname,'..');
     }
     await page.waitForFunction(()=>window.__cqbFeatures.status().volume.phase==='checked');
     check(await queries() === 1 && (await notice.innerText()).includes('50%'),'Startup checks volume after the shell is fully displayed');
-    for(const feature of ['completion','refresh'])check((await page.locator(`[data-cqb-feature="${feature}"]`).getAttribute('data-cqb-tooltip')).includes('50%'),'Both reminder tooltips show current volume: '+feature);
+    await checkPosition('completion','Startup volume notice stays near the reminder buttons');
+    for(const feature of ['completion','refresh'])check(!/系统音量|50%/.test(await page.locator(`[data-cqb-feature="${feature}"]`).getAttribute('data-cqb-tooltip')),'Reminder descriptions do not append system volume: '+feature);
     await enable({percent:50,muted:false});
     check((await notice.innerText()).includes('50%') && await page.locator('dialog').count() === 0,'Normal volume appears as a nonmodal reminder');
+    await checkPosition('refresh','Refresh volume notice stays above its button');
     check(await page.evaluate(() => document.activeElement?.getAttribute('aria-label') === '刷新提醒'),'Checking volume does not move keyboard focus');
     await enable({percent:1,muted:false}); check(!(await notice.innerText()).includes('低于'),'Exactly 1% is not below the threshold');
     await enable({percent:0.99,muted:false});
@@ -46,7 +53,11 @@ const root = path.resolve(__dirname,'..');
     await page.evaluate(()=>{window.__previewVolume={percent:37,muted:false}});await completion.click();
     await page.waitForFunction(()=>window.__cqbFeatures.status().volume.context==='completion'&&window.__cqbFeatures.status().volume.phase==='checked');
     check((await notice.innerText()).includes('37%'),'Completion reminders also check and show volume');
-    for(const feature of ['completion','refresh'])check((await page.locator(`[data-cqb-feature="${feature}"]`).getAttribute('data-cqb-tooltip')).includes('37%'),'Latest volume is shared by both reminder tooltips: '+feature);
+    await checkPosition('completion','Completion volume notice stays above its button');
+    await page.setViewportSize({width:760,height:620});
+    await checkPosition('completion','Volume notice follows the button in a narrow resized window');
+    await page.setViewportSize({width:1440,height:900});
+    for(const feature of ['completion','refresh'])check(!/系统音量|37%/.test(await page.locator(`[data-cqb-feature="${feature}"]`).getAttribute('data-cqb-tooltip')),'Volume checks leave reminder descriptions unchanged: '+feature);
     await completion.click();
     await page.evaluate(()=>{window.__previewVolume={percent:80,muted:true}});await completion.click();
     await page.waitForFunction(()=>window.__cqbFeatures.status().volume.muted===true);
@@ -59,7 +70,7 @@ const root = path.resolve(__dirname,'..');
       window.__cqbPreviewHost = (method,payload) => method === 'volume-status' ? Promise.reject(new Error('device unavailable')) : original(method,payload);
     });
     await refresh.click(); await page.waitForFunction(() => window.__cqbFeatures.status().volume.phase === 'unavailable');
-    check(await refresh.getAttribute('aria-pressed') === 'true' && await page.locator('#cqb-volume-notice,dialog').count() === 0 && (await refresh.getAttribute('data-cqb-tooltip')).includes('无法读取'),'Read failure neither disables nor invents a zero-volume warning');
+    check(await refresh.getAttribute('aria-pressed') === 'true' && await page.locator('#cqb-volume-notice,dialog').count() === 0 && !/系统音量|无法读取/.test(await refresh.getAttribute('data-cqb-tooltip')),'Read failure neither disables the reminder nor adds volume text to its description');
     await refresh.click();
     await page.evaluate(() => {
       const original = window.__cqbPreviewHost;

@@ -16,7 +16,7 @@ const root = path.resolve(__dirname,'..');
     check(await buttons.locator('svg[aria-hidden="true"]').count()===4,'Each accessible button has a vector icon');
     const offHints={shutdown:'可开启，任务全部完成或确认网络持续异常后关机，未保存内容会丢失',send:'可开启，用于在额度刷新时自动发送所有聊天中的草稿，所有草稿发送后将关闭定时发送',completion:'可开启，用于在任意聊天回答结束时会播放音乐进行提醒，播放时长最多30分钟',refresh:'可开启，用于额度刷新时播放音乐进行提醒，播放时长最多30分钟，退出Codex仍然有效'};
     for(const [feature,text] of Object.entries(offHints)) check((await page.locator(`[data-cqb-feature="${feature}"] button`).getAttribute('data-cqb-tooltip')).split('\n')[2]===text,'Exact off hint for '+feature);
-    check(await buttons.evaluateAll(nodes=>nodes.every(n=>n.dataset.cqbTooltip.split('\n').length===(['completion','refresh'].includes(n.closest('[data-cqb-feature]').dataset.cqbFeature)?4:3)&&n.dataset.cqbTooltip.split('\n')[1]==='已关闭'&&!/[。]|\.(?:\s|$)/.test(n.dataset.cqbTooltip))),'Off hints preserve title/state/description and add a volume line to sound reminders');
+    check(await buttons.evaluateAll(nodes=>nodes.every(n=>n.dataset.cqbTooltip.split('\n').length===3&&n.dataset.cqbTooltip.split('\n')[1]==='已关闭'&&!/[。]|\.(?:\s|$)/.test(n.dataset.cqbTooltip))),'Off hints contain only title, state and feature description');
     const inactive=await buttons.first().evaluate(n=>getComputedStyle(n).color);
     check(/^rgba\(.+, 0\.5\)$/.test(inactive),'Off icons use the same muted tertiary color as unselected navigation');
     check(await page.locator('#codex-bottom-bar-features').evaluate(n=>getComputedStyle(n).gap)==='8px','Icon spacing is 8px');

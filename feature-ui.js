@@ -125,23 +125,34 @@
     volumeNoticeKey = null; volumeNoticeValues = {}; volumeNoticeContext = null;
     clearTimeout(volumeNoticeTimer); volumeNoticeTimer = null; doc.getElementById('cqb-volume-notice')?.remove();
   }
+  function showVolumeNotice(message,context,values={}) {
+    clearVolumeNotice();
+    const note=doc.createElement('div');note.id='cqb-volume-notice';note.setAttribute('role','status');note.setAttribute('aria-live','polite');
+    volumeNoticeKey=message;volumeNoticeValues=values;volumeNoticeContext=context;
+    note.textContent=t(message,values);doc.body.append(note);volumeNoticeTimer=setTimeout(clearVolumeNotice,6000);
+    if(context==='startup')win.__cqbStartupVolumeChecked=win.performance.timeOrigin;
+  }
   async function checkVolume(context) {
     const generation = ++volumeGeneration;
     volumeCheck = {phase:'checking',context}; render();
     try {
       const value = await call('volume-status');
       if (!active || generation !== volumeGeneration || context !== 'startup' && !state?.[context]?.enabled) return;
+      if(context==='startup'&&doc.visibilityState!=='visible'){startupVolumeScheduled=false;return;}
       if (!Number.isFinite(value?.percent) || value.percent < 0 || value.percent > 100 || typeof value.muted !== 'boolean') throw new Error();
       volumeCheck = {phase:'checked',context,percent:Number(value.percent.toFixed(2)),muted:value.muted}; render();
       const message = value.muted ? '当前系统音量 {percent}%，已静音，可能听不到提醒'
         : value.percent < 1 ? '当前系统音量低于 1%（{percent}%），可能听不到提醒' : '当前系统音量：{percent}%';
-      clearVolumeNotice();
-      const note = doc.createElement('div'); note.id = 'cqb-volume-notice'; note.setAttribute('role','status'); note.setAttribute('aria-live','polite');
-      volumeNoticeKey = message; volumeNoticeValues = {percent:volumeCheck.percent}; volumeNoticeContext = context;
-      note.textContent = t(message,volumeNoticeValues); doc.body.append(note); volumeNoticeTimer = setTimeout(clearVolumeNotice,6000);
+      showVolumeNotice(message,context,{percent:volumeCheck.percent});
     } catch {
       // An unavailable endpoint/query must not turn off an already-enabled reminder or invent a 0% volume.
-      if (active && generation === volumeGeneration) {volumeCheck = {phase:'unavailable',context}; render();}
+      if (active && generation === volumeGeneration) {
+        volumeCheck = {phase:'unavailable',context}; render();
+        if(context==='startup'){
+          if(doc.visibilityState==='visible')showVolumeNotice('暂时无法读取系统音量',context);
+          else startupVolumeScheduled=false;
+        }
+      }
     }
   }
   function scheduleStartupVolume() {
@@ -150,8 +161,9 @@
     win.requestAnimationFrame(() => win.requestAnimationFrame(() => {
       startupVolumeTimer = setTimeout(() => {
         if(!active)return;
-        win.__cqbStartupVolumeChecked=win.performance.timeOrigin;
-        if(volumeGeneration===0)void checkVolume('startup');
+        if(doc.visibilityState!=='visible'||!connected||!controls?.isConnected){startupVolumeScheduled=false;return;}
+        if(volumeGeneration===0||volumeCheck.context==='startup')void checkVolume('startup');
+        else win.__cqbStartupVolumeChecked=win.performance.timeOrigin;
       },500);
     }));
   }

@@ -24,7 +24,7 @@ async function run(exe,args,{cwd=root,expected=0,verbatim=false,env=process.env}
   const child=spawn(exe,args,{cwd,env,windowsHide:true,windowsVerbatimArguments:verbatim,stdio:['ignore','pipe','pipe']});
   let out='',err='';child.stdout.on('data',c=>out+=c);child.stderr.on('data',c=>err+=c);
   const timer=setTimeout(()=>child.kill(),45000);
-  const code=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('exit',resolve);});
+  const code=await new Promise((resolve,reject)=>{child.once('error',reject);child.once('close',resolve);});
   clearTimeout(timer);
   if(expected===0)assert.equal(code,0,`${path.basename(exe)}: ${(err||out).slice(-1800)}`);else assert.notEqual(code,0,`Invalid operation must fail: ${(err||out).slice(-1800)}`);
   return expected===0 ? out : out+err;

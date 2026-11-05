@@ -23,9 +23,18 @@
     loading = (async () => {
       const p = win.__codexBottomBarFeatureBindings;
       if (!p) throw new Error(t('当前客户端版本未适配任务事件与草稿接口'));
-      const entry = [...doc.scripts].find(s => /\/index-[^/]+\.js(?:\?|$)/.test(s.src));
+      const entry = [...doc.scripts].find(s => p.rspack ? s.src.endsWith('/assets/'+p.rspack.entry) : /\/index-[^/]+\.js(?:\?|$)/.test(s.src));
       if (!entry) throw new Error(t('找不到客户端模块入口'));
-      const base = new URL('.',entry.src), [initial,shared] = await Promise.all([import(new URL(p.initial,base).href),import(new URL(p.shared,base).href)]);
+      const base = new URL('.',entry.src);
+      let initial,shared;
+      if(p.rspack){
+        const runtime=await import(entry.src),require=runtime.__webpack_require__;
+        if(typeof require!=='function'||typeof require.C!=='function')throw new Error(t('客户端功能接口不可用'));
+        const chunk=await import(new URL(p.rspack.chunk,base).href);require.C(chunk);
+        initial={__cqbReady(){}};
+        for(const [key,ref]of Object.entries(p.references))Object.defineProperty(initial,key,{get:()=>require(ref.id)[ref.export]});
+        shared=initial;
+      }else [initial,shared]=await Promise.all([import(new URL(p.initial,base).href),import(new URL(p.shared,base).href)]);
       const result = {p,initial,shared,scope:shared[p.scope],support:{completion:false,send:false,shutdown:false},reasons:{}};
       if (!result.scope) throw new Error(t('客户端功能接口不可用'));
       for (const feature of ['completion','send']) {

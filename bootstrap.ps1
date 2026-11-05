@@ -3,7 +3,7 @@
   [string]$RootDir='',
   [switch]$Restart,[int]$Port=9347,[string]$StateDir='',
   [switch]$NoServiceChanges,[switch]$NoShortcut,[string]$BackupDir='',[string]$TargetDir='',[string]$ShortcutRoot='',
-  [switch]$NoUi,[string]$TimeZone='',[string]$CompletionAudio='',[string]$RefreshAudio='',[string]$ConfigPath='',[string]$RenderTo='', [string]$Action='status',[string]$AsarPath=''
+  [switch]$NoUi,[string]$TimeZone='',[string]$CompletionAudio='',[string]$RefreshAudio='',[string]$ConfigPath='',[string]$RenderTo='', [string]$Action='status',[string]$AsarPath='', [switch]$RepairBootstrap
 )
 $ErrorActionPreference='Stop'
 [Console]::OutputEncoding=New-Object Text.UTF8Encoding($false)
@@ -16,7 +16,7 @@ if($Script -ne 'start.ps1' -and -not(Test-Path -LiteralPath (Join-Path $root 'in
   exit
 }
 $forward=@{}
-foreach($name in $PSBoundParameters.Keys){if($name -notin @('Script','RootDir')){$forward[$name]=$PSBoundParameters[$name]}}
+foreach($name in $PSBoundParameters.Keys){if($name -notin @('Script','RootDir','RepairBootstrap')){$forward[$name]=$PSBoundParameters[$name]}}
 . (Join-Path $PSScriptRoot 'lifecycle-common.ps1')
 $lock=$null
 if($Script -eq 'start.ps1'){$lock=Enter-CqbLifecycleLock $root 'install'}
@@ -30,7 +30,7 @@ try {
   # launchers acquire new policies without overwriting their running files.
   $selected=& $node (Join-Path $PSScriptRoot 'update-cli.mjs') resolve --root $root
   if($LASTEXITCODE -ne 0 -or -not $selected){throw 'Cannot verify the active TiBo version'}
-  if($Script -eq 'start.ps1' -and [IO.Path]::GetFullPath([string]$selected) -ne [IO.Path]::GetFullPath($PSScriptRoot)){
+  if($Script -eq 'start.ps1' -and -not $RepairBootstrap -and [IO.Path]::GetFullPath([string]$selected) -ne [IO.Path]::GetFullPath($PSScriptRoot)){
     & (Join-Path ([string]$selected) 'bootstrap.ps1') -RootDir $root -Script $Script @forward
     return
   }
@@ -65,8 +65,17 @@ try {
     $update=@((Join-Path $PSScriptRoot 'update-cli.mjs'),'startup','--root',$root,'--state-dir',$runtime,'--asar',$asar,'--codex-exe',$exe)
     if($busy){$update+='--busy'}
     $policy=$ErrorActionPreference
-    try {$ErrorActionPreference='Continue';& $node @update 2>$null|Out-Null;$updateExit=$LASTEXITCODE} finally {$ErrorActionPreference=$policy}
+    try {$ErrorActionPreference='Continue';$updateOutput=& $node @update 2>$null;$updateExit=$LASTEXITCODE} finally {$ErrorActionPreference=$policy}
     if($updateExit -ne 0){Write-Warning (L '更新检查未完成，将使用当前可用版本' 'Update check could not finish; using the current available version.' '更新確認を完了できません 現在利用可能なバージョンを使います')}
+    elseif($updateOutput){
+      try {
+        $updateStatus=($updateOutput|Select-Object -Last 1)|ConvertFrom-Json
+        if($updateStatus.program -eq 'client-unrecognized'){Write-Warning (L '无法识别当前 Codex，未确认 TiBo 是否兼容；请检查新版兼容性说明' 'The current Codex build could not be identified. TiBo compatibility could not be verified; check the latest release notes.' '現在の Codex を識別できません TiBo の互換性を確認できないため 最新版の説明を確認してください')}
+        elseif($updateStatus.program -eq 'incompatible'){Write-Warning (L '发现 TiBo 新版，但尚未验证当前 Codex 的兼容性；更新暂缓' 'A newer TiBo exists, but compatibility with this Codex build has not been verified. Update deferred.' 'TiBo の新版がありますが 現在の Codex との互換性は未検証です 更新を保留します')}
+        elseif($updateStatus.program -eq 'offline'){Write-Warning (L '更新服务器暂时无法访问，本次未能确认是否有新版' 'The update server is unavailable. This check could not determine whether a newer version exists.' '更新サーバーに接続できないため 新版の有無を確認できませんでした')}
+        elseif($updateStatus.program -eq 'blocked'){Write-Warning (L '发现 TiBo 新版，但更新器版本或此前的校验失败阻止了自动应用，请查看更新状态' 'A newer TiBo exists, but updater requirements or a previous validation failure block automatic installation. Check update status.' 'TiBo の新版がありますが 更新要件または以前の検証失敗により 自動適用を保留しています')}
+      } catch {Write-Warning (L '更新状态无法读取，请检查 data/startup-update.json' 'Could not read update status. Check data/startup-update.json.' '更新状態を読み取れません data/startup-update.json を確認してください')}
+    }
   }
   $directory=$root
   if($Script -ne 'uninstall.ps1'){

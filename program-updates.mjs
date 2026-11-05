@@ -34,7 +34,17 @@ export function selectRelease(catalog,{version,channel=version.includes('-')?'pr
 }
 export async function clientFingerprint(asar){
   const archive=await openRendererArchive(asar);
-  try{const names=archive.names.filter(n=>/^(app-initial|app-shared|composer-content)-[\w-]+\.js$/.test(n)).sort();if(names.length<2||names.length>12||!names.some(n=>n.startsWith('app-initial-'))||!names.some(n=>n.startsWith('app-shared-')))throw Error('Ambiguous client build');const records=[];for(const name of names)records.push([name,sha256(await archive.read(name))]);return sha256(JSON.stringify(records));}finally{await archive.close();}
+  try{
+    // Preserve the exact legacy fingerprint already present in signed catalogs.
+    const legacy=archive.names.filter(n=>/^(app-initial|app-shared|composer-content)-[\w-]+\.js$/.test(n)).sort();
+    const isLegacy=legacy.some(n=>n.startsWith('app-initial-'))&&legacy.some(n=>n.startsWith('app-shared-'));
+    const names=isLegacy?legacy:[...new Set(archive.entryScripts)].sort();
+    if(names.length<2||names.length>12)throw Error('Unrecognized client build');
+    const records=[];let size=0,modern=false;
+    for(const name of names){const bytes=await archive.read(name);size+=bytes.length;if(size>32*1024*1024)throw Error('Client fingerprint budget exceeded');modern ||= bytes.includes('__webpack_require__');records.push([name,sha256(bytes)]);}
+    if(!isLegacy&&!modern)throw Error('Unrecognized client build');
+    return sha256(JSON.stringify(isLegacy?records:['rspack-entry-v1',records]));
+  }finally{await archive.close();}
 }
 async function json(file,fallback=null){try{const s=await fs.stat(file);if(s.size>512*1024)throw Error('State too large');return JSON.parse(await fs.readFile(file,'utf8'));}catch(e){if(e.code==='ENOENT')return fallback;throw e;}}
 export async function managedRoot(root){root=path.resolve(root);await noLinks(root);const info=await json(path.join(root,'install-info.json'));if(info?.productId!=='bottom-bar-companion')throw Error('Unmanaged installation');return root;}
@@ -117,11 +127,15 @@ export async function checkProgramUpdates(root,{client,key,fetchImpl=updateFetch
     const quarantine=(state.quarantine??[]).filter(v=>v.client===client).map(v=>v.sha256);
     const release=selectRelease(catalog,{version:product.version,client,manual,automatic,quarantined:quarantine});candidate=release;
     const available=selectRelease(catalog,{version:product.version,client,manual:true,quarantined:quarantine});
-    state={...state,checkedAt:now,client,revision:catalog.revision,retryAfter:null,failures:0,available:available?.version??null,status:release?'downloading':available?'optional':'current'};
+    const newer=catalog.releases.filter(r=>compareVersion(r.version,product.version)>0&&(r.channel===(product.version.includes('-')?'preview':'stable')||product.version.includes('-')&&r.channel==='stable')).sort((a,b)=>compareVersion(b.version,a.version))[0];
+    const matching=newer&&catalog.releases.filter(r=>compareVersion(r.version,product.version)>0&&r.clients.includes(client)&&(r.channel===(product.version.includes('-')?'preview':'stable')||product.version.includes('-')&&r.channel==='stable'));
+    const status=!hash(client)?'client-unrecognized':release?'downloading':available?'optional':newer?matching.length?'blocked':'incompatible':'current';
+    const reason=status==='blocked'?(matching.every(r=>r.minimumUpdater>UPDATER_PROTOCOL)?'updater-protocol':matching.every(r=>r.stateSchema!==1)?'state-schema':matching.every(r=>quarantine.includes(r.sha256))?'quarantined':'requirements'):null;
+    state={...state,checkedAt:now,client,revision:catalog.revision,retryAfter:null,failures:0,error:null,available:available?.version??null,latest:newer?.version??null,status,reason};
     // Every successful index replaces the pending decision, so a withdrawn release cannot activate.
     await atomic(root,'pending-release.json',null);await atomic(root,'program-update-state.json',state);
     if(release){const relative=await stageRelease(root,release,envelope,{key,fetchImpl,signal,health});signal?.throwIfAborted();await atomic(root,'pending-release.json',{relative,envelope,sha256:release.sha256,client,checkedAt:now,manual,automatic});state.status='ready';await atomic(root,'program-update-state.json',state);}
-    return {status:state.status,available:state.available};
+    return {status:state.status,available:state.available,latest:state.latest};
   }catch(error){state={...state,checkedAt:now,client,failures:(state.failures??0)+1,status:'offline',error:String(error.message).slice(0,160)};if(error.rejectCandidate&&candidate)state.quarantine=[...(state.quarantine??[]).slice(-19),{client,sha256:candidate.sha256}];state.retryAfter=Math.min(INTERVAL,300000*2**Math.min(7,state.failures-1));await atomic(root,'program-update-state.json',state);return {status:'offline'};}
 }
 export async function activatePending(root,{client,key,stateDir,codexRunning=false,worker=requestWorker,launch=launchWorker,health=offlineHealth,fetchImpl=updateFetch,readClient,now=Date.now(),fault=()=>{}}={}){
@@ -195,8 +209,46 @@ export async function recoverTransaction(root,{stateDir,key,launch=launchWorker,
   if(transaction.wasRunning&&!live)await launch(previous,stateDir,path.join(root,'config.local.json'));
   const state=await json(path.join(root,'program-update-state.json'),{});state.quarantine=[...(state.quarantine??[]).slice(-19),{client:transaction.client,sha256:transaction.sha256}];state.status='recovered';await atomic(root,'program-update-state.json',state);await atomic(root,'pending-release.json',null);await atomic(root,'update-transaction.json',{phase:'recovered'});
 }
+// Recovery for a legacy updater that cannot identify a newer Codex. Only the
+// launch entry changes now; the live controller, worker and active pointer stay put.
+export async function repairBootstrap(root,relative,{client,key,health=offlineHealth}={}){
+  root=await managedRoot(root);key??=await fs.readFile(path.join(root,'updates/program-public-key.pem'),'utf8');
+  const ready=await verifyVersion(root,relative,key);
+  if(!hash(client)||!ready.release.clients.includes(client))throw Error('Repair release is not verified for this Codex');
+  if(!ready.files.includes('bootstrap.ps1'))throw Error('Repair bootstrap missing');
+  await health(ready.directory);
+  const start=path.join(root,'Start.cmd'),backup=path.join(root,'Start.cmd.before-repair'),receipt=path.join(root,'bootstrap-repair.json');
+  for(const file of [start,backup,receipt,start+'.repair-tmp'])await noLinks(root,file);
+  const current=await fs.readFile(start),prior=await json(receipt);
+  if(prior){
+    if(prior.schema!==1||sha256(await fs.readFile(backup))!==prior.originalSha256||![prior.originalSha256,prior.launcherSha256].includes(sha256(current)))throw Error('Repair launcher or backup was modified');
+  }else{
+    const manifest=await json(path.join(root,'SHA256-MANIFEST.json'));
+    if(!manifest||sha256(current)!==manifest['Start.cmd'])throw Error('Original launch entry was modified');
+    try{await fs.writeFile(backup,current,{flag:'wx'});}catch(e){if(e.code!=='EEXIST'||!current.equals(await fs.readFile(backup)))throw e;}
+  }
+  // The old trusted verifier checks every candidate byte on each launch before
+  // executing its newer bootstrap. No bypass of signatures or client eligibility.
+  const code="import fs from 'node:fs/promises';import path from 'node:path';import {pathToFileURL} from 'node:url';import {spawn} from 'node:child_process';const [root,relative,...args]=process.argv.slice(1);try{const m=await import(pathToFileURL(path.resolve(root,'program-updates.mjs')));const key=await fs.readFile(path.join(root,'updates/program-public-key.pem'),'utf8');const v=await m.verifyVersion(root,relative,key);if(args.includes('--verify-bootstrap-only'))console.log(JSON.stringify({verified:true,version:v.release.version}));else{const child=spawn('powershell.exe',['-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',path.join(v.directory,'bootstrap.ps1'),'-RootDir',root,'-Script','start.ps1','-RepairBootstrap'],{stdio:'inherit',windowsHide:true});child.once('error',()=>{process.exitCode=1});child.once('exit',c=>{process.exitCode=c??1})}}catch(e){console.error('TiBo recovery verification failed: '+e.message);process.exitCode=1}";
+  const launcher=`@echo off\r\nsetlocal DisableDelayedExpansion\r\n"%~dp0runtime\\node.exe" --input-type=module -e "${code}" "%~dp0." "${relative}" %*\r\nset "TIBO_BRIDGE_EXIT=%ERRORLEVEL%"\r\nif not "%TIBO_BRIDGE_EXIT%"=="0" if not "%~1"=="--verify-bootstrap-only" pause\r\nexit /b %TIBO_BRIDGE_EXIT%\r\n`;
+  const record={schema:1,relative,version:ready.release.version,client,originalSha256:prior?.originalSha256??sha256(current),launcherSha256:sha256(launcher),preparedAt:new Date().toISOString()};
+  await atomic(root,'bootstrap-repair.json',record);
+  try{await fs.writeFile(start+'.repair-tmp',launcher,{flag:'wx'});}catch(e){if(e.code!=='EEXIST'||sha256(await fs.readFile(start+'.repair-tmp'))!==record.launcherSha256)throw e;}
+  await fs.rename(start+'.repair-tmp',start);
+  return {status:'prepared',version:ready.release.version,activation:'next-safe-start'};
+}
+async function restoreBootstrap(root){
+  const receipt=path.join(root,'bootstrap-repair.json');await noLinks(root,receipt);
+  const record=await json(receipt);if(!record)return;
+  const start=path.join(root,'Start.cmd'),backup=path.join(root,'Start.cmd.before-repair');
+  for(const file of [start,backup])await noLinks(root,file);
+  const original=await fs.readFile(backup),current=await fs.readFile(start);
+  if(record.schema!==1||sha256(original)!==record.originalSha256||![record.originalSha256,record.launcherSha256].includes(sha256(current)))throw Error('Repair launcher cleanup refused: files were modified');
+  await fs.writeFile(start,original);await fs.unlink(backup);await fs.unlink(receipt);
+}
 export async function cleanProgramUpdates(root){
   root=await managedRoot(root);const versions=path.join(root,'versions');await noLinks(root,versions);
+  await restoreBootstrap(root);
   const names=await fs.readdir(versions).catch(e=>{if(e.code==='ENOENT')return [];throw e;});
   for(const name of names){if(!/^\d+\.\d+\.\d+(?:-rc\.\d+)?-[a-f0-9]{12}$/.test(name))continue;
     const directory=path.join(versions,name);let record;try{await noLinks(root,path.join(directory,'version-record.json'));record=await json(path.join(directory,'version-record.json'));}catch{continue;}if(!record)continue;

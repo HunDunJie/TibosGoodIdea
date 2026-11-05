@@ -23,6 +23,7 @@ tests/controller.cjs tests/lifecycle.cjs tests/launcher-arguments.cjs tests/work
 names += ['tests/fixtures/legacy-launchers.json']
 names += ['tests/quota-cache.test.mjs']
 names += ['tests/update-network.test.mjs']
+names += ['tests/rspack-bindings.test.mjs']
 names += ['docs/portable-single-entry-design.md','tests/portable.test.mjs','tests/portable.mjs']
 names += ['docs/program-updates-verification.json']
 names += ['docs/scheduled-shutdown-design.md','tests/shutdown.test.mjs','tests/shutdown-system.mjs','tests/shutdown-bindings.test.mjs']

@@ -19,6 +19,8 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
 (async () => {
   const nativeSource = await fs.readFile(path.join(root,'native-features.js'),'utf8');
   const server = http.createServer((req,res) => {
+    if(req.url==='/assets/runtime-fixture.js'){res.setHeader('Content-Type','text/javascript');return res.end("import * as api from '../initial.js';export function __webpack_require__(id){if(id!=='fixture')throw Error('Unknown fixture module');return api}__webpack_require__.C=chunk=>{window.fixture.chunkInstalled=!!chunk.__webpack_modules__};");}
+    if(req.url==='/assets/async/application.js'){res.setHeader('Content-Type','text/javascript');return res.end('export const __webpack_modules__={};');}
     if (req.url === '/adapter.js') { res.setHeader('Content-Type','text/javascript; charset=utf-8'); return res.end(nativeSource); }
     if (req.url === '/initial.js' || req.url === '/shared.js') { res.setHeader('Content-Type','text/javascript; charset=utf-8'); return res.end(moduleSource); }
     if (req.url === '/index-fixture.js') { res.setHeader('Content-Type','text/javascript; charset=utf-8'); return res.end(''); }
@@ -52,6 +54,13 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
         f.navigation = {navigate:async route => { f.visits.push(route); },navigateToLocalConversation:async id=>f.navigate(id)};
         if (routing === 'memory') Object.assign(f.navigation,{pathname:'/local/start',search:'?tab=activity',hash:'#draft'});
         window.__codexBottomBarFeatureBindings = {initial:'initial.js',shared:'shared.js',scope:'uct',initEvents:'ICn',completionEvent:'ZCn',initComposer:'fpt',composerScope:'MQn',readStorage:'Ntr',navigation:'ZAn',navigateLocal:'tjn',conversationBinding:'b0n',host:'VJn',monitor:{hosts:'hs',clients:'hc',init:['monitorInit']}};
+        if(mode==='rspack'){
+          const p=window.__codexBottomBarFeatureBindings;
+          p.rspack={entry:'runtime-fixture.js',chunk:'async/application.js'};
+          p.references=Object.fromEntries(['uct','ZCn','MQn','Ntr','ZAn','b0n','VJn','hs','hc'].map(key=>[key,{id:'fixture',export:key}]));
+          p.initEvents='__cqbReady';p.initSend=[];p.monitor.init=[];p.navigationMode='native-method';
+          const entry=document.createElement('script');entry.type='module';entry.src='/assets/runtime-fixture.js';document.head.append(entry);
+        }
         const initial=key=>({module:'initial.js',export:key});
         window.__codexBottomBarBindings={profileModule:'initial.js',scope:{module:'shared.js',export:'uct'},openModal:initial('openUsage'),usageModal:initial('usageModal'),turn:initial('turn'),recordReset:initial('recordReset'),decodeConversation:initial('decodeConversation')};
         f.refetches=[];f.updatedAt=Date.now();
@@ -68,6 +77,11 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
       await page.addScriptTag({url:`http://127.0.0.1:${server.address().port}/adapter.js`});
       await page.evaluate(() => window.__cqbNativeFeatures.connect(event => window.fixture.events.push(event)));
     }
+    await setup('rspack','账户','memory','scoped');
+    assert.equal(await page.evaluate(()=>window.fixture.chunkInstalled),true,'Rspack factories register with the existing runtime');
+    assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.connect(event=>window.fixture.events.push(event))),{completion:true,send:true,shutdown:true,reasons:{}},'Rspack bindings retain independently verified capabilities');
+    assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.sendRound()),{sent:2,failed:1,skipped:0},'Rspack draft submission uses native handlers in isolated fixtures');
+    assert.equal((await page.evaluate(()=>window.__cqbNativeFeatures.taskSnapshot())).known,true,'Rspack task snapshots use the native root store');
     await setup('normal','账户','browser','scoped');
     await page.addScriptTag({path:path.join(root,'bottom-bar.js')});
     await page.waitForFunction(()=>window.__codexBottomBar.quotaSample()?.availableResets===2);

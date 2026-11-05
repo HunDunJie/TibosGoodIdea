@@ -79,8 +79,9 @@ const root = path.resolve(__dirname,'..');
     }
     await page.evaluate(() => window.__codexBottomBar.dispose());
     check(await page.locator('#cqb-volume-notice').count() === 0,'Restore removes volume UI');
-    const startupPage=await browser.newPage();await startupPage.goto(pathToFileURL(path.join(root,'preview.html')).href);
-    await startupPage.evaluate(()=>{window.__previewVolume={percent:0.5,muted:true}});
+    const startupPage=await browser.newPage();
+    await startupPage.addInitScript(()=>Object.defineProperty(window,'__previewVolume',{get:()=>({percent:0.5,muted:true}),set(){}}));
+    await startupPage.goto(pathToFileURL(path.join(root,'preview.html')).href);
     await startupPage.waitForFunction(()=>window.__cqbFeatures.status().volume.phase==='checked');
     check(await startupPage.evaluate(()=>document.readyState==='complete'&&window.__cqbFeatures.status().volume.context==='startup'),'Startup check waits for the complete document');
     check((await startupPage.locator('#cqb-volume-notice').innerText()).includes('已静音')&&(await startupPage.locator('#cqb-volume-notice').innerText()).includes('0.5%'),'A new startup warns about muted audio and displays its level');
@@ -90,6 +91,18 @@ const root = path.resolve(__dirname,'..');
       check((await startupPage.locator('#cqb-volume-notice').innerText()).includes(expected)&&(await startupPage.locator('#cqb-volume-notice').innerText()).includes('0.5%'),'Volume notices translate without losing values: '+language);
     }
     await startupPage.close();
+    const unavailablePage=await browser.newPage();await unavailablePage.addInitScript(()=>Object.defineProperty(window,'__previewVolume',{get:()=>null,set(){}}));
+    await unavailablePage.goto(pathToFileURL(path.join(root,'preview.html')).href);
+    await unavailablePage.waitForFunction(()=>window.__cqbFeatures.status().volume.phase==='unavailable');
+    check((await unavailablePage.locator('#cqb-volume-notice').innerText()).includes('无法读取'),'Startup read failures show an explicit notice instead of silently consuming the startup check');
+    await unavailablePage.close();
+    const hiddenPage=await browser.newPage();
+    await hiddenPage.addInitScript(()=>{window.__testVisible=false;Object.defineProperty(document,'visibilityState',{get:()=>window.__testVisible?'visible':'hidden'});});
+    await hiddenPage.goto(pathToFileURL(path.join(root,'preview.html')).href);await hiddenPage.waitForTimeout(2300);
+    check(await hiddenPage.evaluate(()=>!window.__cqbStartupVolumeChecked&&window.__previewCalls.filter(c=>c.method==='volume-status').length===0),'A hidden startup does not consume the volume notice');
+    await hiddenPage.evaluate(()=>{window.__testVisible=true});await hiddenPage.waitForFunction(()=>window.__cqbFeatures.status().volume.phase==='checked');
+    check((await hiddenPage.locator('#cqb-volume-notice').innerText()).includes('50%'),'The startup notice appears when the window becomes visible');
+    await hiddenPage.close();
     console.log(JSON.stringify({passed:true,checks,realVolumeRead,volumeChanged:false,audioPlayed:false}));
   } finally { await browser.close(); }
 })().catch(error => { console.error(error.stack); process.exitCode=1; });

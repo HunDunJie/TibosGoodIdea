@@ -16,11 +16,18 @@ export async function openRendererArchive(filePath) {
       for (const [name, entry] of Object.entries(node.files ?? {})) {
         const full = prefix ? `${prefix}/${name}` : name;
         if (entry.files) walk(entry, full, depth + 1);
-        else if (/^webview\/assets\/[\w.-]+\.js$/.test(full)) entries.set(full.split('/').at(-1), entry);
+        else if (/^webview\/assets\/(?:async\/)?[\w.-]+\.js$/.test(full)) entries.set(full.slice('webview/assets/'.length), entry);
       }
     }
     walk(index);
-    return {names:[...entries.keys()], async read(name) {
+    const html = index.files?.webview?.files?.['index.html'];
+    let entryScripts = [];
+    if (html && !html.unpacked && !html.link && Number.isSafeInteger(html.size) && html.size <= 128 * 1024) {
+      const text = (await readBytes(html.size, base + Number(html.offset))).toString('utf8');
+      entryScripts = [...text.matchAll(/<script\b[^>]*\bsrc=["'](?:\.\/|\/)?assets\/([\w.-]+\.js)["'][^>]*>/gi)].map(m => m[1]);
+      if (entryScripts.length > 16 || entryScripts.some(name => !entries.has(name))) throw Error('Invalid renderer entry points');
+    }
+    return {names:[...entries.keys()], entryScripts, size:name=>entries.get(name)?.size, async read(name) {
       const item = entries.get(name);
       if (!item || item.unpacked || item.link || !Number.isSafeInteger(item.size) || item.size > 20 * 1024 * 1024) throw Error('Renderer asset unavailable');
       return readBytes(item.size, base + Number(item.offset));

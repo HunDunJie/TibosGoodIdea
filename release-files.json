@@ -26,6 +26,7 @@
   "feature-engine.mjs",
   "native-bindings.mjs",
   "feature-bindings.mjs",
+  "rspack-bindings.mjs",
   "controller.mjs",
   "i18n.js",
   "locale-config.mjs",

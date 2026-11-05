@@ -64,6 +64,8 @@ runtime/node.exe scripts/test.mjs quick
 - `work/release/<version>/publication.json` 是机器记录，包含代码提交、资产、CI 和公开索引验证结果，可按需复制为公开发布证据；日志不用逐条粘贴进聊天
 - 发布完成后 `git status -sb` 应干净。实际发布版本、链接、主要变更和重要验收限制写入交付回复
 - 保留 rc.14 及更早安装须手动升级一次的说明。发布操作不重启用户的 Codex，不擅自发送草稿或试听音乐
+- 客户端识别失败必须记录为 `client-unrecognized`，有新版但不在兼容清单时为 `incompatible`，协议/状态格式/隔离条件阻止更新时为 `blocked`；不得解释为 `current`。新打包结构须检查真实入口、原生接口只读验证及旧指纹不变的回归
+- 修复本机旧更新器时，先用当前维护代码的 `checkProgramUpdates` 下载、签名验证并暂存公开版本，再运行 `update-cli.mjs repair-bootstrap --root <安装目录> --relative <已验证版本相对目录> --asar <实际 app.asar>`。该操作只准备 Start.cmd 衔接，不切换活动版本或停止服务。随后执行安装目录的 `Start.cmd --verify-bootstrap-only` 验证真实入口，记录结果；实际切换等待用户完成任务并退出 Codex。不可伪造客户端指纹或越过兼容性验证
 - 发布中断后从相同检查点恢复；CI 真失败就修复后重新测试并使用新版本，若证实为环境瞬态，可审查日志后只重跑失败 CI，不能把重跑当作修复
 - 维护工具自身改动先运行 `python tests/release_workflow_test.py`；此测试只用隔离临时目录和模拟 GitHub，不会发布
 

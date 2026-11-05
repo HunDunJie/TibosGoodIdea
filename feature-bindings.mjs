@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {parse} from './vendor/acorn/acorn.mjs';
 import {openRendererArchive} from './asar-reader.mjs';
+import {readRspackBindings} from './rspack-bindings.mjs';
 
 const literal = n => n?.type === 'Literal' ? n.value : n?.type === 'TemplateLiteral' && !n.expressions.length ? n.quasis[0].value.cooked : undefined;
 const property = n => n?.computed ? literal(n.property ?? n.key) : (n.property ?? n.key)?.name ?? literal(n.key);
@@ -97,6 +98,10 @@ export async function readRendererModules(asarPath) {
   } finally { await archive.close(); }
 }
 export async function readFeatureBindings(asarPath, {catalog = []} = {}) {
+  const archive=await openRendererArchive(asarPath);
+  let legacy;
+  try{legacy=archive.names.some(name=>name.startsWith('app-initial-'));}finally{await archive.close();}
+  if(!legacy)return readRspackBindings(asarPath);
   const {modules:m, fingerprints} = await readRendererModules(asarPath);
   const patch = catalog.find(entry => Object.keys(entry.fingerprints).length === Object.keys(fingerprints).length && Object.entries(fingerprints).every(([name,hash]) => entry.fingerprints[name] === hash));
   const source=m.initial.bytes.toString('utf8'),parsed=indexModule(source);

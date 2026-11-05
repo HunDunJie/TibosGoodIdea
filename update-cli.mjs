@@ -4,7 +4,7 @@ import net from 'node:net';
 import {createHash} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import {defaultStateDir} from './runtime-paths.mjs';
-import {managedRoot,clientFingerprint,checkProgramUpdates,activatePending,resolveActive,recoverTransaction,cleanProgramUpdates} from './program-updates.mjs';
+import {managedRoot,clientFingerprint,checkProgramUpdates,activatePending,resolveActive,recoverTransaction,cleanProgramUpdates,repairBootstrap} from './program-updates.mjs';
 import {initializePortable,migrateLegacy} from './portable-runtime.mjs';
 import {startupUpdates} from './startup-updates.mjs';
 import {execFile} from 'node:child_process';
@@ -38,6 +38,11 @@ try{
     await checked(async signal=>console.log(JSON.stringify(await startupUpdates(root,{client,stateDir,busy:args.includes('--busy'),isBusy:codexBusy,readClient:async()=>await codexBusy()?null:option('--asar')?clientFingerprint(option('--asar')):null,signal}))));
   }
   else if(action==='stop')await stop();
+  else if(action==='repair-bootstrap'){
+    await stop();
+    const client=await clientFingerprint(option('--asar'));
+    await checked(async()=>console.log(JSON.stringify(await repairBootstrap(root,option('--relative'),{client}))));
+  }
   else if(action==='clean'){await stop();await cleanProgramUpdates(root);}
   else if(action==='resolve')console.log(await resolveActive(root));
   else if(action==='activate'){

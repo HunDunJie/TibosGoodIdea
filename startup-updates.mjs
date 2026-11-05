@@ -13,7 +13,8 @@ export async function startupUpdates(root,{stateDir,client,busy=false,isBusy=asy
   const result=await program(root,{client,force:true,automatic:true,signal});
   // A failed fresh check cannot authorize a stale/withdrawn pending decision.
   signal?.throwIfAborted();
-  const activation=busy||await isBusy()?{status:'deferred',reason:'codex-running'}:result.status==='offline'?{status:'deferred',reason:'offline'}:await activate(root,{client,stateDir,readClient});
-  const record={checkedAt:Date.now(),client,clientChanged,adapter:adapters.status,program:result.status,available:result.available??null,activation};
+  const blocked=['offline','client-unrecognized','incompatible','blocked'].includes(result.status);
+  const activation=busy||await isBusy()?{status:'deferred',reason:'codex-running'}:blocked?{status:'deferred',reason:result.status}:await activate(root,{client,stateDir,readClient});
+  const record={checkedAt:Date.now(),client,clientChanged,adapter:adapters.status,program:result.status,available:result.available??null,latest:result.latest??null,activation};
   await saveStateJson(file,record);return record;
 }

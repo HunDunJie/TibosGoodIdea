@@ -30,4 +30,11 @@ test('running Codex and offline checks cannot activate stale code; adapter failu
 }));
 test('automatic release policy includes features but excludes wrong clients, channels and protocol',()=>{const r={version:'2.0.0',channel:'stable',kind:'feature',minimumUpdater:1,stateSchema:1,clients:['a'],sha256:'x'};const options={version:'1.0.0',client:'a',automatic:true};assert.equal(selectRelease({releases:[r]},options),r);for(const patch of [{clients:['b']},{channel:'preview'},{minimumUpdater:999},{stateSchema:2}])assert.equal(selectRelease({releases:[{...r,...patch}]},options),null);});
 test('Codex starting during download defers activation',()=>fixture(async root=>{let called=false;const r=await startupUpdates(root,{stateDir:root,client:'a',busy:false,isBusy:async()=>true,recover:async()=>{},adapter:async()=>({status:'current'}),program:async()=>({status:'ready'}),activate:async()=>{called=true;}});assert.equal(called,false);assert.equal(r.activation.reason,'codex-running');}));
+test('unrecognized and incompatible clients cannot activate a previously staged release',()=>fixture(async root=>{
+ for(const status of ['client-unrecognized','incompatible']){
+   let activated=false;
+   const result=await startupUpdates(root,{stateDir:root,client:null,recover:async()=>{},adapter:async()=>({status:'current'}),program:async()=>({status,latest:'2.0.0'}),activate:async()=>{activated=true;}});
+   assert.equal(activated,false);assert.equal(result.activation.reason,status);assert.equal(result.latest,'2.0.0');
+ }
+}));
 test('portable initialization rejects directory junctions before writing ownership',()=>fixture(async root=>{const real=path.join(root,'real'),alias=path.join(root,'alias');await fs.mkdir(real);await payload(real);await fs.symlink(real,alias,process.platform==='win32'?'junction':'dir');await assert.rejects(initializePortable(alias),/Linked/);assert.equal(await fs.stat(path.join(real,'install-info.json')).catch(()=>null),null);}));

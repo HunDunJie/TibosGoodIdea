@@ -1,19 +1,72 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';import path from 'node:path';import os from 'node:os';import {generateKeyPairSync,sign} from 'node:crypto';
-import {compareVersion,verifyProgramCatalog,selectRelease,checkProgramUpdates,stageRelease,activatePending,resolveActive,recoverTransaction,cleanProgramUpdates} from '../program-updates.mjs';
+import {spawn} from 'node:child_process';import {pathToFileURL} from 'node:url';
+import {compareVersion,verifyProgramCatalog,selectRelease,checkProgramUpdates,stageRelease,activatePending,resolveActive,recoverTransaction,cleanProgramUpdates,repairBootstrap} from '../program-updates.mjs';
 import {sha256,crc32,readPackage,safeRelative,noLinks} from '../update-files.mjs';import {UpdateLease,updateBusy} from '../update-lease.mjs';
 const pair=generateKeyPairSync('ed25519'),key=pair.publicKey.export({type:'spki',format:'pem'}),client='a'.repeat(64),now=1800000000000;
 const envelope=(revision,releases=[])=>{const b=Buffer.from(JSON.stringify({schema:1,productId:'bottom-bar-companion',revision,releases}));return {payload:b.toString('base64'),signature:sign(null,b,pair.privateKey).toString('base64')};};
 // Independent stored ZIP fixture, including local + central headers and the end record.
 function zip(entries){let at=0;const local=[],central=[];for(const [name,value,mode=0] of entries){const n=Buffer.from('TibosGoodIdea/'+name),b=Buffer.from(value),l=Buffer.alloc(30),c=Buffer.alloc(46),crc=crc32(b);l.writeUInt32LE(0x04034b50);l.writeUInt16LE(20,4);l.writeUInt16LE(0x800,6);l.writeUInt32LE(crc,14);l.writeUInt32LE(b.length,18);l.writeUInt32LE(b.length,22);l.writeUInt16LE(n.length,26);c.writeUInt32LE(0x02014b50);c.writeUInt16LE(20,6);c.writeUInt16LE(0x800,8);c.writeUInt32LE(crc,16);c.writeUInt32LE(b.length,20);c.writeUInt32LE(b.length,24);c.writeUInt16LE(n.length,28);c.writeUInt32LE((mode*65536)>>>0,38);c.writeUInt32LE(at,42);local.push(l,n,b);central.push(c,n);at+=l.length+n.length+b.length;}const cd=Buffer.concat(central),end=Buffer.alloc(22);end.writeUInt32LE(0x06054b50);end.writeUInt16LE(entries.length,8);end.writeUInt16LE(entries.length,10);end.writeUInt32LE(cd.length,12);end.writeUInt32LE(at,16);return Buffer.concat([...local,cd,end]);}
 function build(version='0.8.0-rc.16',kind='fix'){
- const files={'product.json':JSON.stringify({productId:'bottom-bar-companion',version}),'package.json':JSON.stringify({version}),'updates/program-public-key.pem':key,'controller.mjs':'// fixture','alarm-worker.mjs':'// fixture','program-updates.mjs':'// fixture','update-cli.mjs':'// fixture'};
+ const files={'product.json':JSON.stringify({productId:'bottom-bar-companion',version}),'package.json':JSON.stringify({version}),'updates/program-public-key.pem':key,'controller.mjs':'// fixture','alarm-worker.mjs':'// fixture','program-updates.mjs':'// fixture','update-cli.mjs':'// fixture','bootstrap.ps1':'# fixture'};
  files['release-files.json']=JSON.stringify([...Object.keys(files),'release-files.json']);const manifest=JSON.stringify(Object.fromEntries(Object.entries(files).map(([n,b])=>[n,sha256(b)])));
  const bytes=zip([...Object.entries(files),['SHA256-MANIFEST.json',manifest]]),release={version,channel:version.includes('-')?'preview':'stable',kind,platform:'win32-x64',minimumUpdater:1,stateSchema:1,clients:[client],url:`https://github.com/HunDunJie/TibosGoodIdea/releases/download/v${version}/TibosGoodIdea-${version}-Windows-x64.zip`,sha256:sha256(bytes),bytes:bytes.length,manifestSha256:sha256(manifest)};
  return {bytes,release,envelope:envelope(2,[release])};
 }
 async function fixture(fn){const root=await fs.mkdtemp(path.join(os.tmpdir(),'tibo-program-test-'));try{await fs.mkdir(path.join(root,'updates'));await fs.writeFile(path.join(root,'install-info.json'),JSON.stringify({productId:'bottom-bar-companion'}));await fs.writeFile(path.join(root,'product.json'),JSON.stringify({productId:'bottom-bar-companion',version:'0.8.0-rc.15'}));await fs.writeFile(path.join(root,'updates/program-public-key.pem'),key);await fn(root);}finally{await fs.rm(root,{recursive:true,force:true});}}
 const health=async()=>{},none=async()=>{throw Object.assign(Error('not running'),{code:'ENOENT'})};
+test('unidentified clients and incompatible newer releases never report current or download',()=>fixture(async root=>{
+ const p=build();let downloads=0;
+ const fetchImpl=async url=>{if(!url.endsWith('program-catalog.json'))downloads++;return new Response(JSON.stringify(p.envelope));};
+ for(const [identity,status]of [[null,'client-unrecognized'],['b'.repeat(64),'incompatible']]){
+   const result=await checkProgramUpdates(root,{client:identity,key,now,health,fetchImpl,force:true,automatic:true});
+   assert.equal(result.status,status);assert.equal(result.latest,p.release.version);assert.equal(result.available,null);
+   assert.equal(JSON.parse(await fs.readFile(path.join(root,'pending-release.json'))),null);
+ }
+ assert.equal(downloads,0);
+ assert.equal((await checkProgramUpdates(root,{client:null,key,now,fetchImpl:async()=>new Response(JSON.stringify(envelope(3))),force:true})).status,'client-unrecognized');
+}));
+test('bootstrap repair preserves live version and original entry, verifies eligibility and restores before cleanup',()=>fixture(async root=>{
+ const original='@echo off\r\necho original\r\n';await fs.writeFile(path.join(root,'Start.cmd'),original);await fs.writeFile(path.join(root,'SHA256-MANIFEST.json'),JSON.stringify({'Start.cmd':sha256(original)}));
+ const p=await prepare(root),pending=JSON.parse(await fs.readFile(path.join(root,'pending-release.json')));
+ await assert.rejects(repairBootstrap(root,pending.relative,{client:'b'.repeat(64),key,health}),/not verified/);
+ assert.equal(await fs.readFile(path.join(root,'Start.cmd'),'utf8'),original);
+ const result=await repairBootstrap(root,pending.relative,{client,key,health});assert.equal(result.activation,'next-safe-start');assert.equal(await resolveActive(root,{key}),root);
+ assert.equal(await fs.readFile(path.join(root,'Start.cmd.before-repair'),'utf8'),original);
+ const launcher=await fs.readFile(path.join(root,'Start.cmd'),'utf8');assert.match(launcher,/verifyVersion/);assert.match(launcher,/-RepairBootstrap/);assert.match(launcher,/--verify-bootstrap-only/);
+ await repairBootstrap(root,pending.relative,{client,key,health});assert.equal(await fs.readFile(path.join(root,'Start.cmd'),'utf8'),launcher);
+ await cleanProgramUpdates(root);assert.equal(await fs.readFile(path.join(root,'Start.cmd'),'utf8'),original);assert.equal(await fs.stat(path.join(root,'bootstrap-repair.json')).catch(()=>null),null);
+}));
+test('bootstrap repair refuses tampered candidates and changed launch entries without overwriting them',()=>fixture(async root=>{
+ const original='original';await fs.writeFile(path.join(root,'Start.cmd'),original);await fs.writeFile(path.join(root,'SHA256-MANIFEST.json'),JSON.stringify({'Start.cmd':sha256(original)}));
+ await prepare(root);const pending=JSON.parse(await fs.readFile(path.join(root,'pending-release.json')));
+ await fs.appendFile(path.join(root,pending.relative,'bootstrap.ps1'),'tamper');await assert.rejects(repairBootstrap(root,pending.relative,{client,key,health}),/checksum/);
+ assert.equal(await fs.stat(path.join(root,'Start.cmd.before-repair')).catch(()=>null),null);
+}));
+test('protocol, state-schema and quarantine blocks remain distinct from current and client incompatibility',()=>fixture(async root=>{
+ for(const [patch,reason]of [[{minimumUpdater:2},'updater-protocol'],[{stateSchema:2},'state-schema'],[{},'quarantined']]){
+   const p=build(),r={...p.release,...patch};
+   await fs.writeFile(path.join(root,'program-update-state.json'),JSON.stringify({quarantine:reason==='quarantined'?[{client,sha256:r.sha256}]:[]}));
+   assert.equal((await checkProgramUpdates(root,{client,key,now,force:true,automatic:true,fetchImpl:async()=>new Response(JSON.stringify(envelope(3,[r])))})).status,'blocked');
+   assert.equal(JSON.parse(await fs.readFile(path.join(root,'program-update-state.json'))).reason,reason);
+ }
+}));
+test('Windows recovery entry verifies signed bytes before launch, including paths with spaces and shell characters',{skip:process.platform!=='win32'},()=>fixture(async temp=>{
+ const root=path.join(temp,'升级 & ! recovery');await fs.mkdir(root);await fs.mkdir(path.join(root,'updates'));await fs.mkdir(path.join(root,'runtime'));
+ for(const name of ['install-info.json','product.json','updates/program-public-key.pem'])await fs.copyFile(path.join(temp,name),path.join(root,name));
+ await fs.copyFile(process.execPath,path.join(root,'runtime/node.exe'));
+ await fs.writeFile(path.join(root,'program-updates.mjs'),`export {verifyVersion} from ${JSON.stringify(pathToFileURL(path.resolve('program-updates.mjs')).href)};`);
+ const original='@echo off\r\n';await fs.writeFile(path.join(root,'Start.cmd'),original);await fs.writeFile(path.join(root,'SHA256-MANIFEST.json'),JSON.stringify({'Start.cmd':sha256(original)}));
+ await prepare(root);const pending=JSON.parse(await fs.readFile(path.join(root,'pending-release.json')));await repairBootstrap(root,pending.relative,{client,key,health});
+ const run=()=>new Promise((resolve,reject)=>{
+   const child=spawn('cmd.exe',['/d','/s','/c',`""${path.join(root,'Start.cmd')}" --verify-bootstrap-only"`],{windowsHide:true,windowsVerbatimArguments:true,stdio:['ignore','pipe','pipe']});
+   let output='';child.stdout.on('data',b=>output+=b);child.stderr.on('data',b=>output+=b);const timer=setTimeout(()=>child.kill(),20000);
+   child.once('error',reject);child.once('close',code=>{clearTimeout(timer);resolve({code,output})});
+ });
+ const good=await run();assert.equal(good.code,0,good.output.slice(-800));assert.match(good.output,/"verified":true/);
+ await fs.appendFile(path.join(root,pending.relative,'bootstrap.ps1'),'tamper');const bad=await run();assert.notEqual(bad.code,0);assert.match(bad.output,/verification failed/);
+ assert.equal(await resolveActive(root,{key}),root);
+}));
 test('forced startup checks bypass cache and automatically stage and activate a feature release',()=>fixture(async root=>{
  const p=build('0.8.0-rc.16','feature');let indexes=0,downloads=0;
  const fetchImpl=async url=>new Response(url.endsWith('program-catalog.json')?(indexes++,JSON.stringify(p.envelope)):(downloads++,p.bytes));

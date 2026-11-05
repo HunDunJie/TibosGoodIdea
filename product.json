@@ -2,12 +2,13 @@
   "productId": "bottom-bar-companion",
   "name": "Tibo’s Good Idea",
   "seller": "由龙见象",
-  "version": "0.8.0-rc.20",
+  "version": "0.8.0-rc.21",
   "stage": "release-candidate",
   "supportedCodexVersions": [
     "26.1023.6621.0",
     "26.1027.3384.0",
-    "26.1027.6604.0"
+    "26.1027.6604.0",
+    "26.1029.7803.0"
   ],
   "testedOS": "Windows 11 x64",
   "languages": [

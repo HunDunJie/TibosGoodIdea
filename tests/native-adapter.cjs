@@ -11,6 +11,7 @@ export function fpt(){if(window.fixture.mode==='broken-send')throw Error('fixtur
 export function Ntr(key,fallback){return window.fixture.storage[key]??fallback}
 export async function tjn(store,id,host){return window.fixture.navigate(id)}
 export function HQn(value){return value.clientThreadId}
+export async function fetchQuota(store,{signal}){signal.throwIfAborted();window.fixture.fetches=(window.fixture.fetches??0)+1;if(window.fixture.fetchError)throw Error('fixture offline');return structuredClone(window.fixture.serverQuota??{...window.fixture.quota,account_id:window.fixture.account,user_id:'user-'+window.fixture.account})}
 export function openUsage(store,modal,options){window.fixture.usageOpens++;window.fixture.usageOptions=options;window.fixture.usageStoreMatches=store.scope===window.fixture.scopes.root}
 export function usageModal(){} export function recordReset(store,record){window.fixture.resetRecords??=[];window.fixture.resetRecords.push(record)} export function decodeConversation(value){return value}
 export const turn='turn';
@@ -58,6 +59,7 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
           const p=window.__codexBottomBarFeatureBindings;
           p.rspack={entry:'runtime-fixture.js',chunk:'async/application.js'};
           p.references=Object.fromEntries(['uct','ZCn','MQn','Ntr','ZAn','b0n','VJn','hs','hc'].map(key=>[key,{id:'fixture',export:key}]));
+          p.quotaFetch='nativeQuota';p.references.nativeQuota={id:'fixture',export:'fetchQuota'};
           p.initEvents='__cqbReady';p.initSend=[];p.monitor.init=[];p.navigationMode='native-method';
           const entry=document.createElement('script');entry.type='module';entry.src='/assets/runtime-fixture.js';document.head.append(entry);
         }
@@ -72,11 +74,14 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
         const client=rootStore.queryClient;
         client.getQueryData=key=>{
           if(key[0]==='vscode')return {accountId:f.account,...(cacheMode==='scoped'?{userId:'user-'+f.account}:{})};
+          if(f.quotaMissing)return undefined;
           const matches=cacheMode==='scoped'?key.length===3&&key[1]==='user-'+f.account&&key[2]===f.account:key.length===1;
           return matches?{...f.quota,account_id:f.quotaAccount??f.account,...(cacheMode==='scoped'?{user_id:f.quotaUser??'user-'+f.account}:{})}:undefined;
         };
         client.getQueryState=key=>client.getQueryData(key)?{dataUpdatedAt:f.updatedAt}:undefined;
         client.refetchQueries=async options=>{f.refetches.push(options)};
+        client.getQueryCache=()=>({find:({queryKey})=>({fetch:async()=>{f.refetches.push({queryKey,exact:true,type:'all'});return {...f.quota,account_id:f.account,user_id:'user-'+f.account}}})});
+        client.setQueryData=(key,raw,options)=>{f.quotaMissing=false;f.quota=raw;f.quotaAccount=raw.account_id;f.quotaUser=raw.user_id;f.updatedAt=options.updatedAt};
       },{mode,profile,routing,cacheMode});
       await page.addScriptTag({path:path.join(root,'quota-cache.js')});
       await page.addScriptTag({url:`http://127.0.0.1:${server.address().port}/adapter.js`});
@@ -115,7 +120,7 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
     assert.notEqual(await page.locator('[data-cqb-slot="fiveHour"] .cqb-time').textContent(),'时间暂不可用');
     assert.equal(await page.evaluate(()=>window.__codexBottomBar.quotaSample().updatedAt===fixture.updatedAt),true,'Reminder sample uses the scoped query timestamp');
     await page.evaluate(async()=>{await window.__codexBottomBar.refreshQuota();await window.__cqbNativeFeatures.refreshQuota()});
-    assert.deepEqual(await page.evaluate(()=>fixture.refetches),[1,2].map(()=>({queryKey:['rate-limit-status','user-A','A'],exact:true,type:'all'})));
+    assert.deepEqual(await page.evaluate(()=>fixture.refetches),[{queryKey:['rate-limit-status','user-A','A'],exact:true,type:'all'}],'Quota readers share the ten-second request limit');
     await page.locator('[data-cqb-slot="resets"]').click();
     await page.waitForFunction(()=>window.fixture.usageOpens===1);
     assert.equal(await page.evaluate(()=>fixture.usageOptions.initialAvailableCount),2,'Native usage dialog reads scoped reset inventory');
@@ -203,6 +208,27 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
       assert.equal((await checkShutdownNetwork({cdp:{call:(method,params)=>networkSession.send(method,params)}})).available,false,'Real client session detects a failed proxy connection');
       assert.ok(rejected>=2,'Both probes use the browser context proxy');
     }finally{await offlineContext.close();await new Promise(resolve=>proxy.close(resolve));}
+    await setup('rspack','账户','browser','scoped');
+    await page.clock.install({time:Date.now()});
+    await page.evaluate(()=>{
+      fixture.updatedAt=Date.now()-60000;
+      fixture.serverQuota={...structuredClone(fixture.quota),account_id:'A',user_id:'user-A'};
+      fixture.serverQuota.rate_limit.primary_window.used_percent=35;
+    });
+    await page.addScriptTag({path:path.join(root,'bottom-bar.js')});
+    await page.waitForFunction(()=>fixture.fetches===1&&document.querySelector('[data-cqb-slot="fiveHour"] .cqb-value').textContent==='65%');
+    await page.evaluate(()=>{fixture.serverQuota.rate_limit.primary_window.used_percent=45});
+    await page.clock.fastForward(30010);
+    await page.waitForFunction(()=>fixture.fetches===2&&document.querySelector('[data-cqb-slot="fiveHour"] .cqb-value').textContent==='55%');
+    await page.clock.fastForward(10001);
+    await page.evaluate(()=>{fixture.serverQuota.rate_limit.primary_window.used_percent=55;window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('focus'))});
+    await page.waitForFunction(()=>fixture.fetches===3&&document.querySelector('[data-cqb-slot="fiveHour"] .cqb-value').textContent==='45%');
+    await page.clock.fastForward(10001);
+    await page.evaluate(async()=>{fixture.quotaMissing=true;window.__codexBottomBar.refresh();await window.__codexBottomBar.refreshQuota()});
+    assert.equal(await page.evaluate(()=>fixture.fetches),4,'An empty cache refreshes without requiring a complete five-hour quota sample');
+    assert.equal(await page.evaluate(()=>fixture.refetches.length),0,'Verified native usage reads bypass disabled query refetching');
+    await page.evaluate(()=>window.__codexBottomBar.dispose());await page.clock.fastForward(60000);
+    assert.equal(await page.evaluate(()=>fixture.fetches),4,'Disposal stops periodic usage requests');
     console.log(JSON.stringify({passed:true,threeNativeProfileLanguages:true,threeDirectUsageLanguages:true,nativeSubmissionDelegation:true,draftAliasDeduplication:true,emptyDraftSkipped:true,changedDraftPreserved:true,failedDraftPreserved:true,accountSwitchStopsRound:true,roundCancellation:true,allHostCompletionSubscription:true,memoryRouterRestored:true,shellRouteRejected:true,emptyRoundDidNotNavigate:true,realDraftsSent:false}));
   } finally { await browser.close(); server.close(); }
 })().catch(error => { console.error(error.stack); process.exitCode=1; });

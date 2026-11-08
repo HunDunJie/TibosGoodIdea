@@ -5,7 +5,7 @@
   else api.install(window);
 })(function () {
   'use strict';
-  const VERSION = '0.8.0-rc.23';
+  const VERSION = '0.8.0-rc.24';
   const localeAPI = typeof module === 'object' && module.exports ? require('./i18n.js') : null;
   const TIME_MODES_KEY = 'codex-bottom-bar.time-modes.v1';
   const NUMBER = value => typeof value === 'number' && Number.isFinite(value);
@@ -96,7 +96,7 @@
     let rail = null, frame = null, backdrop = null, metrics = null, active = true;
     let lastSnapshot = null, reading = false, scanToken = 0, queued = false, usageClient = null, openingUsage = false;
     let nativeInterface = null, lastUsagePath = null, transitionStyle = null;
-    let mutationObserver, resizeObserver, scanTimer, refreshTimer, minuteTimer;
+    let mutationObserver, resizeObserver, scanTimer, refreshTimer, minuteTimer, quotaTimer, initialQuotaTimer;
     let tooltip = null, tooltipTarget = null, pendingTooltip = null, tooltipTimer = null, focusedTooltip = null, hoveredTooltip = null;
     function hideTooltip() {
       win.clearTimeout(tooltipTimer); tooltipTimer = null; pendingTooltip = null;
@@ -172,6 +172,7 @@
       if (active) minuteTimer = win.setTimeout(() => { render(lastSnapshot); scheduleMinute(); },60000-win.Date.now()%60000);
     }
     function refreshTimeDisplay() { if (active) { render(lastSnapshot); scheduleMinute(); } }
+    function quotaForeground() {refreshTimeDisplay();if(doc.visibilityState==='visible')void win.__codexBottomBar?.refreshQuota?.().catch(()=>{});}
     function storageChanged(event) {
       if (event.key === TIME_MODES_KEY || event.key === null) { timeModes = loadTimeModes(); refreshTimeDisplay(); }
     }
@@ -530,7 +531,7 @@
     win.__codexBottomBar = {
       version: VERSION,
       setTooltip,
-      status() { return {version: VERSION, attached: !!rail?.isConnected, layout: doc.documentElement.getAttribute('data-cqb'), dataAvailable: lastSnapshot !== null, fiveHourLimit:lastSnapshot?.fiveHourLimit ?? 'unknown', lastUsagePath,timeModes:{...timeModes},language:locale,timeZone}; },
+      status() { return {version: VERSION, attached: !!rail?.isConnected, layout: doc.documentElement.getAttribute('data-cqb'), dataAvailable: lastSnapshot !== null, fiveHourLimit:lastSnapshot?.fiveHourLimit ?? 'unknown', lastUsagePath,quotaRefresh:win.__cqbQuotaCache.status(usageClient),timeModes:{...timeModes},language:locale,timeZone}; },
       refresh: scan,
       quotaSample() {
         const usage = win.__cqbQuotaCache.read(usageClient);
@@ -541,10 +542,13 @@
         }
         return {accountId:usage.accountId,fiveHourLimit:snapshot.fiveHourLimit,resetsAt:five?.resetsAt ?? null,remaining:five?.remaining ?? null,availableResets:snapshot.resets,updatedAt:usage.updatedAt};
       },
-      async refreshQuota() {
-        const usage = win.__cqbQuotaCache.read(usageClient);
-        if (this.quotaSample() && typeof usage?.client.refetchQueries === 'function')
-          await usage.client.refetchQueries({queryKey:usage.queryKey,exact:true,type:'all'});
+      async refreshQuota({force=true}={}) {
+        if(!active)return {status:'unavailable'};
+        if(!usageClient)scan();
+        const result=win.__cqbNativeFeatures?.refreshQuota
+          ? await win.__cqbNativeFeatures.refreshQuota({client:usageClient,force})
+          : await win.__cqbQuotaCache.refresh(usageClient,{force});
+        if(active)scan();return result;
       },
       dispose() {
         win.__cqbFeatures?.dispose?.();
@@ -552,7 +556,8 @@
         win.removeEventListener('cqb-languagechange',languageChanged);
         active = false; scanToken++; mutationObserver?.disconnect(); resizeObserver?.disconnect();
         win.clearInterval(scanTimer); win.clearInterval(refreshTimer);
-        win.clearTimeout(minuteTimer); doc.removeEventListener('visibilitychange',refreshTimeDisplay); win.removeEventListener('focus',refreshTimeDisplay); win.removeEventListener('storage',storageChanged);
+        win.clearInterval(quotaTimer);win.clearTimeout(initialQuotaTimer);win.__cqbQuotaCache.cancel(usageClient);
+        win.clearTimeout(minuteTimer); doc.removeEventListener('visibilitychange',quotaForeground); win.removeEventListener('focus',quotaForeground); win.removeEventListener('storage',storageChanged);
         doc.removeEventListener('pointerover',tooltipOver); doc.removeEventListener('pointerout',tooltipOut); doc.removeEventListener('focusin',tooltipFocus); doc.removeEventListener('focusout',tooltipFocusOut);
         doc.removeEventListener('pointerdown',tooltipPointerDown,true); doc.removeEventListener('keydown',tooltipKey,true); doc.removeEventListener('scroll',tooltipScroll,true); doc.removeEventListener('visibilitychange',tooltipVisibility); win.removeEventListener('blur',tooltipBlur); win.removeEventListener('resize',hideTooltip);
         doc.removeEventListener('keydown', keyHandler, true); win.removeEventListener('resize', scheduleLayout);
@@ -567,12 +572,14 @@
     mutationObserver = new win.MutationObserver(() => { if (!rail?.isConnected || !metrics?.isConnected || !backdrop?.isConnected) attach(); });
     mutationObserver.observe(doc.documentElement, {childList: true, subtree: true});
     doc.addEventListener('keydown', keyHandler, true); win.addEventListener('resize', scheduleLayout);
-    doc.addEventListener('visibilitychange',refreshTimeDisplay); win.addEventListener('focus',refreshTimeDisplay); win.addEventListener('storage',storageChanged);
+    doc.addEventListener('visibilitychange',quotaForeground); win.addEventListener('focus',quotaForeground); win.addEventListener('storage',storageChanged);
     doc.addEventListener('pointerover',tooltipOver); doc.addEventListener('pointerout',tooltipOut); doc.addEventListener('focusin',tooltipFocus); doc.addEventListener('focusout',tooltipFocusOut);
     doc.addEventListener('pointerdown',tooltipPointerDown,true); doc.addEventListener('keydown',tooltipKey,true); doc.addEventListener('scroll',tooltipScroll,true); doc.addEventListener('visibilitychange',tooltipVisibility); win.addEventListener('blur',tooltipBlur); win.addEventListener('resize',hideTooltip);
     win.addEventListener('cqb-languagechange',languageChanged);
     scanTimer = win.setInterval(scan, 5000); refreshTimer = win.setInterval(attach, 2000);
     attach(); scheduleMinute();
+    const refreshQuota=()=>void win.__codexBottomBar?.refreshQuota?.({force:false}).catch(()=>{});
+    quotaTimer=win.setInterval(refreshQuota,30000);initialQuotaTimer=win.setTimeout(refreshQuota,0);
   }
   return {VERSION, normalize, resetDate, countdown, creditBalance, creditText, TIME_MODES_KEY, timestamp, install};
 });

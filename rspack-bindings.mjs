@@ -27,7 +27,7 @@ export function discoverRspackBindings(source,{entry,chunk,composerSource=source
   for(const p of declaration.init.properties){
     const fn=p.value,id=String(property(p));
     if(fn?.type!=='FunctionExpression'||modules.has(id))throw Error('Ambiguous Rspack factory');
-    const m={id,exports:new Map(),imports:new Map(),defs:[],source:source.slice(p.start,p.end),require:fn.params[2]?.name??null};
+    const m={id,exports:new Map(),imports:new Map(),defs:[],body:fn.body,functions:fn.body.body.filter(n=>n.type==='FunctionDeclaration'),source:source.slice(p.start,p.end),require:fn.params[2]?.name??null};
     for(const n of fn.body.body){
       if(n.type==='VariableDeclaration')for(const d of n.declarations)if(d.id.type==='Identifier'&&d.init){
         m.defs.push(d);
@@ -60,6 +60,14 @@ export function discoverRspackBindings(source,{entry,chunk,composerSource=source
   const navigation=one(calls.filter(d=>objectKeys(d.node.arguments[1],['navigate','navigateToLocalConversation','prepareNavigation'])));
   const rootKeys=[event,binding,navigation].filter(Boolean).map(d=>JSON.stringify(reference(d.m,d.node.arguments[0])));
   const root=rootKeys.length>=2&&new Set(rootKeys).size===1?add(JSON.parse(rootKeys[0])):null;
+  const mountedNavigation=[];
+  if(root&&!navigation)for(const m of modules.values())visit(m.body,n=>{
+    if(n.type!=='CallExpression'||n.callee.type!=='MemberExpression'||property(n.callee)!=='set'||!objectKeys(n.arguments[1],['navigate','navigateToLocalConversation','prepareNavigation']))return;
+    const stores=[];
+    visit(m.body,d=>{if(d.type==='VariableDeclarator'&&d.id.name===n.callee.object.name&&d.init?.type==='CallExpression')stores.push(reference(m,d.init.arguments[0]));});
+    if(stores.length===1&&JSON.stringify(stores[0])===rootKeys[0]){const ref=reference(m,n.arguments[0]);if(ref)mountedNavigation.push(ref);}
+  });
+  const navigationKey=key(navigation)??add(one([...new Map(mountedNavigation.map(ref=>[JSON.stringify(ref),ref])).values()]));
   const host=one(calls.filter(d=>{
     const arrow=d.node.arguments[1],body=arrow?.body,last=body?.type==='BlockStatement'?body.body.at(-1)?.argument:body;
     return JSON.stringify(reference(d.m,d.node.arguments[0]))===rootKeys[0]&&last?.type==='LogicalExpression'&&literal(last.right)==='local'&&method(d.node,'has')&&method(d.node,'values')&&method(d.node,'next');
@@ -80,9 +88,14 @@ export function discoverRspackBindings(source,{entry,chunk,composerSource=source
   });
   const hosts=one([...new Set(hostRefs)].filter(Boolean));
   const monitor=root&&clients&&hosts&&['getWorkInProgress','getCachedThreadIds','getLoadedConversationHistory','sendRequest'].every(name=>source.includes(name+'(')||source.includes('get '+name+'('))?{clients:key(clients),hosts,init:[]}:null;
-  const completion=!!(root&&event),send=!!(root&&composer&&binding&&navigation&&host&&readStorage&&['handleSubmit','submitDisabled','isResponseInProgress','focusComposerAfterSubmit','onAccepted'].every(name=>composerSource.includes(name)));
+  const quotaReaders=[];
+  for(const m of modules.values()){
+    const reads=m.functions.filter(f=>has(f,n=>n.type==='CallExpression'&&property(n.callee)==='safeGet'&&literal(n.arguments[0])==='/wham/usage'));
+    for(const f of m.functions)if(m.exports.has(f.id.name)&&has(f,n=>n.type==='CallExpression'&&reads.some(read=>read.id.name===n.callee.name)&&n.arguments[0]?.name===f.params[0]?.name&&objectKeys(n.arguments[1],['expectedIdentity'])))quotaReaders.push({m,name:f.id.name});
+  }
+  const completion=!!(root&&event),send=!!(root&&composer&&binding&&navigationKey&&host&&readStorage&&['handleSubmit','submitDisabled','isResponseInProgress','focusComposerAfterSubmit','onAccepted'].every(name=>composerSource.includes(name)));
   return {schema:2,discovery:'rspack-syntax',rspack:{entry,chunk},references,initial:chunk,shared:chunk,scope:root,
-    initEvents:'__cqbReady',completionEvent:key(event),composerScope:key(composer),initSend:[],readStorage,navigation:key(navigation),conversationBinding:key(binding),host:key(host),navigationMode:'native-method',monitor,
+    initEvents:'__cqbReady',completionEvent:key(event),composerScope:key(composer),initSend:[],readStorage,navigation:navigationKey,conversationBinding:key(binding),host:key(host),navigationMode:'native-method',monitor,quotaFetch:key(one(quotaReaders)),
     capabilities:{completion,send,shutdown:!!monitor},reasons:{completion:completion?null:'completion-interface-unverified',send:send?null:'draft-interface-unverified'}};
 }
 

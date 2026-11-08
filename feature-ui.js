@@ -239,6 +239,9 @@
       const waitingSendTime=state?.send?.phase === 'armed' && !Number.isFinite(target);
       if ((Number.isFinite(target) && Date.now() >= target || waitingSendTime || state?.refresh?.enabled && !state.refresh.alarm) && Date.now()-lastRefetch > 10000) {
         lastRefetch = Date.now(); await win.__codexBottomBar?.refreshQuota?.().catch(() => {});
+        if(!active||generation!==operation)return;
+        const refreshed=win.__codexBottomBar?.quotaSample?.();
+        if(refreshed)state=await call('observe',refreshed);
       }
       if (capabilities.send && state?.send?.phase === 'armed' && Number.isFinite(state.send.target) && Date.now() >= state.send.target) {
         const claim = await call('claim-send');

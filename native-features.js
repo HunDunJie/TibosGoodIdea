@@ -197,7 +197,14 @@
         return {known:true,busy,localSafe};
       }catch{return {known:false,busy:false,localSafe:false};}
     },
-    async refreshQuota() { const value = identity(); if (value) await value.client.refetchQueries({queryKey:value.queryKey,exact:true,type:'all'}); },
+    async refreshQuota({client,force=true}={}) {
+      try {await init();} catch(error) {if(client)return win.__cqbQuotaCache.refresh(client,{force});throw error;}
+      const store=rootStore(),currentClient=store?.queryClient;
+      if(client&&currentClient&&client!==currentClient)return {status:'account-changed'};
+      const fetchNative=store&&api.p.quotaFetch&&typeof api.initial[api.p.quotaFetch]==='function'
+        ? ({signal})=>api.initial[api.p.quotaFetch](store,{cause:'usage_settings',signal}) : undefined;
+      return win.__cqbQuotaCache.refresh(currentClient??client,{fetchNative,force});
+    },
     async sendRound({isCurrent = () => true} = {}) {
       await init(); const store = rootStore(), account = identity(store)?.accountId;
       if (!api.support.send) throw new Error(t('客户端功能接口不可用'));

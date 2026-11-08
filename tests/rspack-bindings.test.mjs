@@ -50,6 +50,22 @@ test('changed or ambiguous Rspack contracts disable only the affected verified c
  assert.equal(discoverRspackBindings(source,{...options,composerSource:''}).capabilities.send,false);
  const changedRoot=source.replace("make(a.u,{navigate:","make(a.other,{navigate:");assert.deepEqual(discoverRspackBindings(changedRoot,options).capabilities,{completion:false,send:false,shutdown:false});
 });
+test('mounted native navigation resolves an imported atom only for the verified root store',()=>{
+ const changed=source.replace("let atom=make(a.u,{navigate:noop,navigateToLocalConversation:noop,prepareNavigation:noop});","let atom={};function mount(){let store=useStore(a.u);store.set(a.navigation,{navigate:noop,navigateToLocalConversation:noop,prepareNavigation:noop})}");
+ assert.equal(discoverRspackBindings(changed,options).navigation,'root:navigation');
+ assert.equal(discoverRspackBindings(changed,options).capabilities.send,true);
+ assert.equal(discoverRspackBindings(changed.replace('useStore(a.u)','useStore(a.other)'),options).capabilities.send,false);
+ const duplicate=changed.replace('store.set(a.navigation,','store.set(a.other, {navigate:noop,navigateToLocalConversation:noop,prepareNavigation:noop});store.set(a.navigation,');
+ assert.equal(discoverRspackBindings(duplicate,options).capabilities.send,false);
+});
+test('quota reader follows the exported native wrapper and rejects unrelated or ambiguous readers',()=>{
+ const quota=`quota(e,t,r){function native(store,options){return client.CodexRequest.safeGet('/wham/usage',options)}function fetch(store,options){return native(store,{...options,expectedIdentity:identity(store)})}r.d(t,{}, {fetch})}`;
+ const s=source.slice(0,-2)+','+quota+'};';
+ assert.equal(discoverRspackBindings(s,options).quotaFetch,'quota:fetch');
+ assert.equal(discoverRspackBindings(s.replace('/wham/usage','/other'),options).quotaFetch,null);
+ assert.equal(discoverRspackBindings(s.replace('expectedIdentity','unrelated'),options).quotaFetch,null);
+ assert.equal(discoverRspackBindings(source.slice(0,-2)+','+quota+','+quota.replace('quota(e','other(e')+'};',options).quotaFetch,null);
+});
 test('new archives use HTML entry points for fingerprints and resolve nested application chunks',()=>fixture(modern,async asar=>{
  const b=await readFeatureBindings(asar);assert.deepEqual(b.capabilities,{completion:true,send:true,shutdown:true});assert.equal(b.rspack.entry,'runtime.hash.js');assert.equal(b.rspack.chunk,'async/main.hash.js');
  assert.match(await clientFingerprint(asar),/^[a-f0-9]{64}$/);

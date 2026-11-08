@@ -5,7 +5,7 @@
   else api.install(window);
 })(function () {
   'use strict';
-  const VERSION = '0.8.0-rc.22';
+  const VERSION = '0.8.0-rc.23';
   const localeAPI = typeof module === 'object' && module.exports ? require('./i18n.js') : null;
   const TIME_MODES_KEY = 'codex-bottom-bar.time-modes.v1';
   const NUMBER = value => typeof value === 'number' && Number.isFinite(value);
@@ -295,12 +295,20 @@
       const bindings = win.__codexBottomBarBindings;
       if (!bindings) return false;
       if (!nativeInterface) nativeInterface = (async () => {
-        const entry = [...doc.scripts].find(node => node.src && /index-[^/]+\.js(?:\?|$)/.test(node.src));
+        const entry = [...doc.scripts].find(node => node.src && (bindings.rspack ? new win.URL(node.src).pathname.endsWith('/assets/'+bindings.rspack.entry) : /index-[^/]+\.js(?:\?|$)/.test(node.src)));
         if (!entry) return null;
         const base = new win.URL('.', entry.src);
-        // Importing the existing native module initializes its API without mounting a menu.
-        await import(new win.URL(bindings.profileModule, base).href);
-        const load = async binding => (await import(new win.URL(binding.module, base).href))[binding.export];
+        // Use the client's loading group so its dependencies and lazy modal keep native behavior.
+        let load;
+        if (bindings.rspack) {
+          const runtime = await import(entry.src), require = runtime.__webpack_require__;
+          if (typeof require !== 'function' || typeof require.e !== 'function') return null;
+          await Promise.all(bindings.rspack.chunks.map(id => require.e(id)));
+          load = async binding => require(binding.id)[binding.export];
+        } else {
+          await import(new win.URL(bindings.profileModule, base).href);
+          load = async binding => (await import(new win.URL(binding.module, base).href))[binding.export];
+        }
         const [scope, openModal, usageModal, turn, recordReset, decodeConversation] = await Promise.all([
           load(bindings.scope), load(bindings.openModal), load(bindings.usageModal),
           load(bindings.turn), load(bindings.recordReset), load(bindings.decodeConversation),
@@ -315,10 +323,13 @@
       let fiber = key ? trigger[key] : null, store = null;
       for (let depth = 0; fiber && depth < 70 && !store; depth++, fiber = fiber.return) {
         let hook = fiber.memoizedState;
-        for (let count = 0; hook && count < 180; count++, hook = hook.next) {
-          const value = hook.memoizedState?.current;
-          if (value?.scope === api.scope && typeof value.get === 'function' && typeof value.set === 'function' && typeof value.watch === 'function') { store = value; break; }
+        for (let count = 0; hook && !store && count < 180; count++, hook = hook.next) {
+          for (const value of [hook.memoizedState?.current, hook.memoizedState]) {
+            if (value?.scope === api.scope && typeof value.get === 'function' && typeof value.set === 'function' && typeof value.watch === 'function') { store = value; break; }
+          }
         }
+        const value = fiber.memoizedProps?.value;
+        if (!store && value?.scope === api.scope && typeof value.get === 'function' && typeof value.set === 'function' && typeof value.watch === 'function') store = value;
       }
       if (!store) return false;
       const raw = win.__cqbQuotaCache.read(store.queryClient)?.raw;

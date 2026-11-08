@@ -11,15 +11,15 @@ export function fpt(){if(window.fixture.mode==='broken-send')throw Error('fixtur
 export function Ntr(key,fallback){return window.fixture.storage[key]??fallback}
 export async function tjn(store,id,host){return window.fixture.navigate(id)}
 export function HQn(value){return value.clientThreadId}
-export function openUsage(store,modal,options){window.fixture.usageOpens++;window.fixture.usageOptions=options}
-export function usageModal(){} export function recordReset(){} export function decodeConversation(value){return value}
+export function openUsage(store,modal,options){window.fixture.usageOpens++;window.fixture.usageOptions=options;window.fixture.usageStoreMatches=store.scope===window.fixture.scopes.root}
+export function usageModal(){} export function recordReset(store,record){window.fixture.resetRecords??=[];window.fixture.resetRecords.push(record)} export function decodeConversation(value){return value}
 export const turn='turn';
 export const hs='hosts',hc='clients';export function monitorInit(){}
 `;
 (async () => {
   const nativeSource = await fs.readFile(path.join(root,'native-features.js'),'utf8');
   const server = http.createServer((req,res) => {
-    if(req.url==='/assets/runtime-fixture.js'){res.setHeader('Content-Type','text/javascript');return res.end("import * as api from '../initial.js';export function __webpack_require__(id){if(id!=='fixture')throw Error('Unknown fixture module');return api}__webpack_require__.C=chunk=>{window.fixture.chunkInstalled=!!chunk.__webpack_modules__};");}
+    if(req.url==='/assets/runtime-fixture.js'){res.setHeader('Content-Type','text/javascript');return res.end("import * as api from '../initial.js';export function __webpack_require__(id){if(id!=='fixture')throw Error('Unknown fixture module');return api}__webpack_require__.C=chunk=>{window.fixture.chunkInstalled=!!chunk.__webpack_modules__};__webpack_require__.e=async id=>{window.fixture.usageChunks??=[];window.fixture.usageChunks.push(id)};");}
     if(req.url==='/assets/async/application.js'){res.setHeader('Content-Type','text/javascript');return res.end('export const __webpack_modules__={};');}
     if (req.url === '/adapter.js') { res.setHeader('Content-Type','text/javascript; charset=utf-8'); return res.end(nativeSource); }
     if (req.url === '/initial.js' || req.url === '/shared.js') { res.setHeader('Content-Type','text/javascript; charset=utf-8'); return res.end(moduleSource); }
@@ -63,6 +63,11 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
         }
         const initial=key=>({module:'initial.js',export:key});
         window.__codexBottomBarBindings={profileModule:'initial.js',scope:{module:'shared.js',export:'uct'},openModal:initial('openUsage'),usageModal:initial('usageModal'),turn:initial('turn'),recordReset:initial('recordReset'),decodeConversation:initial('decodeConversation')};
+        if(mode==='rspack'){
+          const ref=key=>({id:'fixture',export:key});
+          window.__codexBottomBarBindings={rspack:{entry:'runtime-fixture.js',chunks:[12,34]},scope:ref('uct'),openModal:ref('openUsage'),usageModal:ref('usageModal'),turn:ref('turn'),recordReset:ref('recordReset'),decodeConversation:ref('decodeConversation')};
+          document.querySelector('script[src="/index-fixture.js"]').remove();
+        }
         f.refetches=[];f.updatedAt=Date.now();
         const client=rootStore.queryClient;
         client.getQueryData=key=>{
@@ -82,6 +87,25 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
     assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.connect(event=>window.fixture.events.push(event))),{completion:true,send:true,shutdown:true,reasons:{}},'Rspack bindings retain independently verified capabilities');
     assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.sendRound()),{sent:2,failed:1,skipped:0},'Rspack draft submission uses native handlers in isolated fixtures');
     assert.equal((await page.evaluate(()=>window.__cqbNativeFeatures.taskSnapshot())).known,true,'Rspack task snapshots use the native root store');
+    for(const profile of ['账户','Profile','プロフィール'])for(const route of ['/local/current%20chat','/remote/current%20chat','/hotkey-window/thread/current%20chat','/start']){
+      await setup('rspack',profile,'browser','scoped');
+      await page.evaluate(({route,profile})=>{
+        history.replaceState(null,'',route);fixture.lastEvent='current-turn';
+        const avatar=document.querySelector('nav button'),fiber=avatar[Object.keys(avatar).find(key=>key.startsWith('__reactFiber$'))];
+        if(profile==='Profile')fiber.memoizedState.memoizedState=fiber.memoizedState.memoizedState.current;
+        if(profile==='プロフィール'){fiber.memoizedProps={value:fiber.memoizedState.memoizedState.current};fiber.memoizedState=null;}
+      },{route,profile});
+      await page.addScriptTag({path:path.join(root,'bottom-bar.js')});
+      await page.waitForFunction(()=>window.__codexBottomBar.quotaSample()?.availableResets===2);
+      await page.locator('[data-cqb-slot="resets"]').click();
+      await page.waitForFunction(()=>fixture.usageOpens===1);
+      assert.equal(await page.evaluate(()=>window.__codexBottomBar.status().lastUsagePath),'direct','Numbered modules open Usage directly in '+profile+' '+route);
+      assert.deepEqual(await page.evaluate(()=>fixture.usageChunks),[12,34],'Loads the native dependency group');
+      assert.equal(await page.evaluate(()=>fixture.usageStoreMatches&&fixture.usageOptions.defaultResetCreditsOpen&&fixture.usageOptions.initialAvailableCount===2&&!fixture.usageOptions.isRateLimitReached),true);
+      assert.equal(await page.locator('[role="menu"]').count(),0,'Direct opening does not mount the profile menu');
+      await page.evaluate(()=>fixture.usageOptions.onResetComplete());
+      assert.deepEqual(await page.evaluate(()=>fixture.resetRecords??[]),route==='/start'?[]:[{accountId:'A',conversationId:'current chat',turnId:'current-turn'}],'Preserves reset completion context');
+    }
     await setup('normal','账户','browser','scoped');
     await page.addScriptTag({path:path.join(root,'bottom-bar.js')});
     await page.waitForFunction(()=>window.__codexBottomBar.quotaSample()?.availableResets===2);

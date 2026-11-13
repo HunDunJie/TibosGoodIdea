@@ -65,7 +65,7 @@
     else if (feature === 'send') text = ({off:t('已关闭'),armed:t('等待刷新'),running:t('发送中'),done:t('完成 {sent} / 跳过 {skipped}',{sent:item.sent ?? 0,skipped:(item.failed ?? 0)+(item.skipped ?? 0)}),interrupted:t('发送中断'),cancelled:t('已取消'),expired:t('已过期')})[item.phase] ?? t('已关闭');
     else if (feature === 'completion') text = item.phase === 'ringing' ? t('播放中') : item.enabled ? capabilities.completion ? t('监听中') : t('等待连接') : t('已关闭');
     else text = item.phase === 'ringing' ? t('响铃中') : !item.enabled ? t('已关闭') : item.alarm ? t('已安排') : t('等刷新时间');
-    if (item.error) text = feature === 'send' ? text : t('需处理');
+    if (item.error) text = t('需处理');
     if (feature === 'send' && localErrors.send) text = t('未开启');
     const error=localErrors[feature] ?? item.error ?? (feature!=='refresh' && connectedNative && !capabilities[feature] ? capabilities.reasons?.[feature] : null);
     return {text,enabled:feature === 'send' ? ['armed','running'].includes(item.phase) : !!item.enabled,error:error ? t(error) : null};
@@ -194,6 +194,7 @@
         try {await connectNative();} catch(e) {nativeError=e.message;}
       }
       if (!active) return;
+      if(enabled&&feature==='send'&&nativeAdapter?.validateSend){const check=await nativeAdapter.validateSend();capabilities.send=check.available;if(!check.available)throw new Error(check.reason);}
       if (enabled && feature !== 'refresh' && !capabilities[feature]) throw new Error(capabilities.reasons?.[feature] || nativeError || '尚未连接到当前客户端的任务与草稿接口，请稍后重试');
       state = await call('toggle',{feature,enabled}); connected = true;
       delete localErrors[feature];
@@ -268,7 +269,7 @@
   for (const name of events) doc.addEventListener(name,interaction,{capture:true,passive:true});
   const observer = new MutationObserver(()=>{attach();positionVolumeNotice();}); observer.observe(doc.documentElement,{childList:true,subtree:true});
   const timer = setInterval(() => void sync(),2000);
-  win.__cqbFeatures = {status:() => ({connected,capabilities,state,volume:volumeCheck}),dispose() {
+  win.__cqbFeatures = {status:() => ({connected,capabilities,state,volume:volumeCheck,native:nativeAdapter?.diagnostics?.()}),dispose() {
     active = false; win.removeEventListener('cqb-languagechange',languageChanged);win.removeEventListener('resize',volumeLayoutChanged);doc.removeEventListener('scroll',volumeLayoutChanged,true); volumeGeneration++; clearVolumeNotice(); clearTimeout(startupVolumeTimer); clearInterval(timer); observer.disconnect(); controls?.remove(); doc.getElementById('cqb-feature-message')?.remove();
     nativeAdapter?.dispose?.(); for (const name of events) doc.removeEventListener(name,interaction,true);
     for (const item of pending.values()) { clearTimeout(item.timer); item.reject(new Error(t('底栏已恢复'))); } pending.clear(); delete win.__cqbBridgeReply;

@@ -75,7 +75,7 @@ if(Test-Path -LiteralPath (Join-Path $target 'update-cli.mjs')){
   & (Join-Path $target 'runtime\node.exe') (Join-Path $target 'update-cli.mjs') clean --root $target
   if($LASTEXITCODE -ne 0){throw 'Cannot safely remove updated program files'}
 }
-foreach($name in $owned){$file=Join-Path $target $name;if(Test-Path -LiteralPath $file -PathType Leaf){Remove-Item -LiteralPath $file -Force}}
+foreach($name in $owned){$file=Join-Path $target $name;Remove-CqbOwnedFile $file}
 $directories=@($owned|ForEach-Object{
   $directory=Split-Path -Parent (Join-Path $target $_)
   while($directory -and $directory.StartsWith($target+'\',[StringComparison]::OrdinalIgnoreCase)){

@@ -18,6 +18,17 @@ const method=(node,value)=>has(node,n=>n.type==='MemberExpression'&&property(n)=
 const objectKeys=(node,keys)=>node?.type==='ObjectExpression'&&keys.every(key=>node.properties.some(p=>property(p)===key));
 const unwrap=n=>n?.type==='SequenceExpression'?n.expressions.at(-1):n;
 
+export function discoverComposerContracts(source){
+  const variants=new Set();let ast;
+  try{ast=parse(source,{ecmaVersion:'latest',sourceType:'module'});}catch{return [];}
+  visit(ast,n=>{
+    if(!objectKeys(n,['handleSubmit','submitDisabled']))return;
+    if(objectKeys(n,['inputStatus','viewProps','historyBlocksSubmit','sendBlockReasons']))variants.add('status-view');
+    else if(objectKeys(n,['isResponseInProgress']))variants.add('response-state');
+  });
+  return [...variants].sort();
+}
+
 // Parse module factories and export declarations only. Never evaluate archive code.
 export function discoverRspackBindings(source,{entry,chunk,composerSource=source}){
   const ast=parse(source,{ecmaVersion:'latest',sourceType:'module'});
@@ -93,10 +104,11 @@ export function discoverRspackBindings(source,{entry,chunk,composerSource=source
     const reads=m.functions.filter(f=>has(f,n=>n.type==='CallExpression'&&property(n.callee)==='safeGet'&&literal(n.arguments[0])==='/wham/usage'));
     for(const f of m.functions)if(m.exports.has(f.id.name)&&has(f,n=>n.type==='CallExpression'&&reads.some(read=>read.id.name===n.callee.name)&&n.arguments[0]?.name===f.params[0]?.name&&objectKeys(n.arguments[1],['expectedIdentity'])))quotaReaders.push({m,name:f.id.name});
   }
-  const completion=!!(root&&event),send=!!(root&&composer&&binding&&navigationKey&&host&&readStorage&&['handleSubmit','submitDisabled','isResponseInProgress','focusComposerAfterSubmit','onAccepted'].every(name=>composerSource.includes(name)));
+  const composerContracts=discoverComposerContracts(composerSource);
+  const completion=!!(root&&event),send=!!(root&&composer&&binding&&navigationKey&&host&&readStorage&&composerContracts.length&&['focusComposerAfterSubmit','onAccepted'].every(name=>composerSource.includes(name)));
   return {schema:2,discovery:'rspack-syntax',rspack:{entry,chunk},references,initial:chunk,shared:chunk,scope:root,
     initEvents:'__cqbReady',completionEvent:key(event),composerScope:key(composer),initSend:[],readStorage,navigation:navigationKey,conversationBinding:key(binding),host:key(host),navigationMode:'native-method',monitor,quotaFetch:key(one(quotaReaders)),
-    capabilities:{completion,send,shutdown:!!monitor},reasons:{completion:completion?null:'completion-interface-unverified',send:send?null:'draft-interface-unverified'}};
+    composerContracts,capabilities:{completion,send,shutdown:!!monitor},reasons:{completion:completion?null:'completion-interface-unverified',send:send?null:'draft-interface-unverified'}};
 }
 
 export async function readRspackBindings(asar){
@@ -112,7 +124,7 @@ export async function readRspackBindings(asar){
       if(archive.size(name)<1000)continue;
       const bytes=await archive.read(name);
       if(['composer-prompt-drafts-v2','client-thread-bindings-v1','getWorkInProgress','turn-completed'].every(text=>bytes.includes(text)))candidates.push({name,bytes});
-      if(['handleSubmit','submitDisabled','isResponseInProgress','focusComposerAfterSubmit','onAccepted'].every(text=>bytes.includes(text)))composers.push({name,bytes});
+      if(['handleSubmit','submitDisabled','focusComposerAfterSubmit','onAccepted'].every(text=>bytes.includes(text))&&discoverComposerContracts(bytes.toString('utf8')).length)composers.push({name,bytes});
     }
     const main=one(candidates);if(!main)throw Error('Ambiguous Rspack application chunk');
     const composer=one(composers);

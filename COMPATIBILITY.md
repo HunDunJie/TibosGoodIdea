@@ -1,9 +1,10 @@
 # Compatibility / 兼容性
 
-Version 0.8.0-rc.24 · Windows 11 x64 · Microsoft Store Codex
+Version 0.8.0-rc.25 · Windows 11 x64 · Microsoft Store Codex
 
 ## Current evidence / 当前证据
 
+- Codex 26.1106.6628.0: AST discovery and a read-only isolated adapter verified the status/view submission component against the installed renderer fingerprints. The old response-state component remains covered by fixtures. Unknown/ambiguous live contracts fail explicitly. Reset exports, ongoing-task detection and active usage polling were checked without sending real drafts or consuming resets
 - Codex 26.1103.4239.0: a real native usage GET verified current-account cache updates and reminder-sample synchronization. Read-only checks verified externally mounted navigation methods and the composer scope; task monitoring correctly detected local work. Scheduled submission was tested only with isolated native-handler fixtures
 - Codex 26.1103.4239.0: read-only live checks verified the Rspack native usage/reset loading group, all six API exports and the matching root store. Isolated tests cover three languages, local/remote/hotkey-window chats, reset completion and legacy bindings. The user's working window was not used for a real reset
 - Codex 26.1027.6604.0: the installed client uses user/account-scoped quota queries. Read-only live cache checks confirmed the response format; regression tests cover quota display, reset inventory, refresh queries, native sending and account isolation with both current and legacy cache keys

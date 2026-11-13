@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {discoverRspackBindings} from '../rspack-bindings.mjs';
+import {discoverRspackBindings,discoverComposerContracts} from '../rspack-bindings.mjs';
 import {readFeatureBindings} from '../feature-bindings.mjs';
 import {clientFingerprint} from '../program-updates.mjs';
 import {sha256} from '../update-files.mjs';
@@ -19,7 +19,7 @@ const source=`export const __webpack_modules__={
  hosts(e,t,r){let ids=['local','durable'];r.d(t,{}, {ids})},
  storage(e,t,r){function read(key,fallback){return fallback}r.d(t,{read:()=>read})}
 };`;
-const composer='handleSubmit submitDisabled isResponseInProgress focusComposerAfterSubmit onAccepted';
+const composer='const props={handleSubmit:submit,submitDisabled:false,isResponseInProgress:false};function submit({focusComposerAfterSubmit,onAccepted}){}';
 const options={entry:'runtime.hash.js',chunk:'async/main.hash.js',composerSource:composer};
 async function fixture(files,fn){
   const temp=await fs.mkdtemp(path.join(os.tmpdir(),'tibo-rspack-')),asar=path.join(temp,'fixture.asar');
@@ -49,6 +49,15 @@ test('changed or ambiguous Rspack contracts disable only the affected verified c
  const noBinding=discoverRspackBindings(source.replace('client-thread-bindings-v1','unknown-key'),options);assert.equal(noBinding.capabilities.send,false);assert.equal(noBinding.capabilities.completion,true);
  assert.equal(discoverRspackBindings(source,{...options,composerSource:''}).capabilities.send,false);
  const changedRoot=source.replace("make(a.u,{navigate:","make(a.other,{navigate:");assert.deepEqual(discoverRspackBindings(changedRoot,options).capabilities,{completion:false,send:false,shutdown:false});
+});
+test('composer discovery verifies co-located props instead of scattered names and supports modern contracts',()=>{
+ const modern='const renamed={handleSubmit:send,submitDisabled:false,inputStatus:state,viewProps:view,historyBlocksSubmit:false,sendBlockReasons:[]};function send({focusComposerAfterSubmit,onAccepted}){}';
+ assert.deepEqual(discoverComposerContracts(composer),['response-state']);
+ assert.deepEqual(discoverComposerContracts(modern),['status-view']);
+ assert.deepEqual(discoverComposerContracts('const a={handleSubmit:send};const b={submitDisabled:false,isResponseInProgress:false};'),[]);
+ assert.equal(discoverRspackBindings(source,{...options,composerSource:modern}).capabilities.send,true);
+ assert.equal(discoverRspackBindings(source,{...options,composerSource:'const handleSubmit=1,submitDisabled=2,isResponseInProgress=3,focusComposerAfterSubmit=4,onAccepted=5;'}).capabilities.send,false);
+ assert.equal(discoverRspackBindings(source,{...options,composerSource:modern.replace('viewProps','unknown')}).capabilities.send,false);
 });
 test('mounted native navigation resolves an imported atom only for the verified root store',()=>{
  const changed=source.replace("let atom=make(a.u,{navigate:noop,navigateToLocalConversation:noop,prepareNavigation:noop});","let atom={};function mount(){let store=useStore(a.u);store.set(a.navigation,{navigate:noop,navigateToLocalConversation:noop,prepareNavigation:noop})}");

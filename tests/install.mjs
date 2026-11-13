@@ -167,6 +167,16 @@ try{
   } finally {assert.equal(await lockerExit,0,'The isolated read-lock holder exited');}
   await ps(path.join(broken,'uninstall.ps1'),['-NoShortcut','-StateDir',brokenState,'-BackupDir',path.join(temp,'broken-backup')]);
   check(!await fs.stat(broken).catch(()=>null),'Uninstall can retry after the unavailable endpoint is closed');
+  const lockedPayload=path.join(temp,'locked-owned.bin'),attempt=path.join(temp,'delete-attempt'),lockScript=path.join(temp,'hold-payload.ps1'),deleteScript=path.join(temp,'delete-payload.ps1');
+  await fs.writeFile(lockedPayload,'owned test payload');
+  await fs.writeFile(lockScript,'\ufeff'+`$handle=[IO.File]::Open(${quote(lockedPayload)},[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::Read)\ntry {Write-Output 'locked';$end=[DateTime]::UtcNow.AddSeconds(10);while(-not(Test-Path -LiteralPath ${quote(attempt)})){if([DateTime]::UtcNow -ge $end){throw 'Delete did not start'};Start-Sleep -Milliseconds 20};Start-Sleep -Milliseconds 400} finally {$handle.Dispose()}\n`);
+  await fs.writeFile(deleteScript,'\ufeff'+`. ${quote(path.join(source,'lifecycle-common.ps1'))}\n[IO.File]::WriteAllText(${quote(attempt)},'started')\nRemove-CqbOwnedFile ${quote(lockedPayload)}\n`);
+  const payloadHolder=spawn('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',lockScript],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+  const payloadExit=new Promise((resolve,reject)=>{payloadHolder.once('exit',resolve);payloadHolder.once('error',reject)});
+  try {
+    await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(Error('Payload lock was not acquired')),5000);payloadHolder.stdout.once('data',()=>{clearTimeout(timer);resolve()});payloadHolder.once('error',reject)});
+    await ps(deleteScript,[]);check(!await fs.stat(lockedPayload).catch(()=>null),'Owned payload deletion waits for a transient sharing lock');
+  }finally{assert.equal(await payloadExit,0,'Payload lock holder exited normally');}
   passed=true;console.log(JSON.stringify({passed,checks,isolatedDirectory:true,realShortcutsChanged:false,liveServicesChanged:false,absentWorkerUninstall:true,selfDirectoryUninstall:true,upgradeBusyRejected:true,upgradeRollback:true,shortcutOwnership:true,staleControllerUninstall:true,reusedPidUninstall:true,liveEndpointErrorsPreserved:true}));
 }finally{
   if(passed&&path.dirname(temp)===tempRoot&&path.basename(temp).startsWith('cqb-install-test-'))await fs.rm(temp,{recursive:true,force:true});

@@ -1,5 +1,18 @@
 ﻿# Native stderr is a terminating error in Windows PowerShell 5.1 with Stop.
 # Capture the exit status without changing the caller's error policy.
+function Remove-CqbOwnedFile([string]$Path) {
+  $deadline=[DateTime]::UtcNow.AddSeconds(10)
+  while(Test-Path -LiteralPath $Path -PathType Leaf){
+    try {Remove-Item -LiteralPath $Path -Force -ErrorAction Stop;return}
+    catch {
+      $failure=$_.Exception
+      while($failure.InnerException){$failure=$failure.InnerException}
+      $nativeCode=$failure.HResult -band 65535
+      if($nativeCode -notin @(32,33) -or [DateTime]::UtcNow -ge $deadline){throw}
+      Start-Sleep -Milliseconds 100
+    }
+  }
+}
 function Invoke-CqbWorker([string]$NodeExe,[string]$PackageRoot,[string]$StateDir,[string]$Action='status') {
   $priorErrorAction=$ErrorActionPreference
   try {

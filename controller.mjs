@@ -185,6 +185,7 @@ let installed = 0, available = 0;
 async function state() {
   const record = {pid:process.pid, port, startedAt, installed, dataAvailable:available,packageRoot:packageDir,controllerVersion:packageVersion,
     adapterUpdates,nativeCapabilities:featureBindings?.capabilities ?? {send:false,completion:false},
+    featureDiscovery:{method:featureBindings?.discovery??null,fingerprints:featureBindings?.fingerprints??null,composerContracts:featureBindings?.composerContracts??null},
     scripts:Object.fromEntries([...connections].map(([id, entry]) => [id, entry.scriptId]))};
   await saveControllerState(record);
 }

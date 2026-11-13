@@ -68,9 +68,13 @@
     const usage = win.__cqbQuotaCache.read(store?.queryClient);
     return usage?.raw ? usage : null;
   }
-  function currentComposer() {
+  function matchesDraft(value,draft){return !draft || (draft.kind==='local'?value?.kind==='local'&&value.conversationId===draft.id:draft.kind==='cloud'?value?.kind==='cloud'&&value.taskId===draft.id:value?.kind==='chatgpt'&&value.conversationId===draft.id);}
+  function currentComposer(draft) {
     const elements = [...doc.querySelectorAll('[data-codex-composer-root],.ProseMirror[contenteditable="true"]')];
-    for (const node of elements) { const store = findStore(node,api.composerScope); if (store) return {node,store}; }
+    for (const node of elements) {
+      if(!node.getClientRects().length||win.getComputedStyle(node).visibility==='hidden'||node.closest('[inert],[aria-hidden="true"]'))continue;
+      const store = findStore(node,api.composerScope); if (store&&matchesDraft(store.value,draft)) return {node,store};
+    }
     return null;
   }
   function unwrap(value) { return value && typeof value === 'object' && 'draft' in value ? value.draft : typeof value === 'string' || value && !('prompt' in value) ? {prompt:value} : value; }
@@ -106,15 +110,19 @@
   function handler(node) {
     const key = Object.keys(node).find(k => k.startsWith('__reactFiber$'));
     const root = key ? node[key] : null, pending = root ? [root] : [], seen = new Set();
-    let count = 0;
+    let count = 0;const found=new Map(),candidates=new Set();
     while (pending.length && count++ < 4000) {
       const f = pending.pop(); if (!f || seen.has(f)) continue; seen.add(f);
       const p = f.memoizedProps;
-      if (typeof p?.handleSubmit === 'function' && 'submitDisabled' in p && 'isResponseInProgress' in p)
-        return p.submitDisabled || p.isSubmitButtonLoading ? null : p.handleSubmit;
+      if (typeof p?.handleSubmit === 'function' && typeof p.submitDisabled==='boolean'){
+        candidates.add(p.handleSubmit);
+        const contract=['inputStatus','viewProps','historyBlocksSubmit','sendBlockReasons'].every(k=>k in p)?'status-view':'isResponseInProgress'in p?'response-state':null;
+        if(contract&&(!api.p.composerContracts||api.p.composerContracts.includes(contract)))found.set(p.handleSubmit,{contract,submit:p.handleSubmit,blocked:!!(p.submitDisabled||p.isSubmitButtonLoading||p.isInteractionBlocked||p.historyBlocksSubmit)});
+      }
       if (f.child) pending.push(f.child); if (f !== root && f.sibling) pending.push(f.sibling);
     }
-    return null;
+    if(found.size!==1||candidates.size!==1)return {recognized:false,error:t(candidates.size>1?'客户端存在多个提交接口，已停止本轮发送':'客户端提交接口未识别，请更新适配')};
+    return {recognized:true,...found.values().next().value};
   }
   function chatRoute(navigation) {
     // Electron keeps /index.html in window.location while Codex navigates internally.
@@ -140,8 +148,20 @@
       if (capabilities.send) try {
         const nav=store.get(api.initial[api.p.navigation]);
         if (typeof nav?.navigate!=='function' || api.p.navigationMode==='native-method' && typeof nav.navigateToLocalConversation!=='function') throw Error();
+        const composer=currentComposer(),submission=composer&&handler(composer.node);
+        if(submission&&!submission.recognized){capabilities.send=false;capabilities.reasons.send=submission.error;}
       } catch { capabilities.send=false; capabilities.reasons.send=t('客户端功能接口不可用'); }
       return capabilities;
+    },
+    async validateSend(){
+      await init();const store=rootStore(),nav=store?.get(api.initial[api.p.navigation]);
+      const navigation=typeof nav?.navigate==='function'&&(api.p.navigationMode!=='native-method'||typeof nav.navigateToLocalConversation==='function');
+      const composer=currentComposer(),submission=composer&&handler(composer.node);
+      return {available:api.support.send&&navigation&&(!submission||submission.recognized),reason:submission&&!submission.recognized?submission.error:!api.support.send||!navigation?t('客户端功能接口不可用'):null};
+    },
+    diagnostics(){
+      const composer=api&&currentComposer(),submission=composer&&handler(composer.node);
+      return {discovery:api?.p.discovery??null,fingerprints:api?.p.fingerprints??null,composerContracts:api?.p.composerContracts??null,liveComposer:submission?{recognized:submission.recognized,contract:submission.contract??null,blocked:submission.blocked??null,error:submission.error??null}:null};
     },
     identity,
     async taskSnapshot() {
@@ -229,18 +249,18 @@
               if(navigated===false)throw new Error(t('客户端功能接口不可用'));
             }
             else await nav.navigate(draft.kind === 'chatgpt' ? `/c/${encodeURIComponent(draft.id)}` : `/remote/${encodeURIComponent(draft.id)}`);
-            let composer, submit;
+            let composer, submit, submission;
             for (let i = 0; i < 100; i++) {
               if (disposed || !isCurrent()) break;
-              composer = currentComposer();
-              const value = composer?.store.value;
-              const matches = draft.kind === 'local' ? value?.kind === 'local' && value.conversationId === draft.id
-                : draft.kind === 'cloud' ? value?.kind === 'cloud' && value.taskId === draft.id
-                : value?.kind === 'chatgpt' && value.conversationId === draft.id;
-              if (matches && (submit = handler(composer.node))) break;
+              composer = currentComposer(draft);
+              submission=composer&&handler(composer.node);
+              if(submission&&!submission.recognized)break;
+              if(submission&&!submission.blocked){submit=submission.submit;break;}
               composer = null; await wait(100);
             }
+            if(submission&&!submission.recognized){results.error=submission.error;results.skipped+=all.length-results.sent-results.failed-results.skipped;break;}
             const latest = drafts(store,account).find(d => d.kind === draft.kind && d.id === draft.id);
+            if((!composer||!submit)&&!disposed&&isCurrent()&&identity(store)?.accountId===account)results.error??=t('聊天提交尚未就绪，草稿已保留');
             if (!composer || !submit || latest?.stamp !== draft.stamp || identity(store)?.accountId !== account || !isCurrent()) { results.skipped++; continue; }
             // Native submission owns context, attachments, permissions, queues and draft rollback.
             // Never synthesize plain text requests or manually delete a draft.

@@ -31,9 +31,9 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
   const browser = await chromium.launch({headless:true,channel:'msedge'});
   try {
     const page = await browser.newPage();
-    async function setup(mode = 'normal',profile = '账户',routing = 'browser',cacheMode = 'legacy') {
+    async function setup(mode = 'normal',profile = '账户',routing = 'browser',cacheMode = 'legacy',contract='response-state') {
       await page.goto(`http://127.0.0.1:${server.address().port}/${routing === 'browser' ? 'start' : 'index.html'}`);
-      await page.evaluate(({mode,profile,routing,cacheMode}) => {
+      await page.evaluate(({mode,profile,routing,cacheMode,contract}) => {
         const f = window.fixture = {scopes:{root:{},composer:{}},storage:{},account:'A',events:[],submits:[],visits:[],usageOpens:0,mode};
         f.storage['composer-prompt-drafts-v2'] = {'local:one':{prompt:'fixture one'},'alias-one':{prompt:'fixture one'},'local:two':{prompt:'fixture two'},'local:three':{prompt:'fixture three'},'local:empty':{prompt:'   '}};
         f.storage['client-thread-bindings-v1'] = {'alias-one':'one'};
@@ -51,6 +51,10 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
           for (const key of Object.keys(f.storage['composer-prompt-drafts-v2'])) if (key === 'local:'+id || f.storage['client-thread-bindings-v1'][key] === id) delete f.storage['composer-prompt-drafts-v2'][key];
           if (f.mode === 'account-switch') f.account = 'B';
         }}}};
+        const submitProps=composer.__reactFiber$fixture.child.memoizedProps;
+        if(contract!=='response-state')delete submitProps.isResponseInProgress;
+        if(contract==='status-view')Object.assign(submitProps,{inputStatus:{},viewProps:{},historyBlocksSubmit:false,sendBlockReasons:[]});
+        if(contract==='ambiguous')composer.__reactFiber$fixture.child.sibling={memoizedProps:{...submitProps,isResponseInProgress:false,handleSubmit:async()=>{throw Error('Ambiguous fixture must not submit')}}};
         f.navigate = async id => { f.visits.push(id); composerStore.value = {kind:'local',conversationId:id}; if (mode === 'normal' && id === 'one') f.storage['composer-prompt-drafts-v2']['local:two'].prompt = 'edited during the round'; };
         f.navigation = {navigate:async route => { f.visits.push(route); },navigateToLocalConversation:async id=>f.navigate(id)};
         if (routing === 'memory') Object.assign(f.navigation,{pathname:'/local/start',search:'?tab=activity',hash:'#draft'});
@@ -82,7 +86,7 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
         client.refetchQueries=async options=>{f.refetches.push(options)};
         client.getQueryCache=()=>({find:({queryKey})=>({fetch:async()=>{f.refetches.push({queryKey,exact:true,type:'all'});return {...f.quota,account_id:f.account,user_id:'user-'+f.account}}})});
         client.setQueryData=(key,raw,options)=>{f.quotaMissing=false;f.quota=raw;f.quotaAccount=raw.account_id;f.quotaUser=raw.user_id;f.updatedAt=options.updatedAt};
-      },{mode,profile,routing,cacheMode});
+      },{mode,profile,routing,cacheMode,contract});
       await page.addScriptTag({path:path.join(root,'quota-cache.js')});
       await page.addScriptTag({url:`http://127.0.0.1:${server.address().port}/adapter.js`});
       await page.evaluate(() => window.__cqbNativeFeatures.connect(event => window.fixture.events.push(event)));
@@ -92,6 +96,20 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
     assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.connect(event=>window.fixture.events.push(event))),{completion:true,send:true,shutdown:true,reasons:{}},'Rspack bindings retain independently verified capabilities');
     assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.sendRound()),{sent:2,failed:1,skipped:0},'Rspack draft submission uses native handlers in isolated fixtures');
     assert.equal((await page.evaluate(()=>window.__cqbNativeFeatures.taskSnapshot())).known,true,'Rspack task snapshots use the native root store');
+    await setup('rspack','账户','memory','scoped','status-view');
+    await page.evaluate(()=>{
+      const node=document.createElement('div');node.setAttribute('data-codex-composer-root','');node.style.display='none';node.__reactFiber$fixture=document.querySelector('[data-codex-composer-root]').__reactFiber$fixture;document.querySelector('main').prepend(node);
+    });
+    assert.equal((await page.evaluate(()=>window.__cqbNativeFeatures.validateSend())).available,true,'Modern status/view props validate without the removed response prop');
+    assert.equal((await page.evaluate(()=>window.__cqbNativeFeatures.diagnostics())).liveComposer.contract,'status-view');
+    assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.sendRound()),{sent:2,failed:1,skipped:0},'Modern submission and hidden retained composers use the verified native handler');
+    for(const contract of ['unknown','ambiguous']){
+      await setup('rspack','账户','memory','scoped',contract);
+      assert.equal((await page.evaluate(()=>window.__cqbNativeFeatures.connect(()=>{}))).send,false,'Unknown or ambiguous live structures disable scheduled sending');
+      const result=await page.evaluate(()=>window.__cqbNativeFeatures.sendRound());
+      assert.equal(result.sent,0);assert.equal(result.skipped,3);assert.ok(result.error,'Interface failures are explained instead of silently skipping all drafts');
+      assert.equal(await page.evaluate(()=>fixture.submits.length),0);
+    }
     for(const profile of ['账户','Profile','プロフィール'])for(const route of ['/local/current%20chat','/remote/current%20chat','/hotkey-window/thread/current%20chat','/start']){
       await setup('rspack',profile,'browser','scoped');
       await page.evaluate(({route,profile})=>{

@@ -129,6 +129,19 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
       await page.evaluate(()=>fixture.usageOptions.onResetComplete());
       assert.deepEqual(await page.evaluate(()=>fixture.resetRecords??[]),route==='/start'?[]:[{accountId:'A',conversationId:'current chat',turnId:'current-turn'}],'Preserves reset completion context');
     }
+    for(const route of ['/local/current%20chat','/hotkey-window/thread/current%20chat','/remote/current%20chat']){
+      await setup('rspack','账户','browser','scoped');
+      await page.evaluate(route=>{
+        history.replaceState(null,'',route);fixture.lastEvent='current-turn';
+        window.__codexBottomBarBindings.conversationRoutes=['hotkey-window/thread','local'];
+      },route);
+      await page.addScriptTag({path:path.join(root,'bottom-bar.js')});
+      await page.waitForFunction(()=>window.__codexBottomBar.quotaSample()?.availableResets===2);
+      await page.locator('[data-cqb-slot="resets"]').click();
+      await page.waitForFunction(()=>fixture.usageOpens===1);
+      await page.evaluate(()=>fixture.usageOptions.onResetComplete());
+      assert.deepEqual(await page.evaluate(()=>fixture.resetRecords??[]),route.startsWith('/remote/')?[]:[{accountId:'A',conversationId:'current chat',turnId:'current-turn'}],'Reset completion uses only the routes read by the native conversation hook');
+    }
     await setup('normal','账户','browser','scoped');
     await page.addScriptTag({path:path.join(root,'bottom-bar.js')});
     await page.waitForFunction(()=>window.__codexBottomBar.quotaSample()?.availableResets===2);

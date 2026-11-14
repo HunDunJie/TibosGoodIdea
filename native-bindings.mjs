@@ -36,20 +36,82 @@ export function discoverRspackUsage(source){
       if(!(enabled?.value===true||enabled?.operator==='!'&&enabled.argument?.value===0)||!['initialAvailableCount','isRateLimitReached','onResetComplete'].every(key=>props.has(key)))continue;
       const store=open.arguments[0]?.name,callback=props.get('onResetComplete');
       const scopes=declarations.filter(d=>d.id.name===store&&d.init?.type==='CallExpression').map(d=>ref(d.init.arguments[0])).filter(Boolean);
-      const turns=[],records=[];
+      const turns=[],records=[],conversations=[];
       visit(callback,node=>{
         if(node.type!=='CallExpression')return;
         if(node.callee.type==='MemberExpression'&&node.callee.object.name===store&&property(node.callee)==='get'&&node.arguments.length===2)turns.push(ref(node.arguments[0]));
-        if(node.arguments[0]?.name===store&&node.arguments[1]?.type==='ObjectExpression'&&['accountId','conversationId','turnId'].every(key=>node.arguments[1].properties.some(p=>property(p)===key)))records.push(ref(node.callee));
+        if(node.arguments[0]?.name===store&&node.arguments[1]?.type==='ObjectExpression'&&['accountId','conversationId','turnId'].every(key=>node.arguments[1].properties.some(p=>property(p)===key))){
+          records.push(ref(node.callee));
+          conversations.push(node.arguments[1].properties.find(p=>property(p)==='conversationId')?.value?.name);
+        }
       });
       const routes=declarations.filter(d=>d.init?.type==='CallExpression'&&d.init.arguments[0]?.value==='/remote/:taskId').map(d=>d.id.name);
       const decoders=calls.filter(c=>{const arg=unwrap(c.arguments[0]);return c.arguments.length===1&&property(arg)==='taskId'&&property(arg?.object)==='params'&&routes.includes(unwrap(arg.object.object)?.name);}).map(c=>ref(c.callee)).filter(Boolean);
       const result={profileId:String(property(factory)),scope:one(scopes),openModal:ref(open.callee),usageModal:ref(open.arguments[1]),turn:one(turns),recordReset:one(records),decodeConversation:one(decoders)};
-      if(Object.values(result).some(value=>!value))throw Error('Incomplete native Rspack usage context');
+      if(!result.decodeConversation){
+        const hooks=declarations.filter(d=>typeof d.id.name==='string'&&conversations.includes(d.id.name)&&d.init?.type==='CallExpression'&&d.init.arguments.length===0).map(d=>ref(d.init.callee)).filter(Boolean);
+        const hook=one(hooks);
+        if(hook)result.conversationHook=hook;
+      }
+      if(Object.entries(result).some(([key,value])=>!value&&!(key==='decodeConversation'&&result.conversationHook)))throw Error('Incomplete native Rspack usage context');
       matches.push(result);
     }
   }
   const result=one(matches);if(!result)throw Error('Ambiguous native Rspack usage opener');return result;
+}
+
+// Follow the conversation hook used by the native reset callback. Its decoder
+// must consume only IDs selected from the supported native route parameters.
+export function discoverUsageConversation(source,reference){
+  const ast=tree(source),table=one(ast.body.flatMap(n=>n.declaration?.declarations??[]).filter(d=>d.id?.name==='__webpack_modules__'))?.init;
+  const factories=table?.properties?.filter(p=>String(property(p))===reference.id)??[];
+  if(!factories.length)return null;
+  const factory=one(factories)?.value;if(!factory)throw Error('Ambiguous native conversation module');
+  const require=factory.params?.[2]?.name,imports=new Map(),functions=new Map(),exports=[];
+  for(const node of factory.body.body){
+    if(node.type==='FunctionDeclaration')functions.set(node.id.name,node);
+    if(node.type==='VariableDeclaration')for(const d of node.declarations){
+      if(d.id.type!=='Identifier')continue;
+      if(d.init?.type==='CallExpression'&&d.init.callee.name===require&&typeof d.init.arguments[0]?.value==='string')imports.set(d.id.name,d.init.arguments[0].value);
+      if(['FunctionExpression','ArrowFunctionExpression'].includes(d.init?.type))functions.set(d.id.name,d.init);
+    }
+  }
+  visit(factory.body,node=>{
+    if(node.type!=='CallExpression'||node.callee.object?.name!==require||property(node.callee)!=='d'||node.arguments[0]?.name!==factory.params[1]?.name)return;
+    for(let index=1;index<=2;index++)for(const p of node.arguments[index]?.properties??[]){
+      if(String(property(p))!==reference.export)continue;
+      const value=p.value;
+      if(index===2&&['FunctionExpression','ArrowFunctionExpression'].includes(value?.type))exports.push(value);
+      else if(index===1&&value?.type==='ArrowFunctionExpression'&&value.body.type==='Identifier')exports.push(functions.get(value.body.name));
+    }
+  });
+  const fn=one(exports.filter(Boolean));if(!fn)throw Error('Ambiguous native conversation hook');
+  const ref=node=>{node=unwrap(node);return node?.type==='MemberExpression'&&imports.has(node.object.name)?{id:imports.get(node.object.name),export:String(property(node))}:null;};
+  const routes=new Map(),declarations=new Map(),candidates=[];
+  const allowed=new Map([['/local/:conversationId','conversationId'],['/remote/:taskId','taskId'],['/hotkey-window/thread/:conversationId','conversationId']]);
+  visit(fn.body,node=>{
+    if(node.type!=='VariableDeclarator'||node.id.type!=='Identifier')return;
+    declarations.set(node.id.name,node.init);
+    const call=node.init,route=call?.type==='CallExpression'&&call.arguments.length===1&&call.arguments[0]?.value;
+    if(allowed.has(route)&&ref(call.callee))routes.set(node.id.name,{route,param:allowed.get(route),reader:ref(call.callee)});
+  });
+  function routeParams(node){
+    node=unwrap(node);
+    if(node?.type==='LogicalExpression'&&node.operator==='??'){
+      const left=routeParams(node.left),right=routeParams(node.right);return left&&right?[...left,...right]:null;
+    }
+    const params=unwrap(node?.object),owner=unwrap(params?.object),route=routes.get(owner?.name);
+    return node?.type==='MemberExpression'&&property(params)==='params'&&route&&property(node)===route.param?[route]:null;
+  }
+  visit(fn.body,node=>{
+    if(node.type!=='ConditionalExpression'||node.test.type!=='Identifier'||node.alternate?.value!==null)return;
+    const call=unwrap(node.consequent),name=node.test.name;
+    if(call?.type!=='CallExpression'||call.arguments.length!==1||call.arguments[0]?.name!==name)return;
+    const decoder=ref(call.callee),params=routeParams(declarations.get(name));
+    if(!decoder||!params?.length||new Set(params.map(p=>JSON.stringify(p.reader))).size!==1)return;
+    candidates.push({decodeConversation:decoder,conversationRoutes:[...new Set(params.map(p=>p.route.split('/:')[0].slice(1)))].sort()});
+  });
+  const result=one(candidates);if(!result)throw Error('Unverified native conversation decoder');return result;
 }
 
 export function discoverUsageChunks(source,profileId){
@@ -79,7 +141,18 @@ async function readRspackUsage(asarPath){
       const bytes=await archive.read(name);
       if(bytes.includes('defaultResetCreditsOpen')&&bytes.includes('onRateLimitResetClick'))profiles.push(discoverRspackUsage(bytes.toString('utf8')));
     }
-    const binding=one(profiles);if(!binding)throw Error('Ambiguous native Rspack profile');
+    let binding=one(profiles);if(!binding)throw Error('Ambiguous native Rspack profile');
+    if(binding.conversationHook){
+      const reference=binding.conversationHook,variants=[];
+      for(const name of names){
+        const bytes=await archive.read(name);
+        if(![reference.id+'(',JSON.stringify(reference.id)+':',JSON.stringify(reference.id)+'('].some(text=>bytes.includes(text)))continue;
+        const result=discoverUsageConversation(bytes.toString('utf8'),reference);if(result)variants.push(result);
+      }
+      const decoder=one([...new Map(variants.map(v=>[JSON.stringify(v),v])).values()]);
+      if(!decoder)throw Error('Ambiguous or missing native conversation decoder');
+      const {conversationHook,...context}=binding;binding={...context,...decoder};
+    }
     const groups=[];
     for(const name of names){const bytes=await archive.read(name);if(bytes.includes(JSON.stringify(binding.profileId))||bytes.includes("'"+binding.profileId+"'"))groups.push(...discoverUsageChunks(bytes.toString('utf8'),binding.profileId));}
     const chunks=one([...new Map(groups.map(group=>[JSON.stringify(group),group])).values()]);

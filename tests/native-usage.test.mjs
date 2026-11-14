@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import {discoverRspackUsage,discoverUsageChunks,readNativeBindings} from '../native-bindings.mjs';
+import {discoverRspackUsage,discoverUsageConversation,discoverUsageChunks,readNativeBindings} from '../native-bindings.mjs';
 
 const profile=`export const __webpack_modules__={profile(e,t,r){
 var api=r('modal'),root=r('root'),usage=r('usage'),turn=r('turn'),history=r('history'),ids=r('ids');
@@ -13,6 +13,14 @@ return ()=>{(0,api.open)(store,usage.modal,{defaultResetCreditsOpen:!0,initialAv
 let last=conversation==null?null:store.get(turn.current,conversation);if(last!=null)(0,history.record)(store,{accountId:'account',conversationId:conversation,turnId:last});}})}}}};`;
 const loader=`export const __webpack_modules__={loader(e,t,r){const lazy=()=>Promise.all([r.e(12),r.e(34)]).then(r.bind(r,'profile'));}};`;
 const expected={profileId:'profile',scope:{id:'root',export:'scope'},openModal:{id:'modal',export:'open'},usageModal:{id:'usage',export:'modal'},turn:{id:'turn',export:'current'},recordReset:{id:'history',export:'record'},decodeConversation:{id:'ids',export:'decode'}};
+const hookedProfile=profile.replace("ids=r('ids')","ids=r('ids'),current=r('conversation')").replace("conversation=useConversation(),remote=useRoute('/remote/:taskId');\nlet current=conversation??(remote?.params.taskId!=null?(0,ids.decode)(remote.params.taskId):null);","conversation=(0,current.hook)();");
+const conversationHook=`export const __webpack_modules__={conversation(e,t,r){
+var ids=r('ids'),router=r('router');r.d(t,{},{hook:function(){
+let local=(0,router.route)('/local/:conversationId'),hotkey=(0,router.route)('/hotkey-window/thread/:conversationId');
+let id=local?.params.conversationId??hotkey?.params.conversationId;
+return id?(0,ids.decode)(id):null;}})}};`;
+const hookReference={id:'conversation',export:'hook'};
+const hookExpected={decodeConversation:expected.decodeConversation,conversationRoutes:['hotkey-window/thread','local']};
 
 async function fixture(files,callback){
   const temp=await fs.mkdtemp(path.join(os.tmpdir(),'tibo-native-usage-')),file=path.join(temp,'fixture.asar'),tree={files:{}},chunks=[];let offset=0;
@@ -44,6 +52,22 @@ test('ambiguous or incomplete reset contexts fail instead of opening another mod
   const duplicate=profile.slice(profile.indexOf('profile(e,t,r)'),-2).replace('profile(','duplicate(');
   assert.throws(()=>discoverRspackUsage(profile.slice(0,-2)+','+duplicate+'};'),/Ambiguous/);
 });
+test('reset context follows its imported conversation hook without guessing a decoder',()=>{
+  const result=discoverRspackUsage(hookedProfile);
+  assert.deepEqual(result,{...expected,decodeConversation:null,conversationHook:hookReference});
+  assert.deepEqual(discoverUsageConversation(conversationHook,hookReference),hookExpected);
+  assert.deepEqual(discoverUsageConversation(conversationHook.replaceAll('local','renamed').replace("'/renamed/:conversationId'","'/local/:conversationId'"),hookReference),hookExpected);
+  assert.equal(discoverUsageConversation(conversationHook,{id:'unrelated',export:'hook'}),null);
+});
+test('conversation decoder rejects foreign routes, mixed readers and ambiguous exports',()=>{
+  assert.throws(()=>discoverUsageConversation(conversationHook.replace("'/local/:conversationId'","'/other/:conversationId'"),hookReference),/Unverified/);
+  assert.throws(()=>discoverUsageConversation(conversationHook.replace('hotkey?.params.conversationId','unknown'),hookReference),/Unverified/);
+  assert.throws(()=>discoverUsageConversation(conversationHook.replace("router=r('router')","router=r('router'),other=r('other')").replace("(0,router.route)('/hotkey", "(0,other.route)('/hotkey"),hookReference),/Unverified/);
+  assert.throws(()=>discoverUsageConversation(conversationHook.replace('return id?', 'let extra=id?(0,ids.other)(id):null;return id?'),hookReference),/Unverified/);
+  assert.throws(()=>discoverUsageConversation(conversationHook,{id:'conversation',export:'unknown'}),/Ambiguous/);
+  const factory=conversationHook.slice(conversationHook.indexOf('conversation(e,t,r)'),-2);
+  assert.throws(()=>discoverUsageConversation(conversationHook.slice(0,-2)+','+factory+'};',hookReference),/Ambiguous/);
+});
 test('native profile loading uses its complete original group and validates the require owner',()=>{
   assert.deepEqual(discoverUsageChunks(loader,'profile'),[[12,34]]);
   assert.deepEqual(discoverUsageChunks(loader.replace('r.e(34)','other.e(34)'),'profile'),[]);
@@ -54,6 +78,19 @@ test('numbered renderer archives resolve all native usage references and depende
   const {profileId,...refs}=expected;
   assert.deepEqual(await readNativeBindings(file),{schema:2,rspack:{entry:'123.hash.js',chunks:[12,34]},...refs});
 }));
+test('numbered renderer resolves equivalent split hook copies and preserves native route scope',()=>fixture({
+  ...modern,'webview/assets/async/12.hash.js':hookedProfile+'// onRateLimitResetClick',
+  'webview/assets/async/34.hash.js':conversationHook,
+  'webview/assets/async/78.hash.js':conversationHook.replaceAll('local','renamed').replace("'/renamed/:conversationId'","'/local/:conversationId'"),
+},async file=>{
+  const {profileId,...refs}=expected;
+  assert.deepEqual(await readNativeBindings(file),{schema:2,rspack:{entry:'123.hash.js',chunks:[12,34]},...refs,...hookExpected});
+}));
+test('missing or conflicting split conversation decoders keep native usage unavailable',async()=>{
+  const base={...modern,'webview/assets/async/12.hash.js':hookedProfile+'// onRateLimitResetClick'};
+  await fixture(base,async file=>assert.rejects(readNativeBindings(file),/missing native conversation/));
+  await fixture({...base,'webview/assets/async/34.hash.js':conversationHook,'webview/assets/async/78.hash.js':conversationHook.replace('ids.decode','ids.different')},async file=>assert.rejects(readNativeBindings(file),/Ambiguous/));
+});
 test('ambiguous profile or loading groups are rejected',async()=>{
   await fixture({...modern,'webview/assets/async/duplicate.js':modern['webview/assets/async/12.hash.js']},async file=>assert.rejects(readNativeBindings(file),/Ambiguous/));
   await fixture({...modern,'webview/assets/async/duplicate.js':loader.replace('r.e(12)','r.e(99)')},async file=>assert.rejects(readNativeBindings(file),/loading group/));

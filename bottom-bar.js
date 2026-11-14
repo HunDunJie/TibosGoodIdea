@@ -5,7 +5,7 @@
   else api.install(window);
 })(function () {
   'use strict';
-  const VERSION = '0.8.0-rc.25';
+  const VERSION = '0.8.0-rc.26';
   const localeAPI = typeof module === 'object' && module.exports ? require('./i18n.js') : null;
   const TIME_MODES_KEY = 'codex-bottom-bar.time-modes.v1';
   const NUMBER = value => typeof value === 'number' && Number.isFinite(value);
@@ -335,8 +335,9 @@
       if (!store) return false;
       const raw = win.__cqbQuotaCache.read(store.queryClient)?.raw;
       const accountId = raw?.account_id ?? null;
-      const match = win.location.pathname.match(/\/(?:local|remote|hotkey-window\/thread)\/([^/]+)\/?$/);
-      const conversationId = match ? api.decodeConversation(decodeURIComponent(match[1])) : null;
+      const match = win.location.pathname.match(/\/(local|remote|hotkey-window\/thread)\/([^/]+)\/?$/);
+      const routes = bindings.conversationRoutes ?? ['local','remote','hotkey-window/thread'];
+      const conversationId = match && routes.includes(match[1]) ? api.decodeConversation(decodeURIComponent(match[2])) : null;
       api.openModal(store, api.usageModal, {
         defaultResetCreditsOpen:true, initialAvailableCount:raw?.rate_limit_reset_credits?.available_count ?? lastSnapshot?.resets ?? 0,
         isRateLimitReached:false,

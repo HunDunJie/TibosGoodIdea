@@ -1,10 +1,12 @@
 # Tibo’s Good Idea — Codex Quota Bar & Desktop Skin
 
+rc.27 and earlier require one manual upgrade after signing-key replacement; see the [rc.28 migration notes](docs/release-notes-0.8.0-rc.28.md).
+
 [中文](README.md) · [Install](QUICKSTART.en.md) · [日本語](QUICKSTART.ja.md)
 
 A Windows Codex desktop skin and single-row quota bottom bar. Original code is open source under **GPL-3.0-only**
 The icon rail moves to the bottom with the profile at the far left, followed by purchased credits, separate five-hour and weekly quota, reset times and available resets
-Repository: TibosGoodIdea · Version: **0.8.0-rc.27**
+Repository: TibosGoodIdea · Version: **0.8.0-rc.28**
 
 An independent project with no affiliation with or endorsement by OpenAI or Tibo
 The source license does not constitute OpenAI approval of this client integration

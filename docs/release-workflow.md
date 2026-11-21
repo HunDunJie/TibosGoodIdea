@@ -41,7 +41,7 @@ runtime/node.exe scripts/test.mjs quick
    python scripts/release.py index --asar '实际安装位置/app/resources/app.asar' --kind fix
    ```
 
-   复用外置的 `%LOCALAPPDATA%/TibosGoodIdea-Maintainer/program-signing-private.pem`；私钥与凭据不进入仓库、命令参数或日志。必须先公开不可变 ZIP，再生成指向它的更高修订号索引，避免 ZIP 包含自身校验值。功能性更新用 `--kind feature`。同版本匹配的索引重复执行不涨修订号
+   复用仓库同级 `../TibosGoodIdea-Maintainer/program-signing-private.pem`（本机为 `D:/MyOtherProjects/TibosGoodIdea-Maintainer`）；私钥与凭据不进入仓库、命令参数或日志。必须先公开不可变 ZIP，再生成指向它的更高修订号索引，避免 ZIP 包含自身校验值。功能性更新用 `--kind feature`。同版本匹配的索引重复执行不涨修订号
 
 6. 自审并提交 `updates/program-catalog.json`，用 `[skip ci]` 提交元数据、推送 main；不重建 Windows/源码 ZIP。最后运行：
 
@@ -70,3 +70,7 @@ runtime/node.exe scripts/test.mjs quick
 - 维护工具自身改动先运行 `python tests/release_workflow_test.py`；此测试只用隔离临时目录和模拟 GitHub，不会发布
 
 流程升级时同步更新 `scripts/test-plan.json` 与工作流文档，CI 不再维护第二份测试清单
+
+## 私钥丢失后的显式恢复
+
+仅在用户明确授权更换签名密钥后，运行 `runtime/node.exe scripts/sign-program-catalog.mjs --rotate-key`。先验证旧索引，拒绝覆盖已有私钥；新私钥和旧信任记录集中保存在仓库同级 TibosGoodIdea-Maintainer，旧包不会写回新信任链。发布新版本并签署索引，不改写已公开资产。rc.27 及更早版本需要按 rc.28 发布说明手动升级一次，不能用自动替换公钥绕过信任验证。

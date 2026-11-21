@@ -4,7 +4,7 @@
 
 A Windows Codex desktop skin and single-row quota bottom bar. Original code is open source under **GPL-3.0-only**
 The icon rail moves to the bottom with the profile at the far left, followed by purchased credits, separate five-hour and weekly quota, reset times and available resets
-Repository: TibosGoodIdea · Version: **0.8.0-rc.26**
+Repository: TibosGoodIdea · Version: **0.8.0-rc.27**
 
 An independent project with no affiliation with or endorsement by OpenAI or Tibo
 The source license does not constitute OpenAI approval of this client integration
@@ -15,9 +15,9 @@ Search terms: Codex skin, Codex theme, desktop customization, remaining quota, u
 ## Features
 
 - Scheduled shutdown: checks all chats every 3 minutes and shuts down 5 minutes after they finish; paused while scheduled sending is on. Cancel from its button or the tray. Confirmed sustained outages qualify only when no local tools are still running. Shutdown forces apps to close, so unsaved work will be lost
-- Send on reset: manually arm one round of existing, non-empty chat drafts after the next confirmed five-hour reset, using native submission, then turn off
+- Send on reset: manually arm one round of existing, non-empty chat drafts 3 minutes after the relevant reset, once both 5h and weekly quotas are available, using native submission, then turn off
 - Completion sound: play music when a connected chat finishes, for at most 30 minutes, without an additional completion notification
-- Reset reminder: notify and play music one minute after the five-hour reset, for at most 30 minutes; an already scheduled alarm survives closing Codex
+- Reset reminder: notify and play music 3 minutes after the relevant reset, once both 5h and weekly quotas are available, for at most 30 minutes; an already scheduled alarm survives closing Codex
 - Mouse movement, clicks or keyboard activity in Codex stop playback; the tray can stop it without opening Codex
 - Click a time to switch between a date and a minute-updated countdown; choices persist; language follows Codex in Chinese, English and Japanese
 - When a Pro account is confirmed to have no five-hour limit, hide that quota and disable scheduled sending and reset reminders, cancelling old schedules; weekly usage, credits, available resets and completion sound remain available; missing data stays unknown

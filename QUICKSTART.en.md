@@ -30,7 +30,7 @@ Shutdown checks chats every three minutes, scheduling shutdown in five minutes w
 
 Scheduled send is armed manually for one round of existing drafts after the next confirmed reset. Keep Codex running. Modified, failed or unsupported drafts are preserved without automatic retries
 
-Completion plays music only. Reset reminds one minute after reset, even after Codex exits. Playback lasts at most 30 minutes; mouse movement or interaction in Codex stops it, as does the tray. The computer must remain on and awake
+Completion plays music only. Scheduled sending and reset reminders wait until both 5h and weekly quotas are available, then act 3 minutes after the relevant reset. Reset reminders notify and play music, even after Codex exits. Playback lasts at most 30 minutes; mouse movement or interaction in Codex stops it, as does the tray. The computer must remain on and awake
 
 Checked environment: Windows 11 x64 / Store Codex 26.1027.3384.0. Future changes may require maintainer adaptation. Native cold start, real submissions and audible playback need manual acceptance; automated checks use isolated clients and silent audio
 

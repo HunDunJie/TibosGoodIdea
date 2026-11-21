@@ -30,7 +30,7 @@
       if(p.rspack){
         const runtime=await import(entry.src),require=runtime.__webpack_require__;
         if(typeof require!=='function'||typeof require.C!=='function')throw new Error(t('客户端功能接口不可用'));
-        const chunk=await import(new URL(p.rspack.chunk,base).href);require.C(chunk);
+        for(const name of p.rspack.chunks??[p.rspack.chunk]){const chunk=await import(new URL(name,base).href);require.C(chunk);}
         initial={__cqbReady(){}};
         for(const [key,ref]of Object.entries(p.references))Object.defineProperty(initial,key,{get:()=>require(ref.id)[ref.export]});
         shared=initial;
@@ -86,7 +86,7 @@
   function drafts(store,accountId) {
     const read = api.initial[api.p.readStorage];
     const saved = read('composer-prompt-drafts-v2',read('composer-prompt-drafts-v1',{}));
-    const bindings = read('client-thread-bindings-v1',{});
+    const bindings = api.p.draftIdentityMode==='thread-scope'?{}:read('client-thread-bindings-v1',{});
     const records = new Map();
     for (const [key,value] of Object.entries(saved ?? {})) {
       if (!nonempty(value)) continue;
@@ -173,8 +173,9 @@
         let busy=false,localSafe=true;
         for(const host of hosts){
           const state=store.get(api.initial[p.clients],host);
+          const raw=p.rawClients?store.get(api.initial[p.rawClients],host):state;
           // The built-in durable host exists even when no cloud client has been initialized.
-          if(host==='durable'&&state?.status==='unavailable'&&!state.client)continue;
+          if(host==='durable'&&raw?.status==='unavailable'&&!raw.client&&!state?.client)continue;
           if(state?.status!=='ready'||!state.client?.rpc)throw Error();
           const rpc=state.client.rpc,work=await rpc.getWorkInProgress();
           if(!Array.isArray(work))throw Error();

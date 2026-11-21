@@ -21,7 +21,7 @@ const parentPath = path.join(stateDir,'parent.mjs');
 await fs.writeFile(parentPath,`import {ensureWorker,requestWorker} from ${JSON.stringify(new URL('../worker-client.mjs',import.meta.url).href)};
 const dir=${JSON.stringify(stateDir)};
 await ensureWorker(dir,${JSON.stringify(configPath)});
-await requestWorker(dir,'observe',{accountId:'test-only',resetsAt:Date.now()-58000,remaining:0,updatedAt:Date.now()});
+await requestWorker(dir,'observe',{accountId:'test-only',resetsAt:Date.now()-178000,remaining:0,updatedAt:Date.now()});
 const value=await requestWorker(dir,'toggle',{feature:'refresh',enabled:true});
 console.log(JSON.stringify({parentPid:process.pid,status:value}));`);
 let workerPid, passed = false;

@@ -5,7 +5,7 @@
   else api.install(window);
 })(function () {
   'use strict';
-  const VERSION = '0.8.0-rc.26';
+  const VERSION = '0.8.0-rc.27';
   const localeAPI = typeof module === 'object' && module.exports ? require('./i18n.js') : null;
   const TIME_MODES_KEY = 'codex-bottom-bar.time-modes.v1';
   const NUMBER = value => typeof value === 'number' && Number.isFinite(value);
@@ -59,6 +59,10 @@
         NUMBER(limit[key].used_percent ?? limit[key].usedPercent));
     const result = {
       fiveHour, weekly, fiveHourLimit:fiveHour ? 'limited' : noFiveHour ? 'none' : 'unknown',
+      weeklyLimit:weekly ? 'limited' : explicitPair && explicitPair.every(key=>limit[key] === null || object(limit[key]) &&
+        (limit[key].limit_window_seconds != null ? NUMBER(limit[key].limit_window_seconds) && Math.abs(limit[key].limit_window_seconds / 60 - 300) <= 1
+          : NUMBER(limit[key].windowDurationMins) && Math.abs(limit[key].windowDurationMins - 300) <= 1) &&
+        NUMBER(limit[key].used_percent ?? limit[key].usedPercent)) ? 'none' : 'unknown',
       resets: NUMBER(count) && Number.isInteger(count) && count >= 0 ? count : null,
       creditBalance:creditBalance(raw.credits?.balance), creditsUnlimited:raw.credits?.unlimited === true,
     };
@@ -541,7 +545,8 @@
         if (!five || five.remaining == null) {
           if (snapshot?.fiveHourLimit !== 'none') return null;
         }
-        return {accountId:usage.accountId,fiveHourLimit:snapshot.fiveHourLimit,resetsAt:five?.resetsAt ?? null,remaining:five?.remaining ?? null,availableResets:snapshot.resets,updatedAt:usage.updatedAt};
+        return {accountId:usage.accountId,fiveHourLimit:snapshot.fiveHourLimit,resetsAt:five?.resetsAt ?? null,remaining:five?.remaining ?? null,
+          weeklyLimit:snapshot.weeklyLimit,weekly:snapshot.weekly,availableResets:snapshot.resets,updatedAt:usage.updatedAt};
       },
       async refreshQuota({force=true}={}) {
         if(!active)return {status:'unavailable'};

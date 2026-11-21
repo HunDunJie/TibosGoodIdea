@@ -1,7 +1,23 @@
 // Scheduling state is independent of the Codex window. No draft contents enter this process.
 import {createHash, randomUUID} from 'node:crypto';
 export const MAX_PLAYBACK_MS = 30 * 60 * 1000;
+export const RESET_DELAY_MS = 3 * 60 * 1000;
 const NO_FIVE_HOUR_LIMIT = '当前账户没有五小时额度限制，定时发送和刷新提醒不适用';
+const windows = q => [{kind:'fiveHour',resetsAt:q.resetsAt,remaining:q.remaining},
+  ...(q.weeklyLimit === 'limited' ? [{kind:'weekly',...q.weekly}] : [])];
+const unknownQuota = q => q.weeklyLimit === 'unknown' || windows(q).some(w=>!Number.isFinite(w.remaining));
+function resetPlan(q) {
+  if (!q || q.fiveHourLimit === 'none' || unknownQuota(q)) return null;
+  const cycles=windows(q), depleted=cycles.filter(w=>w.remaining <= 0);
+  const candidates=depleted.length ? depleted : cycles.filter(w=>Number.isFinite(w.resetsAt));
+  if (!candidates.length || candidates.some(w=>!Number.isFinite(w.remaining)||!Number.isFinite(w.resetsAt))) return null;
+  const reset=Math[depleted.length?'max':'min'](...candidates.map(w=>w.resetsAt));
+  return {reset,cycles:candidates.filter(w=>w.resetsAt===reset)};
+}
+const blocked = (q,reset) => !q || unknownQuota(q) || windows(q).some(w=>
+  w.remaining <= 0 && (!Number.isFinite(w.resetsAt) || w.resetsAt > reset));
+const corrected = (cycles,q,updatedAt) => cycles?.some(old=>updatedAt < old.resetsAt &&
+  windows(q).find(w=>w.kind===old.kind)?.resetsAt !== old.resetsAt);
 
 export class FeatureEngine {
   constructor({state = {}, now = Date.now, save = async () => {}, audio, onChange = () => {}}) {
@@ -10,6 +26,14 @@ export class FeatureEngine {
       fired:[], completionEvents:[], ringing:null, send:{phase:'off'}, ...state};
     // An interrupted send is never retried: its server acceptance may be unknown.
     if (this.state.send.phase === 'running') this.state.send = {phase:'interrupted', error:'上次发送中断，请检查聊天；不会自动重发'};
+    // Old persisted alarms only knew about 5h usage. Obtain both windows before rescheduling them.
+    if (state.quotaCheckpoint && state.quotaPolicy !== 2) {
+      this.state.alarm=null; this.state.nextAlarm=null;
+      if (this.state.send.phase === 'armed') this.state.send={...this.state.send,target:null,due:null};
+    }
+    this.state.quotaPolicy=2;
+    for (const alarm of [this.state.alarm,this.state.nextAlarm]) if (alarm) alarm.due=alarm.reset+RESET_DELAY_MS;
+    if (this.state.send.phase === 'armed') this.state.send.due=Number.isFinite(this.state.send.target)?this.state.send.target+RESET_DELAY_MS:null;
     this.quota = null; this.revision = 0;
   }
   account(value) { return typeof value === 'string' && value ? createHash('sha256').update(value).digest('hex').slice(0,24) : null; }
@@ -40,9 +64,9 @@ export class FeatureEngine {
     if (enabled && ['send','refresh'].includes(feature) && this.status().fiveHourLimit === 'none') throw new Error(NO_FIVE_HOUR_LIMIT);
     if (feature === 'send') {
       if (this.state.send.phase === 'running') throw new Error('正在发送，请等待本轮结束');
-      const reset = this.quota?.resetsAt;
-      if (enabled && (!reset || reset <= this.now())) throw new Error('尚未取得下一次五小时重置时间，请稍后再开启');
-      this.state.send = enabled ? {phase:'armed', id:randomUUID(), target:reset, account:this.quota.account, remaining:this.quota.remaining,
+      const plan=resetPlan(this.quota),reset=plan?.reset;
+      if (enabled && (!reset || reset <= this.now())) throw new Error('尚未取得可用的额度刷新时间，请稍后再开启');
+      this.state.send = enabled ? {phase:'armed', id:randomUUID(), target:reset, due:reset+RESET_DELAY_MS, cycles:plan.cycles, account:this.quota.account, remaining:this.quota.remaining,
         availableResets:this.quota.availableResets, quotaUpdatedAt:this.quota.updatedAt, armedAt:this.now()} : {phase:'off'};
     } else if (feature === 'completion' || feature === 'refresh') {
       if (enabled) await this.audio.check(feature); // Fail visibly if no playable file exists.
@@ -56,17 +80,18 @@ export class FeatureEngine {
     await this.commit(); return this.status();
   }
   schedule() {
-    if (!this.state.refreshEnabled || !this.quota?.resetsAt) return;
-    const {account, resetsAt} = this.quota;
+    if (!this.state.refreshEnabled) return;
+    const plan=resetPlan(this.quota); if (!plan) return;
+    const {account}=this.quota,resetsAt=plan.reset;
     if (resetsAt <= (this.state.refreshResetAfter ?? 0)) return;
     const id = `${account}:${resetsAt}`;
     if (this.state.fired.includes(id)) return;
-    // A refresh sample can arrive after the old reset, but before its +1 minute alarm.
+    // Natural rollover must not erase the old reset during its three-minute delay.
     // Keep that imminent alarm, and remember the next one separately.
-    const alarm = {id, account, reset:resetsAt, due:resetsAt + 60000};
+    const alarm = {id, account, reset:resetsAt, due:resetsAt + RESET_DELAY_MS, cycles:plan.cycles};
     if (alarm.due <= this.now() - 5 * 3600000) return;
     if (this.state.alarm?.id === id) return;
-    if (this.state.alarm && this.state.alarm.account === account && this.state.alarm.due <= this.now() + 60000) {
+    if (this.state.alarm && this.state.alarm.account === account && this.state.alarm.reset <= this.now()) {
       if (resetsAt > this.state.alarm.reset) this.state.nextAlarm = alarm;
       return;
     }
@@ -107,33 +132,45 @@ export class FeatureEngine {
     const previousResets=previousQuota?.availableResets ?? (this.state.quotaCheckpoint?.account === account ? this.state.quotaCheckpoint.availableResets : null);
     const resetCardUsed=previousQuota?.account === account && updatedAt > previousQuota.updatedAt &&
       Number.isInteger(previousResets) && availableResets !== null && availableResets < previousResets;
+    const weeklyLimit=sample.weeklyLimit ?? (sample.weekly ? 'limited' : 'none');
+    const weekly=weeklyLimit === 'limited' ? {
+      resetsAt:Number.isFinite(sample.weekly?.resetsAt)?sample.weekly.resetsAt:null,
+      remaining:Number.isFinite(sample.weekly?.remaining)?sample.weekly.remaining:null} : null;
+    this.quota = {account,fiveHourLimit:'limited',resetsAt:sample.resetsAt,remaining:sample.remaining,weeklyLimit,weekly,availableResets,updatedAt};
+    const unknown=unknownQuota(this.quota);
     const alarm=this.state.alarm;
-    const correctedReset=alarm?.account === account && updatedAt > (previousQuota?.updatedAt ?? 0) &&
-      updatedAt < alarm.reset && sample.resetsAt !== alarm.reset;
+    const correctedReset=!unknown && alarm?.account === account && updatedAt > (previousQuota?.updatedAt ?? 0) &&
+      corrected(alarm.cycles ?? [{kind:'fiveHour',resetsAt:alarm.reset}],this.quota,updatedAt);
     // A card or pre-reset correction cancels the obsolete alarm BEFORE tick can play it.
-    // Natural rollover keeps the old reset's +1 minute reminder.
+    // Natural rollover keeps the old reset's delayed reminder.
     if (resetCardUsed || correctedReset) {
       this.state.alarm=null; this.state.nextAlarm=null; this.state.refreshResetAfter=updatedAt;
     }
+    if (this.state.alarm && !unknown && blocked(this.quota,this.state.alarm.reset)) {
+      this.state.alarm=null; this.state.nextAlarm=null;
+    }
     // Cancel the old account first; only its own samples may fire its elapsed alarm.
-    await this.tick();
-    this.quota = {account, fiveHourLimit:'limited', resetsAt:sample.resetsAt, remaining:sample.remaining, availableResets, updatedAt};
     // Persist only quota metadata; a fresh native response is still required to claim a send.
-    this.state.quotaCheckpoint={account,fiveHourLimit:'limited',availableResets:availableResets ?? (previousQuota?.account === account ? previousResets : null),updatedAt};
+    this.state.quotaCheckpoint={...this.quota,availableResets:availableResets ?? (previousQuota?.account === account ? previousResets : null)};
     const send = this.state.send;
     if (send.phase === 'armed' && send.account !== account) this.state.send = {phase:'cancelled', error:'账户已切换，本轮已取消'};
     else if (send.phase === 'armed' && updatedAt > (send.quotaUpdatedAt ?? 0)) {
       const cardUsed=Number.isInteger(send.availableResets) && this.quota.availableResets !== null && this.quota.availableResets < send.availableResets;
+      const plan=resetPlan(this.quota);
       // Before the target, changed reset times belong to a rescheduled cycle.
       // At/after the target, a normal rollover must remain eligible for this round.
-      if (cardUsed || sample.resetsAt !== send.target && (send.target === null || updatedAt < send.target)) {
-        send.target=sample.resetsAt !== null && sample.resetsAt <= updatedAt ? null : sample.resetsAt;
+      if (cardUsed || !unknown && (!Number.isFinite(send.target) || blocked(this.quota,send.target) ||
+        updatedAt < send.target && plan && plan.reset !== send.target && windows(this.quota).some(w=>w.remaining<=0) ||
+        corrected(send.cycles ?? [{kind:'fiveHour',resetsAt:send.target}],this.quota,updatedAt))) {
+        send.target=plan && (!cardUsed || plan.reset > updatedAt) ? plan.reset : null;
+        send.due=Number.isFinite(send.target)?send.target+RESET_DELAY_MS:null;
+        send.cycles=plan?.cycles;
         send.remaining=sample.remaining;
       }
       send.quotaUpdatedAt=updatedAt;
       if(this.quota.availableResets !== null)send.availableResets=this.quota.availableResets;
     }
-    this.schedule(); if (before !== JSON.stringify(this.state)) await this.commit(); return this.status();
+    this.schedule(); await this.tick(); if (before !== JSON.stringify(this.state)) await this.commit(); return this.status();
   }
   async tick() {
     await this.expirePlayback();
@@ -141,7 +178,8 @@ export class FeatureEngine {
       this.state.send = {phase:'interrupted',error:'本轮发送超时或客户端已退出，请检查聊天；不会自动重发'}; await this.commit();
     }
     const alarm = this.state.alarm;
-    if (this.state.refreshEnabled && alarm && this.now() >= alarm.due) {
+    const quota=this.quota ?? this.state.quotaCheckpoint;
+    if (this.state.refreshEnabled && alarm && this.now() >= alarm.due && quota?.account === alarm.account && !blocked(quota,alarm.reset)) {
       this.state.fired = [...this.state.fired, alarm.id].slice(-64);
       this.state.alarm = this.state.nextAlarm ?? null; this.state.nextAlarm = null;
       // Persist the claim BEFORE playing so a reconnect cannot create a second alarm.
@@ -154,13 +192,14 @@ export class FeatureEngine {
   }
   async claimSend() {
     const s = this.state.send, q = this.quota;
-    if (s.phase !== 'armed' || !Number.isFinite(s.target) || !q || this.now() < s.target || q.account !== s.account) return null;
-    if (this.now() > s.target + 5 * 3600000) {
+    if (s.phase !== 'armed' || !Number.isFinite(s.target) || !q || this.now() < s.target+RESET_DELAY_MS || q.account !== s.account) return null;
+    if (this.now() > s.target + RESET_DELAY_MS + 5 * 3600000) {
       this.state.send = {phase:'expired', error:'错过本轮刷新，已关闭；没有发送草稿'}; await this.commit(); return null;
     }
     // A fresh native quota response must confirm the next cycle and available quota.
-    const freshCycle = q.resetsAt > s.target || q.remaining > s.remaining || q.resetsAt === null && q.remaining === 100;
-    if (q.updatedAt < s.target || !freshCycle || q.remaining <= 0) return null;
+    const freshCycle = (s.cycles ?? [{kind:'fiveHour',resetsAt:s.target,remaining:s.remaining}]).some(old=>old.resetsAt <= s.target &&
+      windows(q).some(w=>w.kind===old.kind && (w.resetsAt > old.resetsAt || w.remaining > old.remaining || w.resetsAt === null && w.remaining === 100)));
+    if (q.updatedAt < s.target+RESET_DELAY_MS || !freshCycle || blocked(q,s.target) || windows(q).some(w=>w.remaining <= 0)) return null;
     this.state.send = {...s, phase:'running', startedAt:this.now()};
     await this.commit(); return {id:s.id};
   }

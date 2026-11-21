@@ -1,0 +1,55 @@
+{
+  "version": "26.1117.4957.0",
+  "checkedAt": "2026-11-21T04:48:30.861Z",
+  "capabilities": {
+    "completion": true,
+    "send": true,
+    "shutdown": true,
+    "reasons": {}
+  },
+  "send": {
+    "available": true,
+    "reason": null
+  },
+  "diagnostics": {
+    "discovery": "rspack-syntax",
+    "fingerprints": {
+      "348410.35ea11b6a0.js": "6ed551093131b3e72a07956981d27253333ffffb1944867d2635eabe98945159",
+      "async/911644.eaf037cac0.js": "0d3393b090dc0d1b6134be4ec10bafa0c58c5e3986b2f91ffca559579cd56a5d",
+      "async/364313.d749d31da5.js": "657d4caa67c85d4cc4458b661646c8ef55b68efd65be5219a5cd039670e27ded",
+      "async/839700.c1fe868f96.js": "2b6c6ccb38bd166bc28b2ed8d6601df3ea2bf319de958bd9955d9dbbae2979b6"
+    },
+    "composerContracts": [
+      "status-view"
+    ],
+    "liveComposer": {
+      "recognized": true,
+      "contract": "status-view",
+      "blocked": false,
+      "error": null
+    }
+  },
+  "quotaStatus": "refreshed",
+  "identityKnown": true,
+  "hasFiveHour": true,
+  "hasWeekly": true,
+  "tasks": {
+    "known": true,
+    "busy": true,
+    "localSafe": false
+  },
+  "nativeUsage": {
+    "scope": "object",
+    "openModal": "function",
+    "usageModal": "function",
+    "turn": "object",
+    "recordReset": "function",
+    "decodeConversation": "function"
+  },
+  "layout": true,
+  "realDraftsSent": false,
+  "resetsConsumed": false,
+  "audioPlayed": false,
+  "shutdownTriggered": false,
+  "runningAdapterReplaced": false
+}

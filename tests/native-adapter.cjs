@@ -5,7 +5,7 @@ const http = require('node:http');
 const assert = require('node:assert/strict');
 const root = path.resolve(__dirname,'..');
 const moduleSource = `export const uct=window.fixture.scopes.root, MQn=window.fixture.scopes.composer;
-export const ZCn='event', ZAn='navigation', b0n='binding', VJn='host', Sft='draft', Hft='prompt';
+export const ZCn='event', ZAn='navigation', b0n='binding', VJn='host', Sft='draft', Hft='prompt', normalized='normalized';
 export function ICn(){if(window.fixture.mode==='broken-completion')throw Error('fixture event interface failed')}
 export function fpt(){if(window.fixture.mode==='broken-send')throw Error('fixture draft interface failed')}
 export function Ntr(key,fallback){return window.fixture.storage[key]??fallback}
@@ -147,6 +147,8 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
     await page.waitForFunction(()=>window.__codexBottomBar.quotaSample()?.availableResets===2);
     assert.equal(await page.locator('[data-cqb-slot="fiveHour"] .cqb-value').textContent(),'75%');
     assert.equal(await page.locator('[data-cqb-slot="weekly"] .cqb-value').textContent(),'50%');
+    assert.equal(await page.evaluate(()=>window.__codexBottomBar.quotaSample().weekly.remaining),50);
+    assert.equal(await page.evaluate(()=>window.__codexBottomBar.quotaSample().weeklyLimit),'limited');
     assert.equal(await page.locator('[data-cqb-slot="credits"] .cqb-value').textContent(),'1234.5');
     assert.notEqual(await page.locator('[data-cqb-slot="fiveHour"] .cqb-time').textContent(),'时间暂不可用');
     assert.equal(await page.evaluate(()=>window.__codexBottomBar.quotaSample().updatedAt===fixture.updatedAt),true,'Reminder sample uses the scoped query timestamp');
@@ -214,6 +216,12 @@ export const hs='hosts',hc='clients';export function monitorInit(){}
     await setup('normal','账户','memory');
     await page.evaluate(()=>{fixture.navigation.navigate=()=>{throw Error('fixture restore failure')}});
     assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.sendRound()),{sent:1,failed:1,skipped:1},'A synchronous restore failure does not discard submission counts');
+    await setup();
+    assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.taskSnapshot()),{known:true,busy:false,localSafe:true});
+    await page.evaluate(()=>{fixture.normalizedClients={local:fixture.clients.local,durable:{status:'loading',client:null}};window.__codexBottomBarFeatureBindings.monitor.rawClients='hc';window.__codexBottomBarFeatureBindings.monitor.clients='normalized';const store=document.querySelector('nav button').__reactFiber$fixture.memoizedState.memoizedState.current,original=store.get;store.get=(atom,key)=>atom==='normalized'?fixture.normalizedClients[key]:original(atom,key);});
+    assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.taskSnapshot()),{known:true,busy:false,localSafe:true},'Only a verified uninitialized durable host is ignored');
+    await page.evaluate(()=>{fixture.clients.durable={status:'request-only',client:null}});
+    assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.taskSnapshot()),{known:false,busy:false,localSafe:false},'A real pending cloud connection still blocks shutdown');
     await setup();
     assert.deepEqual(await page.evaluate(()=>window.__cqbNativeFeatures.taskSnapshot()),{known:true,busy:false,localSafe:true});
     assert.equal(await page.evaluate(()=>fixture.threadCalls.length),2,'Checks both active and archived pages without opening a chat');

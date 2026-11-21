@@ -88,9 +88,9 @@
         detail=item.enabled ? time?t('将于{time}关闭电脑，可点击关闭或从托盘取消',{time}):t('每3分钟检查所有聊天，全部完成后5分钟关机，定时发送开启时暂停检查') : t('可开启，任务全部完成或确认网络持续异常后关机，未保存内容会丢失');
       }
       else if (feature === 'send') {
-        const time = formatTime(state?.send?.target);
+        const time = formatTime(state?.send?.due ?? (Number.isFinite(state?.send?.target)?state.send.target+180000:null));
         detail = item.enabled ? time ? t('将于{time}发送所有聊天中的草稿，全部发送后将关闭定时发送',{time}) : t('暂未取得刷新时间')
-          : t('可开启，用于在额度刷新时自动发送所有聊天中的草稿，所有草稿发送后将关闭定时发送');
+          : t('可开启，等待5小时和每周额度均可用，刷新3分钟后发送所有聊天草稿，本轮结束后关闭');
       }
       else if (feature === 'completion') detail = t(item.enabled
         ? '任意聊天回答结束时会播放音乐进行提醒，播放时长最多30分钟'
@@ -98,7 +98,7 @@
       else {
         const time = formatTime(state?.refresh?.alarm?.due);
         detail = item.enabled ? time ? t('将于{time}播放音乐提醒',{time}) : t('暂未取得刷新时间')
-          : t('可开启，用于额度刷新时播放音乐进行提醒，播放时长最多30分钟，退出Codex仍然有效');
+          : t('可开启，等待5小时和每周额度均可用，刷新3分钟后播放音乐，最多30分钟，退出Codex仍然有效');
       }
       if (item.inapplicable) detail=t('当前账户没有五小时额度限制，定时发送和刷新提醒不适用');
       const phase = state?.[feature]?.phase;
@@ -244,7 +244,7 @@
         const refreshed=win.__codexBottomBar?.quotaSample?.();
         if(refreshed)state=await call('observe',refreshed);
       }
-      if (capabilities.send && state?.send?.phase === 'armed' && Number.isFinite(state.send.target) && Date.now() >= state.send.target) {
+      if (capabilities.send && state?.send?.phase === 'armed' && Number.isFinite(state.send.target) && Date.now() >= (state.send.due ?? state.send.target+180000)) {
         const claim = await call('claim-send');
         if (claim) {
           state = await call('status'); render();

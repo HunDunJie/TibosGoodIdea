@@ -62,8 +62,8 @@ window.__cqbPreviewHost=(method,payload={})=>{
  if(method==='volume-status')return structuredClone(window.__previewVolume);
  if(method==='toggle'){
   if(payload.feature==='shutdown'){s.shutdown={enabled:payload.enabled,phase:payload.enabled?['armed','running'].includes(s.send.phase)?'paused':'waiting':'off'};return s;}
-  if(payload.feature==='send')s.send={phase:payload.enabled?'armed':'off',target:Date.now()+3600000};
-  else s[payload.feature]={enabled:payload.enabled,phase:payload.enabled?(payload.feature==='refresh'?'scheduled':'listening'):'off',...(payload.feature==='refresh'&&payload.enabled?{alarm:{reset:Date.now()+3600000,due:Date.now()+3660000}}:{})};
+  if(payload.feature==='send')s.send={phase:payload.enabled?'armed':'off',target:Date.now()+3600000,due:Date.now()+3780000};
+  else s[payload.feature]={enabled:payload.enabled,phase:payload.enabled?(payload.feature==='refresh'?'scheduled':'listening'):'off',...(payload.feature==='refresh'&&payload.enabled?{alarm:{reset:Date.now()+3600000,due:Date.now()+3780000}}:{})};
  }
  if(method==='interaction'||method==='stop'){s.ringing=null;if(s.completion.enabled)s.completion.phase='listening';if(s.refresh.enabled)s.refresh.phase='scheduled'}
  return structuredClone(s);

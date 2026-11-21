@@ -91,3 +91,22 @@ test('entry changes alter fingerprints and missing or unrecognized entry points 
 test('duplicate modern application chunks are rejected instead of choosing an arbitrary one',()=>fixture({...modern,'webview/assets/async/duplicate.js':source},async asar=>{
  await assert.rejects(readFeatureBindings(asar),/Ambiguous Rspack application chunk/);
 }));
+
+const threadSource=`export const __webpack_modules__={
+ thread(e,t,r){var a=r('root');let identityKey='draft-thread-identities-v1',scope=make('ThreadScope'),binding=make(a.u,e=>null),derived=make(scope,({get,scope})=>{let {clientThreadId}=scope.value;return get(binding,clientThreadId)??scope.value.routeConversationId});r.d(t,{binding:()=>binding,scope:()=>scope,derived:()=>derived})}
+};`+' '.repeat(1100);
+const splitSource=source.replace(/binding\(e,t,r\)\{[^\n]+\n/,'').replace("const storageKey='composer-prompt-drafts-v2';","var s=r('storage');const storageKey='composer-prompt-drafts-v2',oldKey='composer-prompt-drafts-v1',retained='composer-retained-documents-v1';function read(){return (0,s.read)(retained,{})}");
+test('split thread identity chunks resolve native bindings and persisted draft reads without the retired storage key',()=>{
+ const b=discoverRspackBindings(splitSource,{...options,threadSource});
+ assert.deepEqual(b.capabilities,{completion:true,send:true,shutdown:true});assert.equal(b.conversationBinding,'thread:binding');assert.equal(b.readStorage,'storage:read');assert.equal(b.draftIdentityMode,'thread-scope');
+ assert.equal(discoverRspackBindings(splitSource,{...options,threadSource:threadSource.replace('clientThreadId','unknown')}).capabilities.send,false);
+ assert.equal(discoverRspackBindings(splitSource,{...options,threadSource:threadSource.replace('make(a.u,e=>null)','make(a.other,e=>null)')}).capabilities.send,false);
+});
+test('archive discovery loads and fingerprints the split thread chunk, retaining legacy behavior',()=>fixture({...modern,'webview/assets/async/main.hash.js':splitSource,'webview/assets/async/thread.hash.js':threadSource},async asar=>{
+ const b=await readFeatureBindings(asar);assert.equal(b.capabilities.send,true);assert.equal(b.draftIdentityMode,'thread-scope');assert.deepEqual(b.rspack.chunks,['async/main.hash.js','async/thread.hash.js']);assert.ok(b.fingerprints['async/thread.hash.js']);
+}));
+test('ambiguous thread chunks and missing native task methods do not enable unverified behavior',async()=>{
+ await fixture({...modern,'webview/assets/async/main.hash.js':splitSource,'webview/assets/async/thread.hash.js':threadSource,'webview/assets/async/other.hash.js':threadSource},asar=>assert.rejects(readFeatureBindings(asar),/thread identity/));
+ const minimal=source.replace('rpc.getCachedThreadIds();','');assert.equal(discoverRspackBindings(minimal,options).capabilities.shutdown,true);
+ assert.equal(discoverRspackBindings(minimal.replace('getWorkInProgress','unknown'),options).capabilities.shutdown,false);
+});

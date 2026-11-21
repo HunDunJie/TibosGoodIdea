@@ -1,8 +1,11 @@
 # Compatibility / 兼容性
 
-Version 0.8.0-rc.26 · Windows 11 x64 · Microsoft Store Codex
+Version 0.8.0-rc.27 · Windows 11 x64 · Microsoft Store Codex
 
 ## Current evidence / 当前证据
+
+- Codex 26.1117.4957.0: an isolated read-only adapter verified split thread identity and persisted draft bindings, native navigation, the status/view submit component, completion subscription, usage refresh, all six reset exports and task monitoring. Task readback correctly detected active local work. No real submission, reset, audible playback or shutdown was requested
+- Reset scheduling considers both 5h and weekly windows and uses a three-minute grace period. Sending additionally requires fresh usable quota data; detached reminders retain the saved two-window recovery plan
 
 - Codex 26.1106.6628.0: AST discovery and a read-only isolated adapter verified the status/view submission component against the installed renderer fingerprints. The old response-state component remains covered by fixtures. Unknown/ambiguous live contracts fail explicitly. Reset exports, ongoing-task detection and active usage polling were checked without sending real drafts or consuming resets
 - Codex 26.1103.4239.0: a real native usage GET verified current-account cache updates and reminder-sample synchronization. Read-only checks verified externally mounted navigation methods and the composer scope; task monitoring correctly detected local work. Scheduled submission was tested only with isolated native-handler fixtures

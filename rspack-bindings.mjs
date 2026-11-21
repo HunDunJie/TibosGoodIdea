@@ -30,11 +30,13 @@ export function discoverComposerContracts(source){
 }
 
 // Parse module factories and export declarations only. Never evaluate archive code.
-export function discoverRspackBindings(source,{entry,chunk,composerSource=source}){
+export function discoverRspackBindings(initialSource,{entry,chunk,composerSource=initialSource,threadSource=''}){
+  const modules=new Map(),defs=[];
+  const source=initialSource+'\n'+threadSource;
+  for (const source of [initialSource,threadSource].filter(Boolean)) {
   const ast=parse(source,{ecmaVersion:'latest',sourceType:'module'});
   const declaration=one(ast.body.flatMap(n=>n.declaration?.declarations??[]).filter(n=>n.id?.name==='__webpack_modules__'));
   if(declaration?.init?.type!=='ObjectExpression')throw Error('Rspack module table unavailable');
-  const modules=new Map(),defs=[];
   for(const p of declaration.init.properties){
     const fn=p.value,id=String(property(p));
     if(fn?.type!=='FunctionExpression'||modules.has(id))throw Error('Ambiguous Rspack factory');
@@ -55,6 +57,7 @@ export function discoverRspackBindings(source,{entry,chunk,composerSource=source
     for(const d of m.defs)if(m.exports.has(d.id.name))defs.push({m,node:d.init,name:d.id.name,key:`${id}:${m.exports.get(d.id.name)}`});
     modules.set(id,m);
   }
+  }
   const references={};
   function reference(m,node){
     node=unwrap(node);
@@ -67,7 +70,18 @@ export function discoverRspackBindings(source,{entry,chunk,composerSource=source
   const calls=defs.filter(d=>d.node.type==='CallExpression');
   const event=one(calls.filter(d=>objectKeys(d.node.arguments[2],['onMount'])&&text(d.node,'turn-completed')&&method(d.node,'subscribe')));
   const composer=one(calls.filter(d=>literal(d.node.arguments[0])==='ComposerScope'));
-  const binding=one(calls.filter(d=>d.m.source.includes('client-thread-bindings-v1')&&d.node.arguments[1]?.type==='ArrowFunctionExpression'&&text(d.node,'local:')));
+  const legacyBinding=one(calls.filter(d=>d.m.source.includes('client-thread-bindings-v1')&&d.node.arguments[1]?.type==='ArrowFunctionExpression'&&text(d.node,'local:')));
+  const threadBindings=[];
+  for (const scope of calls.filter(d=>literal(d.node.arguments[0])==='ThreadScope'&&d.m.source.includes('draft-thread-identities-v1'))) {
+    for (const derived of calls.filter(d=>d.m===scope.m&&d.node.arguments[0]?.name===scope.name&&method(d.node,'routeConversationId')&&has(d.node,n=>property(n)==='clientThreadId'))) {
+      visit(derived.node.arguments[1],n=>{
+        if(n.type!=='CallExpression'||n.callee.type!=='Identifier'||n.arguments.length!==2)return;
+        const atom=calls.find(d=>d.m===scope.m&&d.name===n.arguments[0]?.name&&d.node.arguments[1]?.type==='ArrowFunctionExpression'&&literal(d.node.arguments[1].body)===null);
+        if(atom)threadBindings.push(atom);
+      });
+    }
+  }
+  const threadBinding=one([...new Set(threadBindings)]),binding=threadSource?threadBinding:threadBinding??legacyBinding;
   const navigation=one(calls.filter(d=>objectKeys(d.node.arguments[1],['navigate','navigateToLocalConversation','prepareNavigation'])));
   const rootKeys=[event,binding,navigation].filter(Boolean).map(d=>JSON.stringify(reference(d.m,d.node.arguments[0])));
   const root=rootKeys.length>=2&&new Set(rootKeys).size===1?add(JSON.parse(rootKeys[0])):null;
@@ -84,11 +98,17 @@ export function discoverRspackBindings(source,{entry,chunk,composerSource=source
     return JSON.stringify(reference(d.m,d.node.arguments[0]))===rootKeys[0]&&last?.type==='LogicalExpression'&&literal(last.right)==='local'&&method(d.node,'has')&&method(d.node,'values')&&method(d.node,'next');
   }));
   const storage=[];
-  if(binding)visit(binding.node.arguments[1],n=>{
+  if(binding&&binding===legacyBinding)visit(binding.node.arguments[1],n=>{
     if(n.type==='CallExpression'&&n.arguments.length===2&&n.arguments[1]?.type==='UnaryExpression'&&n.arguments[1].operator==='void'){
       const ref=reference(binding.m,n.callee);if(ref)storage.push(add(ref));
     }
   });
+  if(threadBinding)for(const m of modules.values())if(m.source.includes('composer-prompt-drafts-v2')&&m.source.includes('composer-prompt-drafts-v1')) {
+    const retained=m.defs.find(d=>literal(d.init)==='composer-retained-documents-v1');
+    if(retained)visit(m.body,n=>{
+      if(n.type==='CallExpression'&&n.arguments[0]?.name===retained.id.name&&n.arguments[1]?.type==='ObjectExpression'&&!n.arguments[1].properties.length){const ref=reference(m,n.callee);if(ref)storage.push(add(ref));}
+    });
+  }
   const readStorage=one([...new Set(storage)].filter(Boolean));
   const clients=one(calls.filter(d=>objectKeys(d.node.arguments[1]?.body,['status','client'])&&text(d.node.arguments[1].body,'unavailable')&&JSON.stringify(reference(d.m,d.node.arguments[0]))===rootKeys[0]));
   const hostRefs=[];
@@ -98,7 +118,8 @@ export function discoverRspackBindings(source,{entry,chunk,composerSource=source
     }
   });
   const hosts=one([...new Set(hostRefs)].filter(Boolean));
-  const monitor=root&&clients&&hosts&&['getWorkInProgress','getCachedThreadIds','getLoadedConversationHistory','sendRequest'].every(name=>source.includes(name+'(')||source.includes('get '+name+'('))?{clients:key(clients),hosts,init:[]}:null;
+  const readyClients=clients&&one(calls.filter(d=>d.m===clients.m&&text(d.node,'ready')&&method(d.node,'client')&&has(d.node,n=>n.type==='Identifier'&&n.name===clients.name)));
+  const monitor=root&&clients&&hosts&&['getWorkInProgress','getLoadedConversationHistory','sendRequest'].every(name=>source.includes(name+'(')||source.includes('get '+name+'('))?{clients:key(readyClients??clients),...(readyClients?{rawClients:key(clients)}:{}),hosts,init:[]}:null;
   const quotaReaders=[];
   for(const m of modules.values()){
     const reads=m.functions.filter(f=>has(f,n=>n.type==='CallExpression'&&property(n.callee)==='safeGet'&&literal(n.arguments[0])==='/wham/usage'));
@@ -108,7 +129,7 @@ export function discoverRspackBindings(source,{entry,chunk,composerSource=source
   const completion=!!(root&&event),send=!!(root&&composer&&binding&&navigationKey&&host&&readStorage&&composerContracts.length&&['focusComposerAfterSubmit','onAccepted'].every(name=>composerSource.includes(name)));
   return {schema:2,discovery:'rspack-syntax',rspack:{entry,chunk},references,initial:chunk,shared:chunk,scope:root,
     initEvents:'__cqbReady',completionEvent:key(event),composerScope:key(composer),initSend:[],readStorage,navigation:navigationKey,conversationBinding:key(binding),host:key(host),navigationMode:'native-method',monitor,quotaFetch:key(one(quotaReaders)),
-    composerContracts,capabilities:{completion,send,shutdown:!!monitor},reasons:{completion:completion?null:'completion-interface-unverified',send:send?null:'draft-interface-unverified'}};
+    draftIdentityMode:threadBinding?'thread-scope':'legacy-binding',composerContracts,capabilities:{completion,send,shutdown:!!monitor},reasons:{completion:completion?null:'completion-interface-unverified',send:send?null:'draft-interface-unverified'}};
 }
 
 export async function readRspackBindings(asar){
@@ -119,16 +140,20 @@ export async function readRspackBindings(asar){
     const entry=one(entries);if(!entry)throw Error('Ambiguous Rspack entry');
     const names=archive.names.filter(n=>n.startsWith('async/'));
     if(names.length>10000||names.reduce((n,name)=>n+(archive.size(name)??0),0)>512*1024*1024)throw Error('Rspack discovery budget exceeded');
-    const candidates=[],composers=[];
+    const candidates=[],composers=[],threads=[];
     for(const name of names){
       if(archive.size(name)<1000)continue;
       const bytes=await archive.read(name);
-      if(['composer-prompt-drafts-v2','client-thread-bindings-v1','getWorkInProgress','turn-completed'].every(text=>bytes.includes(text)))candidates.push({name,bytes});
+      if(['composer-prompt-drafts-v2','getWorkInProgress','turn-completed'].every(text=>bytes.includes(text)))candidates.push({name,bytes});
+      if(['draft-thread-identities-v1','ThreadScope'].every(text=>bytes.includes(text)))threads.push({name,bytes});
       if(['handleSubmit','submitDisabled','focusComposerAfterSubmit','onAccepted'].every(text=>bytes.includes(text))&&discoverComposerContracts(bytes.toString('utf8')).length)composers.push({name,bytes});
     }
     const main=one(candidates);if(!main)throw Error('Ambiguous Rspack application chunk');
     const composer=one(composers);
-    const bindings=discoverRspackBindings(main.bytes.toString('utf8'),{entry:entry.name,chunk:main.name,composerSource:composer?.bytes.toString('utf8')??''});
-    return {...bindings,fingerprints:Object.fromEntries([entry,main,...composer?[composer]:[]].map(({name,bytes})=>[name,createHash('sha256').update(bytes).digest('hex')]))};
+    const thread=main.bytes.includes('client-thread-bindings-v1')?null:one(threads);
+    if(!main.bytes.includes('client-thread-bindings-v1')&&!thread)throw Error('Ambiguous or missing native thread identity chunk');
+    const bindings=discoverRspackBindings(main.bytes.toString('utf8'),{entry:entry.name,chunk:main.name,composerSource:composer?.bytes.toString('utf8')??'',threadSource:thread&&thread.name!==main.name?thread.bytes.toString('utf8'):''});
+    const chunks=[...new Map([main,...thread?[thread]:[]].map(m=>[m.name,m])).values()];
+    return {...bindings,rspack:{...bindings.rspack,chunks:chunks.map(m=>m.name)},fingerprints:Object.fromEntries([entry,...chunks,...composer?[composer]:[]].map(({name,bytes})=>[name,createHash('sha256').update(bytes).digest('hex')]))};
   }finally{await archive.close();}
 }
